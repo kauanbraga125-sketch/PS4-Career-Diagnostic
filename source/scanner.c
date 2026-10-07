@@ -2516,6 +2516,9 @@ static int write_process(uint64_t address, const void *data, size_t length)
 
 static void load_master_candidates(void)
 {
+    const uint64_t region_start = 0x0000000FE032CC00ULL;
+    const uint64_t region_end   = 0x0000000FE032D400ULL;
+
     g_candidate_count = 0;
     g_measurement_index = 1;
     g_mode = SCAN_MODE_INT32;
@@ -2524,8 +2527,9 @@ static void load_master_candidates(void)
     size_t out_of_range = 0;
     size_t read_fail = 0;
 
-    for (size_t i = 0; i < MASTER_CANDIDATE_COUNT; i++) {
-        uint64_t address = g_master_candidates[i];
+    for (uint64_t address = region_start;
+         address + sizeof(uint32_t) <= region_end;
+         address += sizeof(uint32_t)) {
         OrbisKernelVirtualQueryInfo info;
         uint32_t raw = 0;
         int32_t value = 0;
@@ -2558,13 +2562,15 @@ static void load_master_candidates(void)
     }
 
     dump_candidates();
-    append_log("=== CareerDiag MASTER100 v1040 live load ===");
-    append_log("master_compiled=%zu risk_excluded_compile=397 tested_no_effect_excluded=162 crash_suspect_excluded=1 live=%zu invalid=%zu out_of_range=%zu read_fail=%zu",
-               (size_t)MASTER_CANDIDATE_COUNT, g_candidate_count,
-               invalid, out_of_range, read_fail);
+    append_log("=== CareerDiag STARREG v1060 live load ===");
+    append_log("region=0x%llX..0x%llX aligned_int32=%zu valid=%zu invalid=%zu out_of_range=%zu read_fail=%zu",
+               (unsigned long long)region_start,
+               (unsigned long long)region_end,
+               (size_t)((region_end - region_start) / 4),
+               g_candidate_count, invalid, out_of_range, read_fail);
 
-    notify_status("[CareerDiag MASTER50 v1050] %zu/%zu validos agora. R2+ESQ testa 50.",
-                  g_candidate_count, (size_t)MASTER_CANDIDATE_COUNT);
+    notify_status("[CareerDiag STARREG v1060] %zu candidatos na regiao da estrela. R2+ESQ testa 10.",
+                  g_candidate_count);
 }
 
 static bool load_single_candidate_from_file(void)
@@ -2798,7 +2804,7 @@ static void reset_group_test_state(void)
     g_group_mode_initialized = false;
     g_group_domain_start = 0;
     g_group_domain_count = 0;
-    g_group_block_size = 50;
+    g_group_block_size = 10;
     g_group_cursor = 0;
     g_group_active_range_start = 0;
     g_group_active_range_count = 0;
@@ -2813,7 +2819,7 @@ static bool init_group_test_mode(void)
         load_master_candidates();
 
     if (g_candidate_count == 0) {
-        notify_status("[CareerDiag MASTER50] nenhum candidato valido nesta tela.");
+        notify_status("[CareerDiag STARREG] nenhum candidato valido nesta tela.");
         return false;
     }
 
@@ -2824,7 +2830,7 @@ static bool init_group_test_mode(void)
 
     g_group_domain_start = 0;
     g_group_domain_count = g_candidate_count;
-    g_group_block_size = 50;
+    g_group_block_size = 10;
     g_group_cursor = 0;
     g_group_active = false;
     g_group_active_written = 0;
@@ -2835,13 +2841,13 @@ static bool init_group_test_mode(void)
     if (fd >= 0) {
         char header[384];
         int n = snprintf(header, sizeof(header),
-                         "PS4 Career Diagnostic - MASTER50 v1050\n"
+                         "PS4 Career Diagnostic - STARREG v1060\n"
                          "candidates=%zu\n"
-                         "nivel_inicial=50\n"
-                         "valor_teste=nudge seguro (+1, ou -1 em 255)\n"
-                         "risk_excluded_compile=397 | no_effect_excluded=162 | crash_excluded=1\n"
-                         "R2+LEFT=restaura anterior e testa proximo bloco de 50\n"
-                         "L1+R1=isola bloco atual (50->10->1)\n\n",
+                         "nivel_inicial=10\n"
+                         "valor_teste=nudge medio (+32 ou -32)\n"
+                         "region=0x0FE032CC00..0x0FE032D400 (estrela)\n"
+                         "R2+LEFT=restaura anterior e testa proximo bloco de 10\n"
+                         "L1+R1=isola bloco atual (10->1)\n\n",
                          g_candidate_count);
         if (n > 0) write(fd, header, (size_t)n);
         close(fd);
@@ -2915,7 +2921,7 @@ static void group_test_next(void)
             continue;
         }
 
-        test_value = (original >= 255) ? (original - 1) : (original + 1);
+        test_value = (original >= 224) ? (original - 32) : (original + 32);
 
         if (write_process(address, &test_value, sizeof(test_value)) != 0) {
             group_log_append("  %zu  0x%016llX original=%d WRITE_FAIL",
@@ -2943,13 +2949,13 @@ static void group_test_next(void)
         uint32_t raw_now = 0;
         if (read_process(g_candidate_address[start], &raw_now, sizeof(raw_now)) == 0)
             memcpy(&now, &raw_now, sizeof(now));
-        notify_status("[CareerDiag MASTER50] CAND %zu/%zu | 0x%llX | teste=%d. R2+ESQ proximo | L1+R1 marca.",
+        notify_status("[CareerDiag STARREG] CAND %zu/%zu | 0x%llX | teste=%d. R2+ESQ proximo | L1+R1 marca.",
                       start + 1,
                       g_group_domain_count,
                       (unsigned long long)g_candidate_address[start],
                       now);
     } else {
-        notify_status("[CareerDiag MASTER50] bloco %zu/%zu | cand %zu-%zu | %zu alterados.",
+        notify_status("[CareerDiag STARREG] bloco %zu/%zu | cand %zu-%zu | %zu alterados.",
                       block_number, total_blocks, start + 1, start + count, written);
     }
 }
@@ -3339,10 +3345,10 @@ static void initial_snapshot(void)
     dump_candidates();
 
     if (hit_cap) {
-        notify_status("[CareerDiag MASTER50] limite de %u candidatos atingido.",
+        notify_status("[CareerDiag STARREG] limite de %u candidatos atingido.",
                       MAX_CANDIDATES);
     } else {
-        notify_status("[CareerDiag MASTER50] snapshot: %zu candidatos em 5 regioes. Faca mudanca e R2+CIMA/BAIXO.",
+        notify_status("[CareerDiag STARREG] snapshot: %zu candidatos em 5 regioes. Faca mudanca e R2+CIMA/BAIXO.",
                       g_candidate_count);
     }
 
@@ -3855,8 +3861,8 @@ int diag_start_worker(void)
         if (fd >= 0) close(fd);
     }
 
-    append_log("=== CareerDiag MASTER50 v1050 ===");
-    append_log("compiled_unique_before_risk=2848 risk_excluded=397 tested_no_effect_excluded=162 crash_suspect_excluded=1 master_compiled=2288");
+    append_log("=== CareerDiag STARREG v1060 ===");
+    append_log("focus_region=0x0FE032CC00..0x0FE032D400 aligned int32 only");
 
     return scePthreadCreate(&g_worker_thread, NULL, worker_main, NULL,
                             "career_diag_worker");
