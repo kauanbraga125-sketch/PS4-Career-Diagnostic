@@ -226,7 +226,7 @@ s32 attr_public plugin_load(s32 argc, const char *argv[])
 
     NotifyStatic(
         TEX_ICON_SYSTEM,
-        "[CareerDiag] Triple TRIANGULO inicia teste AUTO dos 35 candidatos."
+        "[CareerDiag] MENU: TRIANGULO x3 inicia; CIMA x2 subiu; BAIXO x2 desceu."
     );
 
     return 0;
