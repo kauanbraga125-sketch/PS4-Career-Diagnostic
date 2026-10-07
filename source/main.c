@@ -64,7 +64,8 @@ static void handle_shortcuts(uint32_t buttons)
             if (g_triangle_taps >= 3) {
                 g_triangle_taps = 0;
                 g_triangle_timeout_frames = 0;
-                diag_request(DIAG_ACTION_BATCH_TEST_ALL);
+                g_learning_active = true;
+                diag_request(DIAG_ACTION_SNAPSHOT);
             }
         }
     }
