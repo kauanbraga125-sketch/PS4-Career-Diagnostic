@@ -21,6 +21,11 @@ static Patcher *g_scePadReadExt_patcher = NULL;
 static uint32_t g_previous_buttons = 0;
 static int g_triangle_taps = 0;
 static int g_triangle_timeout_frames = 0;
+static int g_up_taps = 0;
+static int g_up_timeout_frames = 0;
+static int g_down_taps = 0;
+static int g_down_timeout_frames = 0;
+static bool g_learning_active = false;
 
 static bool combo_just_pressed(uint32_t buttons, uint32_t button)
 {
