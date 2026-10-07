@@ -37,6 +37,9 @@ static const uint64_t g_test_candidates[] = {
 };
 #define TEST_CANDIDATE_COUNT (sizeof(g_test_candidates) / sizeof(g_test_candidates[0]))
 static size_t g_test_candidate_index = 0;
+static uint64_t g_test_last_address = 0;
+static int32_t g_test_last_original = 0;
+static bool g_test_has_pending_restore = false;
 
 typedef enum ScanMode {
     SCAN_MODE_INT32 = 0,
@@ -140,12 +143,34 @@ static int write_process(uint64_t address, const void *data, size_t length)
     return sys_sdk_proc_rw(&rw);
 }
 
+static void restore_test_candidate(void)
+{
+    if (!g_test_has_pending_restore)
+        return;
+
+    if (write_process(g_test_last_address, &g_test_last_original,
+                      sizeof(g_test_last_original)) == 0) {
+        append_log("[CareerDiag] TEST restore 0x%llX -> %d",
+                   (unsigned long long)g_test_last_address,
+                   g_test_last_original);
+    }
+
+    g_test_has_pending_restore = false;
+    g_test_last_address = 0;
+}
+
 static void test_candidate_plus_one(void)
 {
     uint64_t address = g_test_candidates[g_test_candidate_index];
     uint32_t raw = 0;
     int32_t value = 0;
     OrbisKernelVirtualQueryInfo info;
+
+    if (g_test_has_pending_restore) {
+        notify_status("[CareerDiag] CAND %zu ja testado. TOUCH+R1 vai ao proximo.",
+                      g_test_candidate_index + 1);
+        return;
+    }
 
     if (sceKernelVirtualQuery((void *)(uintptr_t)address, 0,
                               &info, sizeof(info)) < 0 ||
@@ -183,7 +208,11 @@ static void test_candidate_plus_one(void)
         if (read_process(address, &verify_raw, sizeof(verify_raw)) == 0)
             memcpy(&verify, &verify_raw, sizeof(verify));
 
-        notify_status("[CareerDiag] CAND %zu/%zu 0x%llX: %d -> %d.",
+        g_test_last_address = address;
+        g_test_last_original = value;
+        g_test_has_pending_restore = true;
+
+        notify_status("[CareerDiag] CAND %zu/%zu 0x%llX: %d -> %d. Veja titularidade.",
                       g_test_candidate_index + 1, (size_t)TEST_CANDIDATE_COUNT,
                       (unsigned long long)address, value, verify);
     }
@@ -191,6 +220,8 @@ static void test_candidate_plus_one(void)
 
 static void test_next_candidate(void)
 {
+    restore_test_candidate();
+
     g_test_candidate_index++;
     if (g_test_candidate_index >= TEST_CANDIDATE_COUNT)
         g_test_candidate_index = 0;
@@ -845,6 +876,7 @@ void diag_stop_worker(void)
 
     g_worker_running = 0;
     scePthreadJoin(g_worker_thread, NULL);
+    restore_test_candidate();
     free_monitor_stats();
 }
 
