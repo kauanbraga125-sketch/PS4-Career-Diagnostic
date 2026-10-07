@@ -2987,7 +2987,7 @@ static bool init_group_test_mode(void)
 
     g_group_domain_start = 0;
     g_group_domain_count = g_candidate_count;
-    g_group_block_size = 1;
+    g_group_block_size = 100;
     g_group_cursor = 0;
     g_group_active = false;
     g_group_active_written = 0;
