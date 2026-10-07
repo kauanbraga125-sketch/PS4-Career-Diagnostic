@@ -357,7 +357,23 @@ static void restore_test_candidate(void)
 static void batch_test_all_candidates(void)
 {
     int fd;
-    char line[320];
+    char line[384];
+    size_t test_count = g_candidate_count;
+
+    if (test_count == 0) {
+        notify_status("[CareerDiag] TESTE: nenhum candidato. Use R1+CIMA e filtre primeiro.");
+        return;
+    }
+
+    /*
+     * Safety guard: this mode is meant for the already-reduced list.
+     * It is dynamic (not hardcoded), but testing hundreds/thousands of
+     * addresses would take too long and increase the chance of side effects.
+     */
+    if (test_count > 200) {
+        notify_status("[CareerDiag] TESTE: %zu candidatos ainda e muito. Reduza para <=200.", test_count);
+        return;
+    }
 
     g_freeze_max = 0;
     if (g_monitoring) {
@@ -371,19 +387,19 @@ static void batch_test_all_candidates(void)
     fd = open(DIAG_BATCH_RESULTS, O_WRONLY | O_CREAT | O_TRUNC, 0666);
     if (fd >= 0) {
         int n = snprintf(line, sizeof(line),
-                         "PS4 Career Diagnostic - TESTE AUTOMATICO\n"
+                         "PS4 Career Diagnostic - TESTE DINAMICO\n"
                          "candidates=%zu\n"
-                         "tempo_por_candidato=3s\n"
+                         "tempo_teste=4s\n"
+                         "intervalo_restaurado=2s\n"
                          "teste=extremo oposto (0 ou 255), depois restaura\n\n",
-                         (size_t)TEST_CANDIDATE_COUNT);
+                         test_count);
         if (n > 0) write(fd, line, (size_t)n);
     }
 
-    notify_status("[CareerDiag] TESTE AUTO: %zu candidatos, 3s cada. Observe a barra.",
-                  (size_t)TEST_CANDIDATE_COUNT);
+    notify_status("[CareerDiag] TESTE DINAMICO: %zu candidatos. 4s teste + 2s intervalo.", test_count);
 
-    for (size_t i = 0; i < TEST_CANDIDATE_COUNT && g_worker_running; i++) {
-        uint64_t address = g_test_candidates[i];
+    for (size_t i = 0; i < test_count && g_worker_running; i++) {
+        uint64_t address = g_candidate_address[i];
         uint32_t raw = 0;
         int32_t original = 0;
         int32_t test_value = 0;
@@ -402,31 +418,30 @@ static void batch_test_all_candidates(void)
         }
 
         if (!valid) {
-            notify_status("[CareerDiag] TEST %02zu/%zu 0x%llX INVALIDO. Proximo em 3s.",
-                          i + 1, (size_t)TEST_CANDIDATE_COUNT,
-                          (unsigned long long)address);
+            notify_status("[CareerDiag] TEST %02zu/%zu 0x%llX INVALIDO. Proximo em 2s.",
+                          i + 1, test_count, (unsigned long long)address);
             if (fd >= 0) {
                 int n = snprintf(line, sizeof(line),
                                  "%02zu  0x%016llX  INVALIDO\n",
                                  i + 1, (unsigned long long)address);
                 if (n > 0) write(fd, line, (size_t)n);
             }
-            sceKernelUsleep(3000000);
+            sceKernelUsleep(2000000);
             continue;
         }
 
         test_value = (original >= 128) ? 0 : 255;
 
         if (write_process(address, &test_value, sizeof(test_value)) != 0) {
-            notify_status("[CareerDiag] TEST %02zu/%zu falha ao escrever. Proximo em 3s.",
-                          i + 1, (size_t)TEST_CANDIDATE_COUNT);
+            notify_status("[CareerDiag] TEST %02zu/%zu falha ao escrever. Proximo em 2s.",
+                          i + 1, test_count);
             if (fd >= 0) {
                 int n = snprintf(line, sizeof(line),
                                  "%02zu  0x%016llX  original=%d  WRITE_FAIL\n",
                                  i + 1, (unsigned long long)address, original);
                 if (n > 0) write(fd, line, (size_t)n);
             }
-            sceKernelUsleep(3000000);
+            sceKernelUsleep(2000000);
             continue;
         }
 
@@ -434,8 +449,9 @@ static void batch_test_all_candidates(void)
         g_test_last_original = original;
         g_test_has_pending_restore = true;
 
-        notify_status("[CareerDiag] TEST %02zu/%zu: %d -> %d por 3s. VEJA A TITULARIDADE.",
-                      i + 1, (size_t)TEST_CANDIDATE_COUNT, original, test_value);
+        notify_status("[CareerDiag] TEST %02zu/%zu | 0x%llX | %d -> %d | 4s. OBSERVE.",
+                      i + 1, test_count, (unsigned long long)address,
+                      original, test_value);
 
         if (fd >= 0) {
             int n = snprintf(line, sizeof(line),
@@ -444,14 +460,18 @@ static void batch_test_all_candidates(void)
             if (n > 0) write(fd, line, (size_t)n);
         }
 
-        sceKernelUsleep(3000000);
+        sceKernelUsleep(4000000);
         restore_test_candidate();
+
+        notify_status("[CareerDiag] TEST %02zu/%zu restaurado. Proximo em 2s.",
+                      i + 1, test_count);
+        sceKernelUsleep(2000000);
     }
 
     if (fd >= 0)
         close(fd);
 
-    notify_status("[CareerDiag] TESTE AUTO finalizado. Veja batch_test.txt.");
+    notify_status("[CareerDiag] TESTE DINAMICO finalizado. Veja batch_test.txt.");
 }
 
 static void test_candidate_plus_one(void)
