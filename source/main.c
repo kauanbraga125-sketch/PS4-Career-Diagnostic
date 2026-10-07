@@ -11,9 +11,9 @@
 #include <Syscall.h>
 
 attr_public const char *g_pluginName = "career_diag";
-attr_public const char *g_pluginDesc = "Read-only player-career correlation tracer + ranked single-candidate test";
+attr_public const char *g_pluginDesc = "PlayerStatus structure hunter + CareerTrace fallback";
 attr_public const char *g_pluginAuth = "Kauan project";
-attr_public uint32_t g_pluginVersion = 0x00002110;
+attr_public uint32_t g_pluginVersion = 0x00002200;
 
 HOOK_INIT(scePadRead);
 
@@ -33,7 +33,8 @@ static void handle_shortcuts(uint32_t buttons)
     /*
      * CareerTrace v2110 (mesma busca organizada da v2100)
      *
-     * R1 + CIMA     = baseline completo (reinicia a busca)
+     * R1 + CIMA     = Structure Hunter (metodo PlayerStatusManager)
+     * L2 + CIMA     = CareerTrace antigo: baseline completo
      * R1 + BAIXO    = fase atual, contagens e proximo passo
      * R2 + CIMA     = titularidade SUBIU
      * R2 + BAIXO    = titularidade DESCEU
@@ -64,6 +65,11 @@ static void handle_shortcuts(uint32_t buttons)
     }
 
     if (chord_just_pressed(buttons, ORBIS_PAD_BUTTON_R1, ORBIS_PAD_BUTTON_UP)) {
+        diag_request(DIAG_ACTION_STRUCTURE_HUNT);
+        return;
+    }
+
+    if (chord_just_pressed(buttons, ORBIS_PAD_BUTTON_L2, ORBIS_PAD_BUTTON_UP)) {
         diag_request(DIAG_ACTION_SNAPSHOT);
         return;
     }
@@ -114,7 +120,7 @@ s32 attr_public plugin_load(s32 argc, const char *argv[])
     (void)argc;
     (void)argv;
 
-    final_printf("[CareerTrace] plugin_load\n");
+    final_printf("[StructureHunter v2200] plugin_load\n");
 
     {
         char module[256];
@@ -153,7 +159,7 @@ s32 attr_public plugin_load(s32 argc, const char *argv[])
 
     NotifyStatic(
         TEX_ICON_SYSTEM,
-        "[CareerTrace v2110] R1+CIMA inicia | R1+BAIXO mostra fase e proximo passo. Atalhos de filtro mantidos."
+        "[StructureHunter v2200] R1+CIMA busca PlayerStatus | L2+CIMA CareerTrace antigo | R1+BAIXO status."
     );
 
     return 0;
@@ -173,7 +179,7 @@ s32 attr_public plugin_unload(s32 argc, const char *argv[])
         g_scePadReadExt_patcher = NULL;
     }
 
-    final_printf("[CareerTrace] plugin_unload\n");
+    final_printf("[StructureHunter v2200] plugin_unload\n");
     return 0;
 }
 
