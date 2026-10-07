@@ -13,12 +13,14 @@
 attr_public const char *g_pluginName = "career_diag";
 attr_public const char *g_pluginDesc = "On-console player-career memory diagnostic";
 attr_public const char *g_pluginAuth = "Kauan project";
-attr_public uint32_t g_pluginVersion = 0x00000B00;
+attr_public uint32_t g_pluginVersion = 0x00000C00;
 
 HOOK_INIT(scePadRead);
 
 static Patcher *g_scePadReadExt_patcher = NULL;
 static uint32_t g_previous_buttons = 0;
+static int g_triangle_taps = 0;
+static int g_triangle_timeout_frames = 0;
 
 static bool combo_just_pressed(uint32_t buttons, uint32_t button)
 {
@@ -38,6 +40,30 @@ static bool chord_just_pressed(uint32_t buttons, uint32_t modifier, uint32_t but
 
 static void handle_shortcuts(uint32_t buttons)
 {
+    if (g_triangle_timeout_frames > 0)
+        g_triangle_timeout_frames--;
+    else
+        g_triangle_taps = 0;
+
+    {
+        const bool tri_now = (buttons & ORBIS_PAD_BUTTON_TRIANGLE) != 0;
+        const bool tri_was = (g_previous_buttons & ORBIS_PAD_BUTTON_TRIANGLE) != 0;
+        const uint32_t modifiers = ORBIS_PAD_BUTTON_R1 | ORBIS_PAD_BUTTON_L1 | ORBIS_PAD_BUTTON_TOUCH_PAD;
+
+        if (tri_now && !tri_was && (buttons & modifiers) == 0) {
+            if (g_triangle_taps == 0)
+                g_triangle_timeout_frames = 180;
+
+            g_triangle_taps++;
+
+            if (g_triangle_taps >= 3) {
+                g_triangle_taps = 0;
+                g_triangle_timeout_frames = 0;
+                diag_request(DIAG_ACTION_BATCH_TEST_ALL);
+            }
+        }
+    }
+
     if (chord_just_pressed(buttons, ORBIS_PAD_BUTTON_R1, ORBIS_PAD_BUTTON_DOWN))
         diag_request(DIAG_ACTION_MEASURE_DOWN);
 
@@ -151,7 +177,7 @@ s32 attr_public plugin_load(s32 argc, const char *argv[])
 
     NotifyStatic(
         TEX_ICON_SYSTEM,
-        "[CareerDiag] 1 alvo: R1+CIMA/BAIXO +/-20; R1+TRIANGULO fixa 255."
+        "[CareerDiag] Triple TRIANGULO inicia teste AUTO dos 35 candidatos."
     );
 
     return 0;
