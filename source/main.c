@@ -50,6 +50,16 @@ static void handle_shortcuts(uint32_t buttons)
     else
         g_triangle_taps = 0;
 
+    if (g_up_timeout_frames > 0)
+        g_up_timeout_frames--;
+    else
+        g_up_taps = 0;
+
+    if (g_down_timeout_frames > 0)
+        g_down_timeout_frames--;
+    else
+        g_down_taps = 0;
+
     {
         const bool tri_now = (buttons & ORBIS_PAD_BUTTON_TRIANGLE) != 0;
         const bool tri_was = (g_previous_buttons & ORBIS_PAD_BUTTON_TRIANGLE) != 0;
