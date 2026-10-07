@@ -80,6 +80,39 @@ static void handle_shortcuts(uint32_t buttons)
         }
     }
 
+    if (g_learning_active) {
+        const bool up_now = (buttons & ORBIS_PAD_BUTTON_UP) != 0;
+        const bool up_was = (g_previous_buttons & ORBIS_PAD_BUTTON_UP) != 0;
+        const bool down_now = (buttons & ORBIS_PAD_BUTTON_DOWN) != 0;
+        const bool down_was = (g_previous_buttons & ORBIS_PAD_BUTTON_DOWN) != 0;
+
+        if (up_now && !up_was) {
+            if (g_up_taps == 0)
+                g_up_timeout_frames = 90;
+            g_up_taps++;
+            if (g_up_taps >= 2) {
+                g_up_taps = 0;
+                g_up_timeout_frames = 0;
+                g_down_taps = 0;
+                g_down_timeout_frames = 0;
+                diag_request(DIAG_ACTION_MEASURE_UP);
+            }
+        }
+
+        if (down_now && !down_was) {
+            if (g_down_taps == 0)
+                g_down_timeout_frames = 90;
+            g_down_taps++;
+            if (g_down_taps >= 2) {
+                g_down_taps = 0;
+                g_down_timeout_frames = 0;
+                g_up_taps = 0;
+                g_up_timeout_frames = 0;
+                diag_request(DIAG_ACTION_MEASURE_DOWN);
+            }
+        }
+    }
+
     if (chord_just_pressed(buttons, ORBIS_PAD_BUTTON_R1, ORBIS_PAD_BUTTON_DOWN))
         diag_request(DIAG_ACTION_MEASURE_DOWN);
 
