@@ -1,0 +1,46 @@
+name: Build career_diag PRX
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout project
+        uses: actions/checkout@v4
+
+      - name: Checkout GoldHEN Plugin SDK
+        uses: actions/checkout@v4
+        with:
+          repository: GoldHEN/GoldHEN_Plugins_SDK
+          path: SDK
+
+      - name: Install LLVM/LLD
+        run: sudo apt-get update && sudo apt-get install -y llvm lld clang
+
+      - name: Download OpenOrbis Toolchain
+        run: |
+          curl -sL https://github.com/illusion0001/OpenOrbis-PS4-Toolchain/releases/latest/download/toolchain.tar.gz | tar xz -C ./
+
+      - name: Configure paths
+        run: |
+          echo "OO_PS4_TOOLCHAIN=$GITHUB_WORKSPACE/OpenOrbis/PS4Toolchain" >> $GITHUB_ENV
+          echo "GOLDHEN_SDK=$GITHUB_WORKSPACE/SDK" >> $GITHUB_ENV
+
+      - name: Build PRX
+        run: make
+
+      - name: Upload career_diag.prx
+        uses: actions/upload-artifact@v4
+        with:
+          name: career_diag-prx
+          path: bin/career_diag.prx
+          if-no-files-found: error
