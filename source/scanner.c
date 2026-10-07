@@ -71,6 +71,7 @@ static size_t g_monitor_count = 0;
 static uint64_t g_monitor_samples = 0;
 static volatile int g_monitoring = 0;
 static uint32_t g_measurement_index = 0;
+static volatile int g_freeze_max = 0;
 
 static void dump_candidates(void);
 static void dump_monitor_report(void);
@@ -242,6 +243,71 @@ static void adjust_single_candidate(int delta)
 
     notify_status("[CareerDiag] REP 0x%llX: %d -> %d (%+d).",
                   (unsigned long long)address, value, next, delta);
+}
+
+static void enforce_freeze_max(void)
+{
+    uint64_t address;
+    int32_t target = 255;
+    uint32_t raw = 0;
+    int32_t current = 0;
+    OrbisKernelVirtualQueryInfo info;
+
+    if (!g_freeze_max || g_candidate_count != 1)
+        return;
+
+    address = g_candidate_address[0];
+
+    if (sceKernelVirtualQuery((void *)(uintptr_t)address, 0, &info, sizeof(info)) < 0 ||
+        (info.prot & CPU_READ) == 0 || (info.prot & CPU_WRITE) == 0) {
+        g_freeze_max = 0;
+        notify_status("[CareerDiag] FREEZE OFF: alvo invalido/nao gravavel.");
+        return;
+    }
+
+    if (read_process(address, &raw, sizeof(raw)) != 0) {
+        g_freeze_max = 0;
+        notify_status("[CareerDiag] FREEZE OFF: falha ao ler alvo.");
+        return;
+    }
+
+    memcpy(&current, &raw, sizeof(current));
+
+    if (current < 0 || current > 255) {
+        g_freeze_max = 0;
+        notify_status("[CareerDiag] FREEZE OFF: valor %d fora de 0..255.", current);
+        return;
+    }
+
+    if (current != target) {
+        if (write_process(address, &target, sizeof(target)) != 0) {
+            g_freeze_max = 0;
+            notify_status("[CareerDiag] FREEZE OFF: falha ao escrever 255.");
+            return;
+        }
+
+        memcpy(&g_candidate_previous[0], &target, sizeof(target));
+        append_log("[CareerDiag] FREEZE regravou 0x%llX: %d -> 255",
+                   (unsigned long long)address, current);
+    }
+}
+
+static void toggle_freeze_max(void)
+{
+    if (g_candidate_count != 1) {
+        notify_status("[CareerDiag] FREEZE requer 1 candidato; atual=%zu.", g_candidate_count);
+        return;
+    }
+
+    g_freeze_max = !g_freeze_max;
+
+    if (g_freeze_max) {
+        enforce_freeze_max();
+        if (g_freeze_max)
+            notify_status("[CareerDiag] FREEZE MAX ON: alvo preso em 255.");
+    } else {
+        notify_status("[CareerDiag] FREEZE MAX OFF.");
+    }
 }
 
 static void restore_test_candidate(void)
@@ -1015,6 +1081,10 @@ static void execute_action(DiagAction action)
             record_measurement(DIAG_ACTION_INCREASED);
             break;
 
+        case DIAG_ACTION_FREEZE_TOGGLE:
+            toggle_freeze_max();
+            break;
+
         default:
             break;
     }
@@ -1036,9 +1106,13 @@ static void *worker_main(void *arg)
             g_busy = 1;
             monitor_sample();
             g_busy = 0;
+        } else if (g_freeze_max && !g_busy) {
+            g_busy = 1;
+            enforce_freeze_max();
+            g_busy = 0;
         }
 
-        sceKernelUsleep(g_monitoring ? 250000 : 50000);
+        sceKernelUsleep((g_monitoring || g_freeze_max) ? 250000 : 50000);
     }
 
     scePthreadExit(NULL);
@@ -1052,6 +1126,7 @@ int diag_start_worker(void)
     g_busy = 0;
     g_candidate_count = 0;
     g_mode = SCAN_MODE_INT32;
+    g_freeze_max = 0;
 
     ensure_output_dir();
     load_single_candidate_from_file();
@@ -1067,6 +1142,7 @@ void diag_stop_worker(void)
 
     g_worker_running = 0;
     scePthreadJoin(g_worker_thread, NULL);
+    g_freeze_max = 0;
     restore_test_candidate();
     free_monitor_stats();
 }
