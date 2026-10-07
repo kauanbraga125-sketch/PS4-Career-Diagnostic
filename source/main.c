@@ -13,7 +13,7 @@
 attr_public const char *g_pluginName = "career_diag";
 attr_public const char *g_pluginDesc = "On-console player-career memory diagnostic";
 attr_public const char *g_pluginAuth = "Kauan project";
-attr_public uint32_t g_pluginVersion = 0x00000800;
+attr_public uint32_t g_pluginVersion = 0x00000900;
 
 HOOK_INIT(scePadRead);
 
@@ -28,8 +28,22 @@ static bool combo_just_pressed(uint32_t buttons, uint32_t button)
     return now_active && !was_active;
 }
 
+static bool chord_just_pressed(uint32_t buttons, uint32_t modifier, uint32_t button)
+{
+    const uint32_t chord = modifier | button;
+    const bool now_active = (buttons & chord) == chord;
+    const bool was_active = (g_previous_buttons & chord) == chord;
+    return now_active && !was_active;
+}
+
 static void handle_shortcuts(uint32_t buttons)
 {
+    if (chord_just_pressed(buttons, ORBIS_PAD_BUTTON_R1, ORBIS_PAD_BUTTON_DOWN))
+        diag_request(DIAG_ACTION_MEASURE_DOWN);
+
+    if (chord_just_pressed(buttons, ORBIS_PAD_BUTTON_R1, ORBIS_PAD_BUTTON_UP))
+        diag_request(DIAG_ACTION_MEASURE_UP);
+
     if (combo_just_pressed(buttons, ORBIS_PAD_BUTTON_SQUARE))
         diag_request(DIAG_ACTION_SNAPSHOT);
 
@@ -134,7 +148,7 @@ s32 attr_public plugin_load(s32 argc, const char *argv[])
 
     NotifyStatic(
         TEX_ICON_SYSTEM,
-        "[CareerDiag] TESTER: TOUCH+L1 +1; TOUCH+R1 proximo candidato."
+        "[CareerDiag] LOGGER: TOUCH+QUADRADO inicia; R1+BAIXO/CIma registra."
     );
 
     return 0;
