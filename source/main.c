@@ -13,27 +13,13 @@
 attr_public const char *g_pluginName = "career_diag";
 attr_public const char *g_pluginDesc = "On-console player-career memory diagnostic";
 attr_public const char *g_pluginAuth = "Kauan project";
-attr_public uint32_t g_pluginVersion = 0x00000D00;
+attr_public uint32_t g_pluginVersion = 0x00000E00;
 
 HOOK_INIT(scePadRead);
 
 static Patcher *g_scePadReadExt_patcher = NULL;
 static uint32_t g_previous_buttons = 0;
-static int g_triangle_taps = 0;
-static int g_triangle_timeout_frames = 0;
-static int g_up_taps = 0;
-static int g_up_timeout_frames = 0;
-static int g_down_taps = 0;
-static int g_down_timeout_frames = 0;
 static bool g_learning_active = false;
-
-static bool combo_just_pressed(uint32_t buttons, uint32_t button)
-{
-    const uint32_t combo = ORBIS_PAD_BUTTON_TOUCH_PAD | button;
-    const bool now_active = (buttons & combo) == combo;
-    const bool was_active = (g_previous_buttons & combo) == combo;
-    return now_active && !was_active;
-}
 
 static bool chord_just_pressed(uint32_t buttons, uint32_t modifier, uint32_t button)
 {
@@ -45,124 +31,38 @@ static bool chord_just_pressed(uint32_t buttons, uint32_t modifier, uint32_t but
 
 static void handle_shortcuts(uint32_t buttons)
 {
-    if (g_triangle_timeout_frames > 0)
-        g_triangle_timeout_frames--;
-    else
-        g_triangle_taps = 0;
+    /*
+     * Clean discovery controls only:
+     * R1 + UP   = start a fresh snapshot/baseline in the career menu.
+     * R2 + UP   = mark that manager reputation/titularity increased.
+     * R2 + DOWN = mark that manager reputation/titularity decreased.
+     *
+     * All legacy Touchpad, Triangle, R1+direction measurement and tester
+     * shortcuts were intentionally removed to avoid overlapping commands.
+     */
 
-    if (g_up_timeout_frames > 0)
-        g_up_timeout_frames--;
-    else
-        g_up_taps = 0;
-
-    if (g_down_timeout_frames > 0)
-        g_down_timeout_frames--;
-    else
-        g_down_taps = 0;
-
-    {
-        const bool tri_now = (buttons & ORBIS_PAD_BUTTON_TRIANGLE) != 0;
-        const bool tri_was = (g_previous_buttons & ORBIS_PAD_BUTTON_TRIANGLE) != 0;
-        const uint32_t modifiers = ORBIS_PAD_BUTTON_R1 | ORBIS_PAD_BUTTON_L1 | ORBIS_PAD_BUTTON_TOUCH_PAD;
-
-        if (tri_now && !tri_was && (buttons & modifiers) == 0) {
-            if (g_triangle_taps == 0)
-                g_triangle_timeout_frames = 180;
-
-            g_triangle_taps++;
-
-            if (g_triangle_taps >= 3) {
-                g_triangle_taps = 0;
-                g_triangle_timeout_frames = 0;
-                g_learning_active = true;
-                diag_request(DIAG_ACTION_SNAPSHOT);
-            }
-        }
-    }
-
-    if (g_learning_active) {
-        const bool up_now = (buttons & ORBIS_PAD_BUTTON_UP) != 0;
-        const bool up_was = (g_previous_buttons & ORBIS_PAD_BUTTON_UP) != 0;
-        const bool down_now = (buttons & ORBIS_PAD_BUTTON_DOWN) != 0;
-        const bool down_was = (g_previous_buttons & ORBIS_PAD_BUTTON_DOWN) != 0;
-
-        if (up_now && !up_was) {
-            if (g_up_taps == 0)
-                g_up_timeout_frames = 90;
-            g_up_taps++;
-            if (g_up_taps >= 2) {
-                g_up_taps = 0;
-                g_up_timeout_frames = 0;
-                g_down_taps = 0;
-                g_down_timeout_frames = 0;
-                diag_request(DIAG_ACTION_MEASURE_UP);
-            }
-        }
-
-        if (down_now && !down_was) {
-            if (g_down_taps == 0)
-                g_down_timeout_frames = 90;
-            g_down_taps++;
-            if (g_down_taps >= 2) {
-                g_down_taps = 0;
-                g_down_timeout_frames = 0;
-                g_up_taps = 0;
-                g_up_timeout_frames = 0;
-                diag_request(DIAG_ACTION_MEASURE_DOWN);
-            }
-        }
-    }
-
-    if (chord_just_pressed(buttons, ORBIS_PAD_BUTTON_R1, ORBIS_PAD_BUTTON_DOWN))
-        diag_request(DIAG_ACTION_MEASURE_DOWN);
-
-    if (chord_just_pressed(buttons, ORBIS_PAD_BUTTON_R1, ORBIS_PAD_BUTTON_UP))
-        diag_request(DIAG_ACTION_MEASURE_UP);
-
-    if (chord_just_pressed(buttons, ORBIS_PAD_BUTTON_R1, ORBIS_PAD_BUTTON_TRIANGLE))
-        diag_request(DIAG_ACTION_FREEZE_TOGGLE);
-
-    if (combo_just_pressed(buttons, ORBIS_PAD_BUTTON_SQUARE))
+    if (chord_just_pressed(buttons, ORBIS_PAD_BUTTON_R1, ORBIS_PAD_BUTTON_UP)) {
+        g_learning_active = true;
         diag_request(DIAG_ACTION_SNAPSHOT);
+        return;
+    }
 
-    if (combo_just_pressed(buttons, ORBIS_PAD_BUTTON_DOWN))
-        diag_request(DIAG_ACTION_DECREASED);
+    if (!g_learning_active)
+        return;
 
-    if (combo_just_pressed(buttons, ORBIS_PAD_BUTTON_UP))
-        diag_request(DIAG_ACTION_INCREASED);
+    if (chord_just_pressed(buttons, ORBIS_PAD_BUTTON_R2, ORBIS_PAD_BUTTON_UP)) {
+        diag_request(DIAG_ACTION_MEASURE_UP);
+        return;
+    }
 
-    if (combo_just_pressed(buttons, ORBIS_PAD_BUTTON_TRIANGLE))
-        diag_request(DIAG_ACTION_CHANGED);
-
-    if (combo_just_pressed(buttons, ORBIS_PAD_BUTTON_CIRCLE))
-        diag_request(DIAG_ACTION_UNCHANGED);
-
-    if (combo_just_pressed(buttons, ORBIS_PAD_BUTTON_OPTIONS))
-        diag_request(DIAG_ACTION_DUMP);
-
-    if (combo_just_pressed(buttons, ORBIS_PAD_BUTTON_CROSS))
-        diag_request(DIAG_ACTION_RESET);
-
-    if (combo_just_pressed(buttons, ORBIS_PAD_BUTTON_LEFT))
-        diag_request(DIAG_ACTION_MODE_INT32);
-
-    if (combo_just_pressed(buttons, ORBIS_PAD_BUTTON_RIGHT))
-        diag_request(DIAG_ACTION_MODE_FLOAT);
-
-    if (combo_just_pressed(buttons, ORBIS_PAD_BUTTON_R1))
-        diag_request(DIAG_ACTION_TEST_NEXT);
-
-    if (combo_just_pressed(buttons, ORBIS_PAD_BUTTON_L1))
-        diag_request(DIAG_ACTION_TEST_PLUS_ONE);
+    if (chord_just_pressed(buttons, ORBIS_PAD_BUTTON_R2, ORBIS_PAD_BUTTON_DOWN)) {
+        diag_request(DIAG_ACTION_MEASURE_DOWN);
+        return;
+    }
 }
 
 int32_t scePadRead_hook(int32_t handle, OrbisPadData *data, int32_t count)
 {
-    /*
-     * Do not call HOOK_CONTINUE(scePadRead) here.
-     * The official GoldHEN gamepad_helper uses scePadReadExt() from inside
-     * the scePadRead hook, avoiding recursive/invalid continuation paths.
-     */
     int32_t result = scePadReadExt(handle, data, count);
 
     if (result <= 0 || data == NULL)
@@ -183,12 +83,6 @@ s32 attr_public plugin_load(s32 argc, const char *argv[])
 
     final_printf("[CareerDiag] plugin_load\n");
 
-    /*
-     * Match GoldHEN's official gamepad_helper setup.
-     * scePadRead normally reaches scePadReadExt internally. When scePadRead is
-     * hooked and our hook calls scePadReadExt, the ext routine must be patched
-     * the same way as the official plugin to avoid recursion/interception.
-     */
     {
         char module[256];
         int handle = 0;
@@ -226,7 +120,7 @@ s32 attr_public plugin_load(s32 argc, const char *argv[])
 
     NotifyStatic(
         TEX_ICON_SYSTEM,
-        "[CareerDiag] MENU: TRIANGULO x3 inicia; CIMA x2 subiu; BAIXO x2 desceu."
+        "[CareerDiag] LIMPO: R1+CIMA inicia | R2+CIMA subiu | R2+BAIXO desceu."
     );
 
     return 0;
