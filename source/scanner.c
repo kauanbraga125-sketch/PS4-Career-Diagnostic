@@ -101,6 +101,28 @@ static volatile int g_monitoring = 0;
 static uint32_t g_measurement_index = 0;
 static volatile int g_freeze_max = 0;
 
+/*
+ * Hierarchical group tester:
+ *   level 1: 100 candidates at once
+ *   level 2: 10 candidates inside the selected group
+ *   level 3: 1 candidate at a time
+ *
+ * R2+LEFT restores the previous active block and activates the next block.
+ * L1+R1 keeps the currently active range and zooms 100 -> 10 -> 1.
+ */
+#define GROUP_TEST_MAX 100u
+static bool g_group_mode_initialized = false;
+static bool g_group_active = false;
+static size_t g_group_domain_start = 0;
+static size_t g_group_domain_count = 0;
+static size_t g_group_block_size = 100;
+static size_t g_group_cursor = 0;
+static size_t g_group_active_range_start = 0;
+static size_t g_group_active_range_count = 0;
+static size_t g_group_active_written = 0;
+static uint64_t g_group_active_address[GROUP_TEST_MAX];
+static int32_t g_group_active_original[GROUP_TEST_MAX];
+
 static void dump_candidates(void);
 static void dump_monitor_report(void);
 static void start_monitor(void);
@@ -354,124 +376,271 @@ static void restore_test_candidate(void)
     g_test_last_address = 0;
 }
 
-static void batch_test_all_candidates(void)
+static void group_log_append(const char *fmt, ...)
+{
+    char line[512];
+    va_list args;
+    int fd;
+    int len;
+
+    ensure_output_dir();
+    va_start(args, fmt);
+    len = vsnprintf(line, sizeof(line), fmt, args);
+    va_end(args);
+
+    if (len <= 0)
+        return;
+    if ((size_t)len >= sizeof(line))
+        len = sizeof(line) - 1;
+
+    fd = open(DIAG_BATCH_RESULTS, O_WRONLY | O_CREAT | O_APPEND, 0666);
+    if (fd < 0)
+        return;
+
+    write(fd, line, (size_t)len);
+    write(fd, "\n", 1);
+    close(fd);
+}
+
+static void restore_active_group(void)
+{
+    if (!g_group_active)
+        return;
+
+    for (size_t i = 0; i < g_group_active_written; i++) {
+        write_process(g_group_active_address[i],
+                      &g_group_active_original[i],
+                      sizeof(g_group_active_original[i]));
+    }
+
+    group_log_append("RESTORE range=%zu..%zu written=%zu",
+                     g_group_active_range_start + 1,
+                     g_group_active_range_start + g_group_active_range_count,
+                     g_group_active_written);
+
+    g_group_active = false;
+    g_group_active_written = 0;
+}
+
+static void reset_group_test_state(void)
+{
+    restore_active_group();
+    g_group_mode_initialized = false;
+    g_group_domain_start = 0;
+    g_group_domain_count = 0;
+    g_group_block_size = 100;
+    g_group_cursor = 0;
+    g_group_active_range_start = 0;
+    g_group_active_range_count = 0;
+    g_group_active_written = 0;
+}
+
+static bool init_group_test_mode(void)
 {
     int fd;
-    char line[384];
-    size_t test_count = g_candidate_count;
 
-    if (test_count == 0) {
-        notify_status("[CareerDiag] TESTE: nenhum candidato. Use R1+CIMA e filtre primeiro.");
-        return;
+    if (g_candidate_count == 0) {
+        notify_status("[CareerDiag] GRUPO: nenhum candidato. Faca snapshot e 1 filtro.");
+        return false;
     }
 
-    /*
-     * Safety guard: this mode is meant for the already-reduced list.
-     * It is dynamic (not hardcoded), but testing hundreds/thousands of
-     * addresses would take too long and increase the chance of side effects.
-     */
-    if (test_count > 200) {
-        notify_status("[CareerDiag] TESTE: %zu candidatos ainda e muito. Reduza para <=200.", test_count);
-        return;
+    if (g_measurement_index == 0) {
+        notify_status("[CareerDiag] GRUPO: faca pelo menos 1 filtro R2+CIMA/BAIXO primeiro.");
+        return false;
     }
 
-    g_freeze_max = 0;
-    if (g_monitoring) {
-        g_monitoring = 0;
-        free_monitor_stats();
+    if (g_candidate_count > 10000) {
+        notify_status("[CareerDiag] GRUPO: %zu candidatos. Faca mais 1 filtro antes.", g_candidate_count);
+        return false;
     }
 
-    restore_test_candidate();
+    g_group_domain_start = 0;
+    g_group_domain_count = g_candidate_count;
+    g_group_block_size = 100;
+    g_group_cursor = 0;
+    g_group_active = false;
+    g_group_active_written = 0;
+    g_group_mode_initialized = true;
+
     ensure_output_dir();
-
     fd = open(DIAG_BATCH_RESULTS, O_WRONLY | O_CREAT | O_TRUNC, 0666);
     if (fd >= 0) {
-        int n = snprintf(line, sizeof(line),
-                         "PS4 Career Diagnostic - TESTE DINAMICO\n"
+        char header[384];
+        int n = snprintf(header, sizeof(header),
+                         "PS4 Career Diagnostic - TESTE POR GRUPOS\n"
                          "candidates=%zu\n"
-                         "tempo_teste=4s\n"
-                         "intervalo_restaurado=2s\n"
-                         "teste=extremo oposto (0 ou 255), depois restaura\n\n",
-                         test_count);
-        if (n > 0) write(fd, line, (size_t)n);
+                         "nivel_inicial=100\n"
+                         "valor_teste=255\n"
+                         "R2+LEFT=restaura anterior e testa proximo grupo\n"
+                         "L1+R1=isola grupo atual (100->10->1)\n\n",
+                         g_candidate_count);
+        if (n > 0) write(fd, header, (size_t)n);
+        close(fd);
     }
 
-    notify_status("[CareerDiag] TESTE DINAMICO: %zu candidatos. 4s teste + 2s intervalo.", test_count);
+    return true;
+}
 
-    for (size_t i = 0; i < test_count && g_worker_running; i++) {
-        uint64_t address = g_candidate_address[i];
+static void group_test_next(void)
+{
+    size_t start;
+    size_t count;
+    size_t total_blocks;
+    size_t block_number;
+    size_t written = 0;
+
+    if (!g_group_mode_initialized && !init_group_test_mode())
+        return;
+
+    restore_active_group();
+
+    if (g_group_domain_count == 0) {
+        notify_status("[CareerDiag] GRUPO: dominio vazio.");
+        return;
+    }
+
+    if (g_group_cursor >= g_group_domain_count)
+        g_group_cursor = 0;
+
+    start = g_group_domain_start + g_group_cursor;
+    count = g_group_block_size;
+    if (count > g_group_domain_count - g_group_cursor)
+        count = g_group_domain_count - g_group_cursor;
+    if (count > GROUP_TEST_MAX)
+        count = GROUP_TEST_MAX;
+
+    g_group_active_range_start = start;
+    g_group_active_range_count = count;
+    g_group_active_written = 0;
+
+    group_log_append("ACTIVE level=%zu range=%zu..%zu",
+                     g_group_block_size, start + 1, start + count);
+
+    for (size_t j = 0; j < count; j++) {
+        size_t idx = start + j;
+        uint64_t address = g_candidate_address[idx];
         uint32_t raw = 0;
         int32_t original = 0;
-        int32_t test_value = 0;
+        int32_t test_value = 255;
         OrbisKernelVirtualQueryInfo info;
-        bool valid = true;
 
-        if (sceKernelVirtualQuery((void *)(uintptr_t)address, 0, &info, sizeof(info)) < 0 ||
-            (info.prot & CPU_READ) == 0 || (info.prot & CPU_WRITE) == 0) {
-            valid = false;
-        } else if (read_process(address, &raw, sizeof(raw)) != 0) {
-            valid = false;
-        } else {
-            memcpy(&original, &raw, sizeof(original));
-            if (original < 0 || original > 255)
-                valid = false;
-        }
-
-        if (!valid) {
-            notify_status("[CareerDiag] TEST %02zu/%zu 0x%llX INVALIDO. Proximo em 2s.",
-                          i + 1, test_count, (unsigned long long)address);
-            if (fd >= 0) {
-                int n = snprintf(line, sizeof(line),
-                                 "%02zu  0x%016llX  INVALIDO\n",
-                                 i + 1, (unsigned long long)address);
-                if (n > 0) write(fd, line, (size_t)n);
-            }
-            sceKernelUsleep(2000000);
+        if (sceKernelVirtualQuery((void *)(uintptr_t)address, 0,
+                                  &info, sizeof(info)) < 0 ||
+            (info.prot & CPU_READ) == 0 ||
+            (info.prot & CPU_WRITE) == 0) {
+            group_log_append("  %zu  0x%016llX INVALIDO",
+                             idx + 1, (unsigned long long)address);
             continue;
         }
 
-        test_value = (original >= 128) ? 0 : 255;
+        if (read_process(address, &raw, sizeof(raw)) != 0) {
+            group_log_append("  %zu  0x%016llX READ_FAIL",
+                             idx + 1, (unsigned long long)address);
+            continue;
+        }
+
+        memcpy(&original, &raw, sizeof(original));
+        if (original < 0 || original > 255) {
+            group_log_append("  %zu  0x%016llX value=%d FORA_FAIXA",
+                             idx + 1, (unsigned long long)address, original);
+            continue;
+        }
 
         if (write_process(address, &test_value, sizeof(test_value)) != 0) {
-            notify_status("[CareerDiag] TEST %02zu/%zu falha ao escrever. Proximo em 2s.",
-                          i + 1, test_count);
-            if (fd >= 0) {
-                int n = snprintf(line, sizeof(line),
-                                 "%02zu  0x%016llX  original=%d  WRITE_FAIL\n",
-                                 i + 1, (unsigned long long)address, original);
-                if (n > 0) write(fd, line, (size_t)n);
-            }
-            sceKernelUsleep(2000000);
+            group_log_append("  %zu  0x%016llX original=%d WRITE_FAIL",
+                             idx + 1, (unsigned long long)address, original);
             continue;
         }
 
-        g_test_last_address = address;
-        g_test_last_original = original;
-        g_test_has_pending_restore = true;
+        g_group_active_address[written] = address;
+        g_group_active_original[written] = original;
+        written++;
 
-        notify_status("[CareerDiag] TEST %02zu/%zu | 0x%llX | %d -> %d | 4s. OBSERVE.",
-                      i + 1, test_count, (unsigned long long)address,
-                      original, test_value);
-
-        if (fd >= 0) {
-            int n = snprintf(line, sizeof(line),
-                             "%02zu  0x%016llX  original=%d  teste=%d\n",
-                             i + 1, (unsigned long long)address, original, test_value);
-            if (n > 0) write(fd, line, (size_t)n);
-        }
-
-        sceKernelUsleep(4000000);
-        restore_test_candidate();
-
-        notify_status("[CareerDiag] TEST %02zu/%zu restaurado. Proximo em 2s.",
-                      i + 1, test_count);
-        sceKernelUsleep(2000000);
+        group_log_append("  %zu  0x%016llX original=%d teste=255",
+                         idx + 1, (unsigned long long)address, original);
     }
 
-    if (fd >= 0)
-        close(fd);
+    g_group_active_written = written;
+    g_group_active = true;
+    g_group_cursor += count;
 
-    notify_status("[CareerDiag] TESTE DINAMICO finalizado. Veja batch_test.txt.");
+    total_blocks = (g_group_domain_count + g_group_block_size - 1) / g_group_block_size;
+    block_number = ((start - g_group_domain_start) / g_group_block_size) + 1;
+
+    notify_status("[CareerDiag] GRUPO %zu/%zu | cand %zu-%zu | %zu alterados. R2+ESQ proximo | L1+R1 isola.",
+                  block_number, total_blocks, start + 1, start + count, written);
+}
+
+static void group_refine_current(void)
+{
+    size_t selected_start;
+    size_t selected_count;
+    size_t old_size;
+    int fd;
+
+    if (!g_group_mode_initialized || !g_group_active) {
+        notify_status("[CareerDiag] ISOLE: primeiro ative um grupo com R2+ESQ.");
+        return;
+    }
+
+    selected_start = g_group_active_range_start;
+    selected_count = g_group_active_range_count;
+    old_size = g_group_block_size;
+
+    restore_active_group();
+
+    if (old_size <= 1 || selected_count <= 1) {
+        size_t idx = selected_start;
+        uint64_t address = g_candidate_address[idx];
+        uint32_t raw = 0;
+        int32_t value = 0;
+
+        read_process(address, &raw, sizeof(raw));
+        memcpy(&value, &raw, sizeof(value));
+
+        fd = open(DIAG_DIR "/selected_candidate.txt",
+                  O_WRONLY | O_CREAT | O_TRUNC, 0666);
+        if (fd >= 0) {
+            char line[256];
+            int n = snprintf(line, sizeof(line),
+                             "selected_index=%zu\naddress=0x%016llX\nvalue=%d\n",
+                             idx + 1, (unsigned long long)address, value);
+            if (n > 0) write(fd, line, (size_t)n);
+            close(fd);
+        }
+
+        group_log_append("SELECTED candidate=%zu address=0x%016llX value=%d",
+                         idx + 1, (unsigned long long)address, value);
+        notify_status("[CareerDiag] ALVO MARCADO: cand %zu 0x%llX. selected_candidate.txt salvo.",
+                      idx + 1, (unsigned long long)address);
+        return;
+    }
+
+    g_group_domain_start = selected_start;
+    g_group_domain_count = selected_count;
+    g_group_cursor = 0;
+
+    if (old_size > 10)
+        g_group_block_size = 10;
+    else
+        g_group_block_size = 1;
+
+    group_log_append("REFINE range=%zu..%zu level=%zu->%zu",
+                     selected_start + 1,
+                     selected_start + selected_count,
+                     old_size,
+                     g_group_block_size);
+
+    /*
+     * Start the first sub-block immediately so one L1+R1 press both
+     * selects the interesting group and begins the finer test.
+     */
+    group_test_next();
+}
+
+static void batch_test_all_candidates(void)
+{
+    group_test_next();
 }
 
 static void test_candidate_plus_one(void)
@@ -651,6 +820,7 @@ static void free_monitor_stats(void)
 
 static void reset_candidates(void)
 {
+    reset_group_test_state();
     free_monitor_stats();
     g_candidate_count = 0;
 }
@@ -1057,6 +1227,7 @@ static void record_measurement(DiagAction action)
         free_monitor_stats();
     }
 
+    reset_group_test_state();
     filter_candidates(action, false);
     g_measurement_index++;
 
@@ -1232,6 +1403,10 @@ static void execute_action(DiagAction action)
             batch_test_all_candidates();
             break;
 
+        case DIAG_ACTION_GROUP_REFINE:
+            group_refine_current();
+            break;
+
         default:
             break;
     }
@@ -1274,6 +1449,9 @@ int diag_start_worker(void)
     g_candidate_count = 0;
     g_mode = SCAN_MODE_INT32;
     g_freeze_max = 0;
+    g_group_mode_initialized = false;
+    g_group_active = false;
+    g_group_active_written = 0;
 
     ensure_output_dir();
 
@@ -1289,6 +1467,7 @@ void diag_stop_worker(void)
     g_worker_running = 0;
     scePthreadJoin(g_worker_thread, NULL);
     g_freeze_max = 0;
+    restore_active_group();
     restore_test_candidate();
     free_monitor_stats();
 }
