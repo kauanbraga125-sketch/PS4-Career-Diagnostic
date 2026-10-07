@@ -13,7 +13,7 @@
 attr_public const char *g_pluginName = "career_diag";
 attr_public const char *g_pluginDesc = "On-console player-career memory diagnostic";
 attr_public const char *g_pluginAuth = "Kauan project";
-attr_public uint32_t g_pluginVersion = 0x00000E00;
+attr_public uint32_t g_pluginVersion = 0x00000F00;
 
 HOOK_INIT(scePadRead);
 
@@ -57,6 +57,11 @@ static void handle_shortcuts(uint32_t buttons)
 
     if (chord_just_pressed(buttons, ORBIS_PAD_BUTTON_R2, ORBIS_PAD_BUTTON_DOWN)) {
         diag_request(DIAG_ACTION_MEASURE_DOWN);
+        return;
+    }
+
+    if (chord_just_pressed(buttons, ORBIS_PAD_BUTTON_R2, ORBIS_PAD_BUTTON_LEFT)) {
+        diag_request(DIAG_ACTION_BATCH_TEST_ALL);
         return;
     }
 }
@@ -120,7 +125,7 @@ s32 attr_public plugin_load(s32 argc, const char *argv[])
 
     NotifyStatic(
         TEX_ICON_SYSTEM,
-        "[CareerDiag] LIMPO: R1+CIMA inicia | R2+CIMA subiu | R2+BAIXO desceu."
+        "[CareerDiag] R1+CIMA inicia | R2+CIMA subiu | R2+BAIXO desceu | R2+ESQ testa."
     );
 
     return 0;
