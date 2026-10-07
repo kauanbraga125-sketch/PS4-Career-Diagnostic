@@ -1,5 +1,6 @@
 #include "scanner.h"
 #include "plugin_common.h"
+#include "structure_hunter.h"
 
 #include <orbis/libkernel.h>
 #include <fcntl.h>
@@ -1744,6 +1745,9 @@ static void execute_action(DiagAction action)
         case DIAG_ACTION_STATUS:
             show_status();
             break;
+        case DIAG_ACTION_STRUCTURE_HUNT:
+            structure_hunter_scan();
+            break;
         default:
             break;
     }
@@ -1793,7 +1797,7 @@ int diag_start_worker(void)
     ensure_output_dir();
     append_log("--- new plugin session ---");
 
-    append_log("=== CareerTrace v2110 ===");
+    append_log("=== CareerTrace v2200 + Player Structure Hunter ===");
     append_log("read-only correlation search until explicit TEST mode");
     append_log("two-stage: full-RAM page fingerprint -> exact multi-type ranking");
     append_log("types=u8,u16,i16,u32,i32,i64,f32,f64; unaligned exact scan");
