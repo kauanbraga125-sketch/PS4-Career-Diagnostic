@@ -17,6 +17,7 @@
 #define DIAG_RESULTS DIAG_DIR "/candidates.txt"
 #define DIAG_MONITOR DIAG_DIR "/monitor.txt"
 #define DIAG_MEASUREMENTS DIAG_DIR "/measurements.txt"
+#define DIAG_BATCH_RESULTS DIAG_DIR "/batch_test.txt"
 
 #define VQ_FIND_NEXT 1
 #define CPU_READ  0x01
@@ -28,14 +29,41 @@
 #define AUTO_MONITOR_THRESHOLD 50000u
 #define TARGET_STEP 20
 static const uint64_t g_test_candidates[] = {
-    0x000000102AA22D10ULL,
-    0x00000010277C3398ULL,
-    0x000000102AA368C8ULL,
-    0x000000001023DB24ULL,
-    0x0000001005FC26FCULL,
-    0x00000010276C5608ULL,
-    0x000000102771BB08ULL,
-    0x000000102793CB98ULL
+    0x000000102EA92108ULL,
+    0x000000102EA92190ULL,
+    0x000000102EA93108ULL,
+    0x000000102EA93190ULL,
+    0x0000001031BF29C8ULL,
+    0x0000001031BF3048ULL,
+    0x0000001031BF32C8ULL,
+    0x0000001031BF3348ULL,
+    0x000000103AB50418ULL,
+    0x000000103CCE8F90ULL,
+    0x0000001040DF5A04ULL,
+    0x0000001052027230ULL,
+    0x000000105899013CULL,
+    0x000000108DAFA330ULL,
+    0x000000108DDB4EE0ULL,
+    0x000000108DDB56B0ULL,
+    0x0000001090088370ULL,
+    0x000000109ECC1BBCULL,
+    0x00000010A160D508ULL,
+    0x00000010C21722D0ULL,
+    0x00000010CC86D108ULL,
+    0x00000010CC86DD08ULL,
+    0x00000010CC86DD90ULL,
+    0x00000010CC86E108ULL,
+    0x00000010CC86E190ULL,
+    0x00000010CC86EA08ULL,
+    0x00000010CC86EA90ULL,
+    0x00000010CC86F008ULL,
+    0x00000010CC86F090ULL,
+    0x00000010CC86F208ULL,
+    0x00000010CC86F290ULL,
+    0x00000010CC880758ULL,
+    0x00000010CC880F58ULL,
+    0x00000010CC894B38ULL,
+    0x00000010E7B8F7C0ULL
 };
 #define TEST_CANDIDATE_COUNT (sizeof(g_test_candidates) / sizeof(g_test_candidates[0]))
 static size_t g_test_candidate_index = 0;
@@ -324,6 +352,106 @@ static void restore_test_candidate(void)
 
     g_test_has_pending_restore = false;
     g_test_last_address = 0;
+}
+
+static void batch_test_all_candidates(void)
+{
+    int fd;
+    char line[320];
+
+    g_freeze_max = 0;
+    if (g_monitoring) {
+        g_monitoring = 0;
+        free_monitor_stats();
+    }
+
+    restore_test_candidate();
+    ensure_output_dir();
+
+    fd = open(DIAG_BATCH_RESULTS, O_WRONLY | O_CREAT | O_TRUNC, 0666);
+    if (fd >= 0) {
+        int n = snprintf(line, sizeof(line),
+                         "PS4 Career Diagnostic - TESTE AUTOMATICO\n"
+                         "candidates=%zu\n"
+                         "tempo_por_candidato=3s\n"
+                         "teste=extremo oposto (0 ou 255), depois restaura\n\n",
+                         (size_t)TEST_CANDIDATE_COUNT);
+        if (n > 0) write(fd, line, (size_t)n);
+    }
+
+    notify_status("[CareerDiag] TESTE AUTO: %zu candidatos, 3s cada. Observe a barra.",
+                  (size_t)TEST_CANDIDATE_COUNT);
+
+    for (size_t i = 0; i < TEST_CANDIDATE_COUNT && g_worker_running; i++) {
+        uint64_t address = g_test_candidates[i];
+        uint32_t raw = 0;
+        int32_t original = 0;
+        int32_t test_value = 0;
+        OrbisKernelVirtualQueryInfo info;
+        bool valid = true;
+
+        if (sceKernelVirtualQuery((void *)(uintptr_t)address, 0, &info, sizeof(info)) < 0 ||
+            (info.prot & CPU_READ) == 0 || (info.prot & CPU_WRITE) == 0) {
+            valid = false;
+        } else if (read_process(address, &raw, sizeof(raw)) != 0) {
+            valid = false;
+        } else {
+            memcpy(&original, &raw, sizeof(original));
+            if (original < 0 || original > 255)
+                valid = false;
+        }
+
+        if (!valid) {
+            notify_status("[CareerDiag] TEST %02zu/%zu 0x%llX INVALIDO. Proximo em 3s.",
+                          i + 1, (size_t)TEST_CANDIDATE_COUNT,
+                          (unsigned long long)address);
+            if (fd >= 0) {
+                int n = snprintf(line, sizeof(line),
+                                 "%02zu  0x%016llX  INVALIDO\n",
+                                 i + 1, (unsigned long long)address);
+                if (n > 0) write(fd, line, (size_t)n);
+            }
+            sceKernelUsleep(3000000);
+            continue;
+        }
+
+        test_value = (original >= 128) ? 0 : 255;
+
+        if (write_process(address, &test_value, sizeof(test_value)) != 0) {
+            notify_status("[CareerDiag] TEST %02zu/%zu falha ao escrever. Proximo em 3s.",
+                          i + 1, (size_t)TEST_CANDIDATE_COUNT);
+            if (fd >= 0) {
+                int n = snprintf(line, sizeof(line),
+                                 "%02zu  0x%016llX  original=%d  WRITE_FAIL\n",
+                                 i + 1, (unsigned long long)address, original);
+                if (n > 0) write(fd, line, (size_t)n);
+            }
+            sceKernelUsleep(3000000);
+            continue;
+        }
+
+        g_test_last_address = address;
+        g_test_last_original = original;
+        g_test_has_pending_restore = true;
+
+        notify_status("[CareerDiag] TEST %02zu/%zu: %d -> %d por 3s. VEJA A TITULARIDADE.",
+                      i + 1, (size_t)TEST_CANDIDATE_COUNT, original, test_value);
+
+        if (fd >= 0) {
+            int n = snprintf(line, sizeof(line),
+                             "%02zu  0x%016llX  original=%d  teste=%d\n",
+                             i + 1, (unsigned long long)address, original, test_value);
+            if (n > 0) write(fd, line, (size_t)n);
+        }
+
+        sceKernelUsleep(3000000);
+        restore_test_candidate();
+    }
+
+    if (fd >= 0)
+        close(fd);
+
+    notify_status("[CareerDiag] TESTE AUTO finalizado. Veja batch_test.txt.");
 }
 
 static void test_candidate_plus_one(void)
@@ -1083,6 +1211,10 @@ static void execute_action(DiagAction action)
 
         case DIAG_ACTION_FREEZE_TOGGLE:
             toggle_freeze_max();
+            break;
+
+        case DIAG_ACTION_BATCH_TEST_ALL:
+            batch_test_all_candidates();
             break;
 
         default:
