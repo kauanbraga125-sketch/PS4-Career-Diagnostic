@@ -23,6 +23,32 @@
 #define CPU_READ  0x01
 #define CPU_WRITE 0x02
 
+/*
+ * TARGET v1020
+ *
+ * These five 64 KiB windows survived/reappeared across independent
+ * Manager-Reputation scans.  We intentionally do NOT include:
+ *   - 0x0FE032xxxx (it produced a visual/star-only effect),
+ *   - 0x103AB5xxxx (previous causal write test was a false positive).
+ *
+ * The goal of this build is not another full-RAM scan.  It scans only the
+ * recurring windows below, then lets R2+UP/DOWN filter them normally.
+ */
+typedef struct TargetRange {
+    uintptr_t start;
+    uintptr_t end;
+    const char *name;
+} TargetRange;
+
+static const TargetRange g_target_ranges[] = {
+    { 0x000000103AEE0000ULL, 0x000000103AEF0000ULL, "103AEE" },
+    { 0x0000001058790000ULL, 0x00000010587A0000ULL, "105879" },
+    { 0x00000010588E0000ULL, 0x00000010588F0000ULL, "10588E" },
+    { 0x00000010837B0000ULL, 0x00000010837C0000ULL, "10837B" },
+    { 0x000000108D860000ULL, 0x000000108D870000ULL, "108D86" }
+};
+#define TARGET_RANGE_COUNT (sizeof(g_target_ranges) / sizeof(g_target_ranges[0]))
+
 #define CHUNK_SIZE (512u * 1024u)
 #define MAX_CANDIDATES 2000000u
 #define MAX_DUMP_CANDIDATES 5000u
@@ -102,20 +128,19 @@ static uint32_t g_measurement_index = 0;
 static volatile int g_freeze_max = 0;
 
 /*
- * Hierarchical group tester:
- *   level 1: 100 candidates at once
- *   level 2: 10 candidates inside the selected group
- *   level 3: 1 candidate at a time
+ * TARGET one-by-one tester:
+ *   R2+LEFT restores the previous candidate and tests the next one.
+ *   L1+R1 marks the currently active candidate in selected_candidate.txt.
  *
- * R2+LEFT restores the previous active block and activates the next block.
- * L1+R1 keeps the currently active range and zooms 100 -> 10 -> 1.
+ * We deliberately avoid multi-address writes in this build because earlier
+ * 100-address batches could freeze the game.
  */
 #define GROUP_TEST_MAX 100u
 static bool g_group_mode_initialized = false;
 static bool g_group_active = false;
 static size_t g_group_domain_start = 0;
 static size_t g_group_domain_count = 0;
-static size_t g_group_block_size = 100;
+static size_t g_group_block_size = 1;
 static size_t g_group_cursor = 0;
 static size_t g_group_active_range_start = 0;
 static size_t g_group_active_range_count = 0;
@@ -428,7 +453,7 @@ static void reset_group_test_state(void)
     g_group_mode_initialized = false;
     g_group_domain_start = 0;
     g_group_domain_count = 0;
-    g_group_block_size = 100;
+    g_group_block_size = 1;
     g_group_cursor = 0;
     g_group_active_range_start = 0;
     g_group_active_range_count = 0;
@@ -456,7 +481,7 @@ static bool init_group_test_mode(void)
 
     g_group_domain_start = 0;
     g_group_domain_count = g_candidate_count;
-    g_group_block_size = 100;
+    g_group_block_size = 1;
     g_group_cursor = 0;
     g_group_active = false;
     g_group_active_written = 0;
@@ -469,10 +494,10 @@ static bool init_group_test_mode(void)
         int n = snprintf(header, sizeof(header),
                          "PS4 Career Diagnostic - TESTE POR GRUPOS\n"
                          "candidates=%zu\n"
-                         "nivel_inicial=100\n"
-                         "valor_teste=255\n"
-                         "R2+LEFT=restaura anterior e testa proximo grupo\n"
-                         "L1+R1=isola grupo atual (100->10->1)\n\n",
+                         "nivel_inicial=1\n"
+                         "valor_teste=extremo_oposto (0 ou 255)\n"
+                         "R2+LEFT=restaura anterior e testa proximo candidato\n"
+                         "L1+R1=marca candidato atual em selected_candidate.txt\n\n",
                          g_candidate_count);
         if (n > 0) write(fd, header, (size_t)n);
         close(fd);
@@ -521,7 +546,7 @@ static void group_test_next(void)
         uint64_t address = g_candidate_address[idx];
         uint32_t raw = 0;
         int32_t original = 0;
-        int32_t test_value = 255;
+        int32_t test_value;
         OrbisKernelVirtualQueryInfo info;
 
         if (sceKernelVirtualQuery((void *)(uintptr_t)address, 0,
@@ -546,6 +571,8 @@ static void group_test_next(void)
             continue;
         }
 
+        test_value = (original >= 128) ? 0 : 255;
+
         if (write_process(address, &test_value, sizeof(test_value)) != 0) {
             group_log_append("  %zu  0x%016llX original=%d WRITE_FAIL",
                              idx + 1, (unsigned long long)address, original);
@@ -556,8 +583,8 @@ static void group_test_next(void)
         g_group_active_original[written] = original;
         written++;
 
-        group_log_append("  %zu  0x%016llX original=%d teste=255",
-                         idx + 1, (unsigned long long)address, original);
+        group_log_append("  %zu  0x%016llX original=%d teste=%d",
+                         idx + 1, (unsigned long long)address, original, test_value);
     }
 
     g_group_active_written = written;
@@ -567,8 +594,20 @@ static void group_test_next(void)
     total_blocks = (g_group_domain_count + g_group_block_size - 1) / g_group_block_size;
     block_number = ((start - g_group_domain_start) / g_group_block_size) + 1;
 
-    notify_status("[CareerDiag] GRUPO %zu/%zu | cand %zu-%zu | %zu alterados. R2+ESQ proximo | L1+R1 isola.",
-                  block_number, total_blocks, start + 1, start + count, written);
+    if (count == 1 && written == 1) {
+        int32_t now = 0;
+        uint32_t raw_now = 0;
+        if (read_process(g_candidate_address[start], &raw_now, sizeof(raw_now)) == 0)
+            memcpy(&now, &raw_now, sizeof(now));
+        notify_status("[CareerDiag TARGET] CAND %zu/%zu | 0x%llX | teste=%d. R2+ESQ proximo | L1+R1 marca.",
+                      start + 1,
+                      g_group_domain_count,
+                      (unsigned long long)g_candidate_address[start],
+                      now);
+    } else {
+        notify_status("[CareerDiag TARGET] bloco %zu/%zu | cand %zu-%zu | %zu alterados.",
+                      block_number, total_blocks, start + 1, start + count, written);
+    }
 }
 
 static void group_refine_current(void)
@@ -750,7 +789,7 @@ static bool initial_plausible_value(uint32_t raw)
     if (g_mode == SCAN_MODE_INT32) {
         int32_t value;
         memcpy(&value, &raw, sizeof(value));
-        return value >= 101 && value <= 255;
+        return value >= 0 && value <= 255;
     }
 
     return plausible_value(raw);
@@ -877,15 +916,13 @@ static void scan_region(uintptr_t start, uintptr_t end, uint64_t *bytes_scanned,
 
 static void initial_snapshot(void)
 {
-    OrbisKernelVirtualQueryInfo info;
-    void *cursor = NULL;
-    uintptr_t last_end = 0;
     uint64_t bytes_scanned = 0;
     uint32_t regions_scanned = 0;
     bool hit_cap = false;
 
     reset_candidates();
     g_measurement_index = 0;
+    g_mode = SCAN_MODE_INT32;
     ensure_output_dir();
 
     {
@@ -897,66 +934,80 @@ static void initial_snapshot(void)
         int fd = open(DIAG_MEASUREMENTS, O_WRONLY | O_CREAT | O_TRUNC, 0666);
         if (fd >= 0) {
             const char *header =
-                "PS4 Career Diagnostic - Manager Reputation measurements\n"
-                "initial_range=101..255 int32\n"
-                "R2+DOWN=diminuiu  R2+UP=aumentou\n\n";
+                "PS4 Career Diagnostic - TARGET v1020\n"
+                "mode=int32 targeted_windows=5 initial_range=0..255\n"
+                "R2+DOWN=diminuiu  R2+UP=aumentou\n"
+                "R2+LEFT=testa 1 candidato por vez; L1+R1 marca o atual\n\n";
             write(fd, header, strlen(header));
             close(fd);
         }
     }
 
-    append_log("=== PS4 Career Diagnostic snapshot ===");
-    append_log("mode=%s initial_window=%s", mode_name(), g_mode == SCAN_MODE_INT32 ? "101..255" : "1..100");
+    append_log("=== PS4 Career Diagnostic TARGET v1020 ===");
+    append_log("mode=int32 windows=%zu initial_window=0..255",
+               (size_t)TARGET_RANGE_COUNT);
 
-    while (!hit_cap && sceKernelVirtualQuery(cursor, VQ_FIND_NEXT, &info, sizeof(info)) >= 0) {
-        uintptr_t start = (uintptr_t)info.start_addr;
-        uintptr_t end = (uintptr_t)info.end_addr;
+    for (size_t r = 0; r < TARGET_RANGE_COUNT && !hit_cap; r++) {
+        uintptr_t cursor = g_target_ranges[r].start;
+        const uintptr_t wanted_end = g_target_ranges[r].end;
 
-        if (end <= start || end <= last_end)
-            break;
+        append_log("TARGET[%zu] %s 0x%llX-0x%llX",
+                   r,
+                   g_target_ranges[r].name,
+                   (unsigned long long)g_target_ranges[r].start,
+                   (unsigned long long)g_target_ranges[r].end);
 
-        last_end = end;
-        cursor = (void *)end;
+        while (cursor < wanted_end && !hit_cap) {
+            OrbisKernelVirtualQueryInfo info;
+            if (sceKernelVirtualQuery((void *)cursor, 0, &info, sizeof(info)) < 0) {
+                append_log("TARGET[%zu] query failed at 0x%llX",
+                           r, (unsigned long long)cursor);
+                break;
+            }
 
-        if ((info.prot & (CPU_READ | CPU_WRITE)) != (CPU_READ | CPU_WRITE))
-            continue;
+            uintptr_t region_start = (uintptr_t)info.start_addr;
+            uintptr_t region_end = (uintptr_t)info.end_addr;
+            if (region_end <= cursor)
+                break;
 
-        if (info.isStack)
-            continue;
+            uintptr_t start = cursor > region_start ? cursor : region_start;
+            uintptr_t end = wanted_end < region_end ? wanted_end : region_end;
 
-        if (is_internal_region(start, end))
-            continue;
+            if (end > start &&
+                (info.prot & (CPU_READ | CPU_WRITE)) == (CPU_READ | CPU_WRITE) &&
+                !info.isStack &&
+                !is_internal_region(start, end)) {
+                append_log("target-region %u: %s/%s 0x%lx-0x%lx prot=0x%x",
+                           regions_scanned,
+                           g_target_ranges[r].name,
+                           info.name,
+                           (unsigned long)start,
+                           (unsigned long)end,
+                           info.prot);
+                regions_scanned++;
+                scan_region(start, end, &bytes_scanned, &hit_cap);
+            }
 
-        append_log("region %u: %s 0x%lx-0x%lx prot=0x%x flex=%u direct=%u pooled=%u committed=%u",
-                   regions_scanned,
-                   info.name,
-                   (unsigned long)start,
-                   (unsigned long)end,
-                   info.prot,
-                   info.isFlexibleMemory,
-                   info.isDirectMemory,
-                   info.isPooledMemory,
-                   info.isCommitted);
-
-        regions_scanned++;
-        scan_region(start, end, &bytes_scanned, &hit_cap);
+            cursor = region_end;
+        }
     }
+
+    dump_candidates();
 
     if (hit_cap) {
-        notify_status("[CareerDiag] Snapshot: limite de %u candidatos atingido (%s).",
-                      MAX_CANDIDATES, mode_name());
+        notify_status("[CareerDiag TARGET] limite de %u candidatos atingido.",
+                      MAX_CANDIDATES);
     } else {
-        notify_status("[CareerDiag] Snapshot pronto: %zu candidatos (%s).",
-                      g_candidate_count, mode_name());
+        notify_status("[CareerDiag TARGET] snapshot: %zu candidatos em 5 regioes. Faca mudanca e R2+CIMA/BAIXO.",
+                      g_candidate_count);
     }
 
-    append_log("regions=%u bytes=%llu candidates=%zu cap=%d",
+    append_log("target_regions=%u bytes=%llu candidates=%zu cap=%d",
                regions_scanned,
                (unsigned long long)bytes_scanned,
                g_candidate_count,
                hit_cap ? 1 : 0);
 }
-
 
 static void start_monitor(void)
 {
