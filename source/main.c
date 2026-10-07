@@ -12,51 +12,48 @@
 attr_public const char *g_pluginName = "career_diag";
 attr_public const char *g_pluginDesc = "On-console player-career memory diagnostic";
 attr_public const char *g_pluginAuth = "Kauan project";
-attr_public uint32_t g_pluginVersion = 0x00000400;
+attr_public uint32_t g_pluginVersion = 0x00000500;
 
 HOOK_INIT(scePadRead);
 
 static Patcher *g_scePadReadExt_patcher = NULL;
 static uint32_t g_previous_buttons = 0;
 
-static uint32_t newly_pressed(uint32_t buttons)
+static bool combo_just_pressed(uint32_t buttons, uint32_t button)
 {
-    return buttons & ~g_previous_buttons;
+    const uint32_t combo = ORBIS_PAD_BUTTON_TOUCH_PAD | button;
+    const bool now_active = (buttons & combo) == combo;
+    const bool was_active = (g_previous_buttons & combo) == combo;
+    return now_active && !was_active;
 }
 
 static void handle_shortcuts(uint32_t buttons)
 {
-    const uint32_t gate = ORBIS_PAD_BUTTON_TOUCH_PAD;
-    uint32_t pressed = newly_pressed(buttons);
-
-    if ((buttons & gate) == 0)
-        return;
-
-    if (pressed & ORBIS_PAD_BUTTON_SQUARE)
+    if (combo_just_pressed(buttons, ORBIS_PAD_BUTTON_SQUARE))
         diag_request(DIAG_ACTION_SNAPSHOT);
 
-    if (pressed & ORBIS_PAD_BUTTON_DOWN)
+    if (combo_just_pressed(buttons, ORBIS_PAD_BUTTON_DOWN))
         diag_request(DIAG_ACTION_DECREASED);
 
-    if (pressed & ORBIS_PAD_BUTTON_UP)
+    if (combo_just_pressed(buttons, ORBIS_PAD_BUTTON_UP))
         diag_request(DIAG_ACTION_INCREASED);
 
-    if (pressed & ORBIS_PAD_BUTTON_TRIANGLE)
+    if (combo_just_pressed(buttons, ORBIS_PAD_BUTTON_TRIANGLE))
         diag_request(DIAG_ACTION_CHANGED);
 
-    if (pressed & ORBIS_PAD_BUTTON_CIRCLE)
+    if (combo_just_pressed(buttons, ORBIS_PAD_BUTTON_CIRCLE))
         diag_request(DIAG_ACTION_UNCHANGED);
 
-    if (pressed & ORBIS_PAD_BUTTON_OPTIONS)
+    if (combo_just_pressed(buttons, ORBIS_PAD_BUTTON_OPTIONS))
         diag_request(DIAG_ACTION_DUMP);
 
-    if (pressed & ORBIS_PAD_BUTTON_CROSS)
+    if (combo_just_pressed(buttons, ORBIS_PAD_BUTTON_CROSS))
         diag_request(DIAG_ACTION_RESET);
 
-    if (pressed & ORBIS_PAD_BUTTON_LEFT)
+    if (combo_just_pressed(buttons, ORBIS_PAD_BUTTON_LEFT))
         diag_request(DIAG_ACTION_MODE_INT32);
 
-    if (pressed & ORBIS_PAD_BUTTON_RIGHT)
+    if (combo_just_pressed(buttons, ORBIS_PAD_BUTTON_RIGHT))
         diag_request(DIAG_ACTION_MODE_FLOAT);
 }
 
