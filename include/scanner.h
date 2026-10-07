@@ -14,7 +14,8 @@ typedef enum DiagAction {
     DIAG_ACTION_MODE_INT32,
     DIAG_ACTION_MODE_FLOAT,
     DIAG_ACTION_AUTO_TOGGLE,
-    DIAG_ACTION_TEST_PLUS_ONE
+    DIAG_ACTION_TEST_PLUS_ONE,
+    DIAG_ACTION_TEST_NEXT
 } DiagAction;
 
 int diag_start_worker(void);
