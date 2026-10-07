@@ -1,102 +1,121 @@
 # PS4 Career Diagnostic
 
-Ferramenta de diagnóstico **read-only** para localizar, no processo de um jogo de PS4, valores que acompanham a pontuação de titularidade do modo Carreira de Jogador.
+Diagnóstico de memória **executado no próprio PS4** para descobrir onde o jogo guarda a pontuação de titularidade do modo Carreira de Jogador.
 
-## Objetivo da V0.1
+> Esta versão substitui a primeira ideia de scanner no PC. O diagnóstico agora é um **plugin GoldHEN PRX carregado dentro do processo do jogo**.
 
-A V0.1 não escreve nem congela memória. Ela:
+## Por que plugin e não um PKG separado?
 
-1. conecta a um PS4 executando um payload `ps4debug` compatível;
-2. lista os processos ativos;
-3. permite selecionar o processo do jogo;
-4. faz uma busca inicial por um valor numérico;
-5. refina a mesma busca depois que o valor muda no jogo;
-6. mostra quantos endereços candidatos restaram e uma pequena amostra deles;
-7. registra a sessão em JSON para comparação posterior.
+Um aplicativo normal aberto pelo menu do PS4 não é a arquitetura ideal para observar continuamente um jogo em execução. O GoldHEN permite carregar plugins PRX junto de um título; assim o diagnóstico roda no mesmo processo do jogo e pode observar suas regiões de memória enquanto você joga.
 
-Exemplo de uso:
+O sistema oficial de plugins GoldHEN suporta carregamento por Title ID em `/data/GoldHEN/plugins.ini`.
 
-```text
-Titularidade no jogo: 83
-> first 83
-Candidatos: 281453
+## V0.1 — Unknown-value scanner
 
-Depois de uma mudança no jogo:
-Titularidade: 79
-> refine 79
-Candidatos: 417
+Não precisamos digitar "titularidade = 83".
 
-Depois:
-Titularidade: 76
-> refine 76
-Candidatos: 5
-```
-
-O scanner reutiliza a sessão anterior; portanto cada `refine` verifica apenas os candidatos sobreviventes.
-
-## Requisitos
-
-- PS4 desbloqueado/homebrew;
-- payload `ps4debug` compatível em execução;
-- PC e PS4 na mesma rede;
-- Python 3.13 ou superior.
-
-A comunicação usa a biblioteca Python `ps4debug` (PyPS4debug).
-
-## Instalação
-
-No Windows PowerShell:
-
-```powershell
-git clone https://github.com/kauanbraga125-sketch/PS4-Career-Diagnostic.git
-cd PS4-Career-Diagnostic
-py -3.13 -m venv .venv
-.\.venv\Scripts\Activate.ps1
-python -m pip install -e .
-```
-
-## Executar
-
-Se souber o IP do PS4:
-
-```powershell
-career-diag --host 192.168.0.20
-```
-
-Ou tente descoberta automática:
-
-```powershell
-career-diag --discover
-```
-
-O programa lista os processos e pede qual processo deve ser analisado.
-
-## Comandos da sessão
+O plugin tira uma foto inicial de valores plausíveis (1 a 100). Depois você provoca mudanças reais no jogo e refina os candidatos:
 
 ```text
-first <valor>       inicia uma nova busca exata
-refine <valor>      refina usando somente os candidatos anteriores
-show                mostra amostra dos candidatos atuais
-reset               apaga a busca atual
-save                grava o estado/resumo da sessão
-help                mostra os comandos
-quit                encerra
+ANTES DA MUDANÇA
+L3 + R3 + QUADRADO
+→ snapshot
+
+A titularidade caiu
+L3 + R3 + BAIXO
+→ mantém somente valores que diminuíram
+
+A titularidade subiu
+L3 + R3 + CIMA
+→ mantém somente valores que aumentaram
+
+Nada aconteceu com a titularidade
+L3 + R3 + CÍRCULO
+→ mantém somente valores que ficaram iguais
 ```
 
-O tipo inicial é `int32`, que é uma primeira hipótese razoável para uma pontuação inteira. Suporte a `float` pode ser adicionado se o valor não aparecer como inteiro.
+Repetimos até restarem poucos endereços.
 
-## Estratégia
+## Atalhos
 
-A identificação não termina quando encontramos um endereço com o mesmo número mostrado na interface. O processo correto é:
+| Atalho | Ação |
+|---|---|
+| L3 + R3 + Quadrado | novo snapshot |
+| L3 + R3 + Baixo | filtrar valores que diminuíram |
+| L3 + R3 + Cima | filtrar valores que aumentaram |
+| L3 + R3 + Triângulo | filtrar valores que mudaram |
+| L3 + R3 + Círculo | filtrar valores que não mudaram |
+| L3 + R3 + Options | salvar candidatos |
+| L3 + R3 + X | zerar busca |
+| L3 + R3 + Esquerda | modo INT32 |
+| L3 + R3 + Direita | modo FLOAT |
 
-- reduzir os candidatos por várias mudanças reais;
-- confirmar que o endereço acompanha tanto aumentos quanto reduções;
-- só depois criar uma fase separada de teste de escrita;
-- posteriormente usar watchpoint/breakpoint para descobrir a rotina que escreve o valor;
-- apenas no projeto final bloquear reduções mantendo ganhos normais.
+O padrão é **INT32**. Se depois de vários testes não encontrarmos o valor correto, zeramos a busca, mudamos para FLOAT e repetimos.
 
-## Segurança do projeto
+## Arquivos gerados no PS4
 
-A V0.1 é propositalmente somente leitura. Nenhuma função de escrita em memória está exposta pelo programa.
+```text
+/data/GoldHEN/career_diag/diagnostic.log
+/data/GoldHEN/career_diag/candidates.txt
+```
 
-Use apenas em jogos/modos offline e em hardware/software sob seu controle.
+Quando restarem 20 candidatos ou menos, o plugin solicita automaticamente o dump para `candidates.txt`.
+
+## Instalação do PRX
+
+Depois de compilar/baixar `career_diag.prx`:
+
+```text
+/data/GoldHEN/plugins/career_diag.prx
+```
+
+No `/data/GoldHEN/plugins.ini`, coloque o plugin **somente na seção do Title ID da sua versão do jogo**:
+
+```ini
+[CUSAxxxxx]
+/data/GoldHEN/plugins/career_diag.prx
+```
+
+Não use `[default]`: o scanner foi feito para ser carregado apenas no jogo que estamos diagnosticando.
+
+## Como o scanner trabalha
+
+- enumera as regiões virtuais do processo com `sceKernelVirtualQuery`;
+- considera apenas memória com leitura + escrita pela CPU;
+- ignora stacks e a própria área interna do plugin;
+- lê a memória por blocos usando a API de processo do GoldHEN;
+- no modo INT32 guarda somente inteiros de 1 a 100;
+- no modo FLOAT guarda somente floats de 1 a 100;
+- cada filtro compara o valor atual com o valor anterior;
+- a V0.1 é somente leitura: **não congela nem altera a titularidade**.
+
+## Próxima fase
+
+Quando identificarmos 1–poucos endereços confiáveis:
+
+1. confirmar qual realmente controla a titularidade;
+2. descobrir quem escreve nesse endereço;
+3. localizar a rotina de perda;
+4. criar o plugin final que permita ganhos e bloqueie somente reduções.
+
+## Build
+
+Requisitos locais:
+
+- OpenOrbis PS4 Toolchain;
+- GoldHEN Plugins SDK;
+- LLVM/LLD.
+
+```bash
+export OO_PS4_TOOLCHAIN=/caminho/OpenOrbis/PS4Toolchain
+export GOLDHEN_SDK=/caminho/GoldHEN_Plugins_SDK
+make
+```
+
+O resultado é:
+
+```text
+bin/career_diag.prx
+```
+
+O GitHub Actions do repositório também compila o PRX automaticamente.
