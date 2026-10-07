@@ -13,13 +13,13 @@
 attr_public const char *g_pluginName = "career_diag";
 attr_public const char *g_pluginDesc = "On-console player-career memory diagnostic";
 attr_public const char *g_pluginAuth = "Kauan project";
-attr_public uint32_t g_pluginVersion = 0x00001020;
+attr_public uint32_t g_pluginVersion = 0x00001030;
 
 HOOK_INIT(scePadRead);
 
 static Patcher *g_scePadReadExt_patcher = NULL;
 static uint32_t g_previous_buttons = 0;
-static bool g_learning_active = false;
+static bool g_learning_active = true;
 
 static bool chord_just_pressed(uint32_t buttons, uint32_t modifier, uint32_t button)
 {
@@ -32,34 +32,12 @@ static bool chord_just_pressed(uint32_t buttons, uint32_t modifier, uint32_t but
 static void handle_shortcuts(uint32_t buttons)
 {
     /*
-     * Clean discovery controls only:
-     * R1 + UP   = start a fresh snapshot/baseline in the career menu.
-     * R2 + UP   = mark that manager reputation/titularity increased.
-     * R2 + DOWN = mark that manager reputation/titularity decreased.
+     * SHORT36 v1030:
+     * R2 + LEFT = restore previous and test the next shortlisted candidate.
+     * L1 + R1   = mark the currently active candidate.
      *
-     * All legacy Touchpad, Triangle, R1+direction measurement and tester
-     * shortcuts were intentionally removed to avoid overlapping commands.
+     * The 36 suspected 108D86 addresses are loaded automatically at startup.
      */
-
-    if (chord_just_pressed(buttons, ORBIS_PAD_BUTTON_R1, ORBIS_PAD_BUTTON_UP)) {
-        g_learning_active = true;
-        diag_request(DIAG_ACTION_SNAPSHOT);
-        return;
-    }
-
-    if (!g_learning_active)
-        return;
-
-    if (chord_just_pressed(buttons, ORBIS_PAD_BUTTON_R2, ORBIS_PAD_BUTTON_UP)) {
-        diag_request(DIAG_ACTION_MEASURE_UP);
-        return;
-    }
-
-    if (chord_just_pressed(buttons, ORBIS_PAD_BUTTON_R2, ORBIS_PAD_BUTTON_DOWN)) {
-        diag_request(DIAG_ACTION_MEASURE_DOWN);
-        return;
-    }
-
     if (chord_just_pressed(buttons, ORBIS_PAD_BUTTON_L1, ORBIS_PAD_BUTTON_R1)) {
         diag_request(DIAG_ACTION_GROUP_REFINE);
         return;
@@ -130,7 +108,7 @@ s32 attr_public plugin_load(s32 argc, const char *argv[])
 
     NotifyStatic(
         TEX_ICON_SYSTEM,
-        "[CareerDiag TARGET v1020] R1+CIMA alvos | R2+CIMA/BAIXO filtra | R2+ESQ testa 1 | L1+R1 marca."
+        "[CareerDiag SHORT36 v1030] 36 suspeitos pre-carregados | R2+ESQ testa 1 | L1+R1 marca."
     );
 
     return 0;
