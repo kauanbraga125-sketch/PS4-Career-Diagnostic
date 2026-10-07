@@ -44,6 +44,8 @@ static volatile int g_busy = 0;
 static ScanMode g_mode = SCAN_MODE_INT32;
 static OrbisPthread g_worker_thread;
 
+static void dump_candidates(void);
+
 static void ensure_output_dir(void)
 {
     mkdir(DIAG_DIR, 0777);
@@ -370,7 +372,7 @@ static void filter_candidates(DiagAction action)
                   label, before, g_candidate_count);
 
     if (g_candidate_count > 0 && g_candidate_count <= 20)
-        diag_request(DIAG_ACTION_DUMP);
+        dump_candidates();
 }
 
 static void dump_candidates(void)
