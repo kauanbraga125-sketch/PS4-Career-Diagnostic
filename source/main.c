@@ -13,7 +13,7 @@
 attr_public const char *g_pluginName = "career_diag";
 attr_public const char *g_pluginDesc = "On-console player-career memory diagnostic";
 attr_public const char *g_pluginAuth = "Kauan project";
-attr_public uint32_t g_pluginVersion = 0x00000C00;
+attr_public uint32_t g_pluginVersion = 0x00000D00;
 
 HOOK_INIT(scePadRead);
 
