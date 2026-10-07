@@ -15,6 +15,7 @@
 #define DIAG_DIR GOLDHEN_PATH "/career_diag"
 #define DIAG_LOG DIAG_DIR "/diagnostic.log"
 #define DIAG_RESULTS DIAG_DIR "/candidates.txt"
+#define DIAG_MONITOR DIAG_DIR "/monitor.txt"
 
 #define VQ_FIND_NEXT 1
 #define CPU_READ  0x01
@@ -23,6 +24,7 @@
 #define CHUNK_SIZE (512u * 1024u)
 #define MAX_CANDIDATES 2000000u
 #define MAX_DUMP_CANDIDATES 5000u
+#define AUTO_MONITOR_THRESHOLD 50000u
 
 typedef enum ScanMode {
     SCAN_MODE_INT32 = 0,
@@ -44,7 +46,19 @@ static volatile int g_busy = 0;
 static ScanMode g_mode = SCAN_MODE_INT32;
 static OrbisPthread g_worker_thread;
 
+static uint32_t *g_monitor_first = NULL;
+static uint32_t *g_monitor_up = NULL;
+static uint32_t *g_monitor_down = NULL;
+static uint32_t *g_monitor_changes = NULL;
+static size_t g_monitor_count = 0;
+static uint64_t g_monitor_samples = 0;
+static volatile int g_monitoring = 0;
+
 static void dump_candidates(void);
+static void dump_monitor_report(void);
+static void start_monitor(void);
+static void free_monitor_stats(void);
+static void monitor_sample(void);
 
 static void ensure_output_dir(void)
 {
@@ -179,8 +193,25 @@ static const char *mode_name(void)
     return g_mode == SCAN_MODE_INT32 ? "int32" : "float";
 }
 
+static void free_monitor_stats(void)
+{
+    if (g_monitor_first) free(g_monitor_first);
+    if (g_monitor_up) free(g_monitor_up);
+    if (g_monitor_down) free(g_monitor_down);
+    if (g_monitor_changes) free(g_monitor_changes);
+
+    g_monitor_first = NULL;
+    g_monitor_up = NULL;
+    g_monitor_down = NULL;
+    g_monitor_changes = NULL;
+    g_monitor_count = 0;
+    g_monitor_samples = 0;
+    g_monitoring = 0;
+}
+
 static void reset_candidates(void)
 {
+    free_monitor_stats();
     g_candidate_count = 0;
 }
 
@@ -304,6 +335,183 @@ static void initial_snapshot(void)
                hit_cap ? 1 : 0);
 }
 
+
+static void start_monitor(void)
+{
+    if (g_candidate_count == 0) {
+        notify_status("[CareerDiag] AUTO: sem candidatos.");
+        return;
+    }
+
+    free_monitor_stats();
+
+    g_monitor_first = (uint32_t *)calloc(g_candidate_count, sizeof(uint32_t));
+    g_monitor_up = (uint32_t *)calloc(g_candidate_count, sizeof(uint32_t));
+    g_monitor_down = (uint32_t *)calloc(g_candidate_count, sizeof(uint32_t));
+    g_monitor_changes = (uint32_t *)calloc(g_candidate_count, sizeof(uint32_t));
+
+    if (!g_monitor_first || !g_monitor_up || !g_monitor_down || !g_monitor_changes) {
+        free_monitor_stats();
+        notify_status("[CareerDiag] AUTO: falha de memoria.");
+        return;
+    }
+
+    for (size_t i = 0; i < g_candidate_count; i++)
+        g_monitor_first[i] = g_candidate_previous[i];
+
+    g_monitor_count = g_candidate_count;
+    g_monitor_samples = 0;
+    g_monitoring = 1;
+
+    notify_status("[CareerDiag] AUTO iniciado: %zu candidatos. Jogue normalmente.",
+                  g_candidate_count);
+}
+
+static void monitor_sample(void)
+{
+    size_t read_index = 0;
+
+    if (!g_monitoring || g_monitor_count != g_candidate_count)
+        return;
+
+    while (read_index < g_candidate_count) {
+        uint64_t address = g_candidate_address[read_index];
+        OrbisKernelVirtualQueryInfo info;
+
+        if (sceKernelVirtualQuery((void *)(uintptr_t)address, 0, &info, sizeof(info)) < 0 ||
+            (info.prot & CPU_READ) == 0) {
+            read_index++;
+            continue;
+        }
+
+        uintptr_t region_end = (uintptr_t)info.end_addr;
+        uintptr_t chunk_start = (uintptr_t)address;
+        size_t amount = (size_t)(region_end - chunk_start);
+        if (amount > CHUNK_SIZE)
+            amount = CHUNK_SIZE;
+
+        if (amount < sizeof(uint32_t) ||
+            read_process((uint64_t)chunk_start, g_chunk, amount) != 0) {
+            read_index++;
+            continue;
+        }
+
+        while (read_index < g_candidate_count) {
+            uint64_t candidate = g_candidate_address[read_index];
+
+            if (candidate < chunk_start ||
+                candidate + sizeof(uint32_t) > chunk_start + amount)
+                break;
+
+            size_t off = (size_t)(candidate - chunk_start);
+            uint32_t current;
+            uint32_t previous = g_candidate_previous[read_index];
+            memcpy(&current, &g_chunk[off], sizeof(current));
+
+            if (plausible_value(current)) {
+                bool changed = false;
+                bool up = false;
+                bool down = false;
+
+                if (g_mode == SCAN_MODE_INT32) {
+                    int32_t p, c;
+                    memcpy(&p, &previous, sizeof(p));
+                    memcpy(&c, &current, sizeof(c));
+                    changed = (c != p);
+                    up = (c > p);
+                    down = (c < p);
+                } else {
+                    float p = raw_as_float(previous);
+                    float c = raw_as_float(current);
+                    float d = c - p;
+                    const float epsilon = 0.0001f;
+                    changed = (d > epsilon || d < -epsilon);
+                    up = d > epsilon;
+                    down = d < -epsilon;
+                }
+
+                if (changed) {
+                    g_monitor_changes[read_index]++;
+                    if (up) g_monitor_up[read_index]++;
+                    if (down) g_monitor_down[read_index]++;
+                    g_candidate_previous[read_index] = current;
+                }
+            }
+
+            read_index++;
+        }
+    }
+
+    g_monitor_samples++;
+}
+
+static void dump_monitor_report(void)
+{
+    int fd;
+    char line[320];
+    size_t active = 0;
+
+    if (!g_monitor_first || g_monitor_count != g_candidate_count) {
+        notify_status("[CareerDiag] AUTO: nenhum relatorio disponivel.");
+        return;
+    }
+
+    ensure_output_dir();
+    fd = open(DIAG_MONITOR, O_WRONLY | O_CREAT | O_TRUNC, 0666);
+    if (fd < 0) {
+        notify_status("[CareerDiag] Falha ao gravar monitor.txt.");
+        return;
+    }
+
+    {
+        int n = snprintf(line, sizeof(line),
+                         "PS4 Career Diagnostic AUTO\nmode=%s\ncandidates=%zu\nsamples=%llu\n\n",
+                         mode_name(), g_candidate_count,
+                         (unsigned long long)g_monitor_samples);
+        if (n > 0) write(fd, line, (size_t)n);
+    }
+
+    for (size_t i = 0; i < g_candidate_count; i++) {
+        if (g_monitor_changes[i] == 0)
+            continue;
+
+        active++;
+        int n;
+
+        if (g_mode == SCAN_MODE_INT32) {
+            int32_t first, current;
+            memcpy(&first, &g_monitor_first[i], sizeof(first));
+            memcpy(&current, &g_candidate_previous[i], sizeof(current));
+            n = snprintf(line, sizeof(line),
+                         "%05zu  0x%016llX  first=%d current=%d up=%u down=%u changes=%u\n",
+                         i,
+                         (unsigned long long)g_candidate_address[i],
+                         first, current,
+                         g_monitor_up[i],
+                         g_monitor_down[i],
+                         g_monitor_changes[i]);
+        } else {
+            float first = raw_as_float(g_monitor_first[i]);
+            float current = raw_as_float(g_candidate_previous[i]);
+            n = snprintf(line, sizeof(line),
+                         "%05zu  0x%016llX  first=%.6f current=%.6f up=%u down=%u changes=%u\n",
+                         i,
+                         (unsigned long long)g_candidate_address[i],
+                         first, current,
+                         g_monitor_up[i],
+                         g_monitor_down[i],
+                         g_monitor_changes[i]);
+        }
+
+        if (n > 0)
+            write(fd, line, (size_t)n);
+    }
+
+    close(fd);
+
+    notify_status("[CareerDiag] AUTO salvo: %zu ativos em monitor.txt.", active);
+}
+
 static void filter_candidates(DiagAction action)
 {
     size_t read_index = 0;
@@ -373,6 +581,12 @@ static void filter_candidates(DiagAction action)
 
     if (g_candidate_count > 0 && g_candidate_count <= 20)
         dump_candidates();
+
+    if (g_candidate_count > 0 &&
+        g_candidate_count <= AUTO_MONITOR_THRESHOLD &&
+        !g_monitoring) {
+        start_monitor();
+    }
 }
 
 static void dump_candidates(void)
@@ -449,11 +663,17 @@ static void execute_action(DiagAction action)
         case DIAG_ACTION_INCREASED:
         case DIAG_ACTION_CHANGED:
         case DIAG_ACTION_UNCHANGED:
-            filter_candidates(action);
+            if (g_monitoring) {
+                notify_status("[CareerDiag] AUTO ativo. OPTIONS salva; TOUCH+R1 desliga.");
+            } else {
+                filter_candidates(action);
+            }
             break;
 
         case DIAG_ACTION_DUMP:
             dump_candidates();
+            if (g_monitor_first)
+                dump_monitor_report();
             break;
 
         case DIAG_ACTION_RESET:
@@ -473,6 +693,16 @@ static void execute_action(DiagAction action)
             notify_status("[CareerDiag] Modo FLOAT selecionado.");
             break;
 
+        case DIAG_ACTION_AUTO_TOGGLE:
+            if (g_monitoring) {
+                g_monitoring = 0;
+                dump_monitor_report();
+                notify_status("[CareerDiag] AUTO pausado.");
+            } else {
+                start_monitor();
+            }
+            break;
+
         default:
             break;
     }
@@ -490,9 +720,13 @@ static void *worker_main(void *arg)
         if (action != DIAG_ACTION_NONE && !g_busy) {
             g_pending_action = DIAG_ACTION_NONE;
             execute_action(action);
+        } else if (g_monitoring && !g_busy) {
+            g_busy = 1;
+            monitor_sample();
+            g_busy = 0;
         }
 
-        sceKernelUsleep(50000);
+        sceKernelUsleep(g_monitoring ? 250000 : 50000);
     }
 
     scePthreadExit(NULL);
@@ -520,6 +754,7 @@ void diag_stop_worker(void)
 
     g_worker_running = 0;
     scePthreadJoin(g_worker_thread, NULL);
+    free_monitor_stats();
 }
 
 void diag_request(DiagAction action)
