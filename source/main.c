@@ -11,15 +11,14 @@
 #include <Syscall.h>
 
 attr_public const char *g_pluginName = "career_diag";
-attr_public const char *g_pluginDesc = "On-console player-career memory diagnostic";
+attr_public const char *g_pluginDesc = "Read-only player-career correlation tracer + ranked single-candidate test";
 attr_public const char *g_pluginAuth = "Kauan project";
-attr_public uint32_t g_pluginVersion = 0x00001060;
+attr_public uint32_t g_pluginVersion = 0x00002100;
 
 HOOK_INIT(scePadRead);
 
 static Patcher *g_scePadReadExt_patcher = NULL;
 static uint32_t g_previous_buttons = 0;
-static bool g_learning_active = true;
 
 static bool chord_just_pressed(uint32_t buttons, uint32_t modifier, uint32_t button)
 {
@@ -32,21 +31,59 @@ static bool chord_just_pressed(uint32_t buttons, uint32_t modifier, uint32_t but
 static void handle_shortcuts(uint32_t buttons)
 {
     /*
-     * STARREG v1060:
-     * R2 + LEFT = scan only 0x0FE032CC00..0x0FE032D400 in the current
-     *             career state and test 10 aligned int32 values at a time.
-     *             Next presses restore the previous 10 and test the next 10.
-     * L1 + R1   = refine the active 10-value batch to 1-by-1.
+     * CareerTrace v2100
      *
-     * This build ignores the old master pool and focuses only on the recurring star region.
+     * R1 + CIMA     = baseline completo (reinicia a busca)
+     * R2 + CIMA     = titularidade SUBIU
+     * R2 + BAIXO    = titularidade DESCEU
+     * R2 + DIREITA  = controle: titularidade NAO mudou
+     * R2 + ESQUERDA = FOCUS depois de 2 UP + 2 DOWN + 1 SAME;
+     *                 na fase detalhada salva/atualiza o ranking
+     *
+     * Depois do ranking detalhado:
+     * L1 + R1       = arma/desarma o teste individual dos melhores
+     * R1 + ESQUERDA = restaura o anterior e testa o proximo candidato
+     * R1 + DIREITA  = restaura imediatamente o candidato ativo
+     *
+     * Ate o usuario armar TESTE, o tracer e somente leitura.
      */
     if (chord_just_pressed(buttons, ORBIS_PAD_BUTTON_L1, ORBIS_PAD_BUTTON_R1)) {
-        diag_request(DIAG_ACTION_GROUP_REFINE);
+        diag_request(DIAG_ACTION_TEST_ARM);
+        return;
+    }
+
+    if (chord_just_pressed(buttons, ORBIS_PAD_BUTTON_R1, ORBIS_PAD_BUTTON_LEFT)) {
+        diag_request(DIAG_ACTION_TEST_NEXT);
+        return;
+    }
+
+    if (chord_just_pressed(buttons, ORBIS_PAD_BUTTON_R1, ORBIS_PAD_BUTTON_RIGHT)) {
+        diag_request(DIAG_ACTION_TEST_RESTORE);
+        return;
+    }
+
+    if (chord_just_pressed(buttons, ORBIS_PAD_BUTTON_R1, ORBIS_PAD_BUTTON_UP)) {
+        diag_request(DIAG_ACTION_SNAPSHOT);
+        return;
+    }
+
+    if (chord_just_pressed(buttons, ORBIS_PAD_BUTTON_R2, ORBIS_PAD_BUTTON_UP)) {
+        diag_request(DIAG_ACTION_INCREASED);
+        return;
+    }
+
+    if (chord_just_pressed(buttons, ORBIS_PAD_BUTTON_R2, ORBIS_PAD_BUTTON_DOWN)) {
+        diag_request(DIAG_ACTION_DECREASED);
+        return;
+    }
+
+    if (chord_just_pressed(buttons, ORBIS_PAD_BUTTON_R2, ORBIS_PAD_BUTTON_RIGHT)) {
+        diag_request(DIAG_ACTION_UNCHANGED);
         return;
     }
 
     if (chord_just_pressed(buttons, ORBIS_PAD_BUTTON_R2, ORBIS_PAD_BUTTON_LEFT)) {
-        diag_request(DIAG_ACTION_BATCH_TEST_ALL);
+        diag_request(DIAG_ACTION_DUMP);
         return;
     }
 }
@@ -71,7 +108,7 @@ s32 attr_public plugin_load(s32 argc, const char *argv[])
     (void)argc;
     (void)argv;
 
-    final_printf("[CareerDiag] plugin_load\n");
+    final_printf("[CareerTrace] plugin_load\n");
 
     {
         char module[256];
@@ -83,7 +120,7 @@ s32 attr_public plugin_load(s32 argc, const char *argv[])
 
     g_scePadReadExt_patcher = (Patcher *)malloc(sizeof(Patcher));
     if (g_scePadReadExt_patcher == NULL) {
-        NotifyStatic(TEX_ICON_SYSTEM, "[CareerDiag] Falha alocando pad patcher.");
+        NotifyStatic(TEX_ICON_SYSTEM, "[CareerTrace] Falha alocando pad patcher.");
         return 0;
     }
 
@@ -102,7 +139,7 @@ s32 attr_public plugin_load(s32 argc, const char *argv[])
         Patcher_Destroy(g_scePadReadExt_patcher);
         free(g_scePadReadExt_patcher);
         g_scePadReadExt_patcher = NULL;
-        NotifyStatic(TEX_ICON_SYSTEM, "[CareerDiag] Falha ao iniciar worker.");
+        NotifyStatic(TEX_ICON_SYSTEM, "[CareerTrace] Falha ao iniciar worker.");
         return 0;
     }
 
@@ -110,7 +147,7 @@ s32 attr_public plugin_load(s32 argc, const char *argv[])
 
     NotifyStatic(
         TEX_ICON_SYSTEM,
-        "[CareerDiag STARREG v1060] entre na carreira | R2+ESQ testa regiao da estrela 10 por vez | L1+R1 isola."
+        "[CareerTrace v2100] R1+CIMA baseline | R2+CIMA UP | R2+BAIXO DOWN | R2+DIR SAME | R2+ESQ FOCUS."
     );
 
     return 0;
@@ -130,7 +167,7 @@ s32 attr_public plugin_unload(s32 argc, const char *argv[])
         g_scePadReadExt_patcher = NULL;
     }
 
-    final_printf("[CareerDiag] plugin_unload\n");
+    final_printf("[CareerTrace] plugin_unload\n");
     return 0;
 }
 
