@@ -13,7 +13,7 @@
 attr_public const char *g_pluginName = "career_diag";
 attr_public const char *g_pluginDesc = "On-console player-career memory diagnostic";
 attr_public const char *g_pluginAuth = "Kauan project";
-attr_public uint32_t g_pluginVersion = 0x00001010;
+attr_public uint32_t g_pluginVersion = 0x00001020;
 
 HOOK_INIT(scePadRead);
 
@@ -130,7 +130,7 @@ s32 attr_public plugin_load(s32 argc, const char *argv[])
 
     NotifyStatic(
         TEX_ICON_SYSTEM,
-        "[CareerDiag GROUP100 v1010] R1+CIMA snapshot | R2+CIMA/BAIXO filtro | R2+ESQ grupo100 | L1+R1 isola."
+        "[CareerDiag TARGET v1020] R1+CIMA alvos | R2+CIMA/BAIXO filtra | R2+ESQ testa 1 | L1+R1 marca."
     );
 
     return 0;
