@@ -38,9 +38,19 @@ jobs:
       - name: Build PRX
         run: make
 
+      - name: Build minimal load-test PRX
+        run: make -f Makefile.test
+
       - name: Upload career_diag.prx
         uses: actions/upload-artifact@v4
         with:
           name: career_diag-prx
           path: bin/career_diag.prx
+          if-no-files-found: error
+
+      - name: Upload career_diag_test.prx
+        uses: actions/upload-artifact@v4
+        with:
+          name: career_diag-test-prx
+          path: bin/career_diag_test.prx
           if-no-files-found: error
