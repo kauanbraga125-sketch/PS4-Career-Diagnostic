@@ -13,7 +13,7 @@
 attr_public const char *g_pluginName = "career_diag";
 attr_public const char *g_pluginDesc = "On-console player-career memory diagnostic";
 attr_public const char *g_pluginAuth = "Kauan project";
-attr_public uint32_t g_pluginVersion = 0x00001050;
+attr_public uint32_t g_pluginVersion = 0x00001060;
 
 HOOK_INIT(scePadRead);
 
@@ -32,13 +32,13 @@ static bool chord_just_pressed(uint32_t buttons, uint32_t modifier, uint32_t but
 static void handle_shortcuts(uint32_t buttons)
 {
     /*
-     * MASTER50 v1050:
-     * R2 + LEFT = on first press, validate the compiled master pool in the current
-     *             career state and test the first safe batch of up to 50.
-     *             Next presses restore the previous batch and test the next 50.
-     * L1 + R1   = refine the active batch (100 -> 10 -> 1).
+     * STARREG v1060:
+     * R2 + LEFT = scan only 0x0FE032CC00..0x0FE032D400 in the current
+     *             career state and test 10 aligned int32 values at a time.
+     *             Next presses restore the previous 10 and test the next 10.
+     * L1 + R1   = refine the active 10-value batch to 1-by-1.
      *
-     * Known crash/freeze suspects plus 162 confirmed no-visible-effect addresses were compiled out.
+     * This build ignores the old master pool and focuses only on the recurring star region.
      */
     if (chord_just_pressed(buttons, ORBIS_PAD_BUTTON_L1, ORBIS_PAD_BUTTON_R1)) {
         diag_request(DIAG_ACTION_GROUP_REFINE);
@@ -110,7 +110,7 @@ s32 attr_public plugin_load(s32 argc, const char *argv[])
 
     NotifyStatic(
         TEX_ICON_SYSTEM,
-        "[CareerDiag MASTER50 v1050] entre na carreira | R2+ESQ carrega e testa 50 | L1+R1 isola."
+        "[CareerDiag STARREG v1060] entre na carreira | R2+ESQ testa regiao da estrela 10 por vez | L1+R1 isola."
     );
 
     return 0;
