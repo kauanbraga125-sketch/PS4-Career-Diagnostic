@@ -13,7 +13,7 @@
 attr_public const char *g_pluginName = "career_diag";
 attr_public const char *g_pluginDesc = "On-console player-career memory diagnostic";
 attr_public const char *g_pluginAuth = "Kauan project";
-attr_public uint32_t g_pluginVersion = 0x00001030;
+attr_public uint32_t g_pluginVersion = 0x00001040;
 
 HOOK_INIT(scePadRead);
 
@@ -32,11 +32,13 @@ static bool chord_just_pressed(uint32_t buttons, uint32_t modifier, uint32_t but
 static void handle_shortcuts(uint32_t buttons)
 {
     /*
-     * SHORT36 v1030:
-     * R2 + LEFT = restore previous and test the next shortlisted candidate.
-     * L1 + R1   = mark the currently active candidate.
+     * MASTER100 v1040:
+     * R2 + LEFT = on first press, validate the compiled master pool in the current
+     *             career state and test the first safe batch of up to 100.
+     *             Next presses restore the previous batch and test the next 100.
+     * L1 + R1   = refine the active batch (100 -> 10 -> 1).
      *
-     * The 36 suspected 108D86 addresses are loaded automatically at startup.
+     * Known crash/freeze suspect addresses were compiled out.
      */
     if (chord_just_pressed(buttons, ORBIS_PAD_BUTTON_L1, ORBIS_PAD_BUTTON_R1)) {
         diag_request(DIAG_ACTION_GROUP_REFINE);
@@ -108,7 +110,7 @@ s32 attr_public plugin_load(s32 argc, const char *argv[])
 
     NotifyStatic(
         TEX_ICON_SYSTEM,
-        "[CareerDiag SHORT36 v1030] 36 suspeitos pre-carregados | R2+ESQ testa 1 | L1+R1 marca."
+        "[CareerDiag MASTER100 v1040] entre na carreira | R2+ESQ carrega e testa 100 | L1+R1 isola."
     );
 
     return 0;
