@@ -26,6 +26,7 @@
 #define MAX_CANDIDATES 2000000u
 #define MAX_DUMP_CANDIDATES 5000u
 #define AUTO_MONITOR_THRESHOLD 50000u
+#define TARGET_STEP 20
 static const uint64_t g_test_candidates[] = {
     0x000000102AA22D10ULL,
     0x00000010277C3398ULL,
@@ -143,6 +144,104 @@ static int write_process(uint64_t address, const void *data, size_t length)
     rw.length = length;
     rw.write_flags = 1;
     return sys_sdk_proc_rw(&rw);
+}
+
+static bool load_single_candidate_from_file(void)
+{
+    int fd;
+    char buf[1024];
+    ssize_t n;
+    char *p;
+    unsigned long long address = 0;
+    int value = 0;
+    uint32_t raw = 0;
+    int32_t current = 0;
+    OrbisKernelVirtualQueryInfo info;
+
+    ensure_output_dir();
+    fd = open(DIAG_RESULTS, O_RDONLY, 0);
+    if (fd < 0)
+        return false;
+
+    n = read(fd, buf, sizeof(buf) - 1);
+    close(fd);
+    if (n <= 0)
+        return false;
+
+    buf[n] = '\0';
+    if (strstr(buf, "candidates=1") == NULL)
+        return false;
+
+    p = strstr(buf, "0x");
+    if (p == NULL || sscanf(p, "0x%llX  int32=%d", &address, &value) != 2)
+        return false;
+
+    if (sceKernelVirtualQuery((void *)(uintptr_t)address, 0, &info, sizeof(info)) < 0 ||
+        (info.prot & CPU_READ) == 0 || (info.prot & CPU_WRITE) == 0)
+        return false;
+
+    if (read_process((uint64_t)address, &raw, sizeof(raw)) != 0)
+        return false;
+
+    memcpy(&current, &raw, sizeof(current));
+    if (current < 0 || current > 255)
+        return false;
+
+    g_candidate_address[0] = (uint64_t)address;
+    g_candidate_previous[0] = raw;
+    g_candidate_count = 1;
+
+    notify_status("[CareerDiag] Alvo restaurado 0x%llX valor=%d. R1+CIMA/BAIXO ajusta.",
+                  address, current);
+    return true;
+}
+
+static void adjust_single_candidate(int delta)
+{
+    uint64_t address;
+    uint32_t raw = 0;
+    int32_t value = 0;
+    int32_t next;
+    OrbisKernelVirtualQueryInfo info;
+
+    if (g_candidate_count != 1) {
+        notify_status("[CareerDiag] Ainda ha %zu candidatos; continue filtrando.", g_candidate_count);
+        return;
+    }
+
+    address = g_candidate_address[0];
+
+    if (sceKernelVirtualQuery((void *)(uintptr_t)address, 0, &info, sizeof(info)) < 0 ||
+        (info.prot & CPU_READ) == 0 || (info.prot & CPU_WRITE) == 0) {
+        notify_status("[CareerDiag] Alvo nao esta gravavel; refaca a busca.");
+        return;
+    }
+
+    if (read_process(address, &raw, sizeof(raw)) != 0) {
+        notify_status("[CareerDiag] Falha ao ler o alvo.");
+        return;
+    }
+
+    memcpy(&value, &raw, sizeof(value));
+    if (value < 0 || value > 255) {
+        notify_status("[CareerDiag] Valor atual %d fora de 0..255; nao alterado.", value);
+        return;
+    }
+
+    next = value + delta;
+    if (next < 0) next = 0;
+    if (next > 255) next = 255;
+
+    if (write_process(address, &next, sizeof(next)) != 0) {
+        notify_status("[CareerDiag] Falha ao escrever no alvo.");
+        return;
+    }
+
+    memcpy(&g_candidate_previous[0], &next, sizeof(next));
+    dump_candidates();
+
+    notify_status("[CareerDiag] REP 0x%llX: %d -> %d (%+d).",
+                  (unsigned long long)address, value, next, delta);
 }
 
 static void restore_test_candidate(void)
@@ -731,6 +830,11 @@ static void filter_candidates(DiagAction action, bool allow_auto)
 
 static void record_measurement(DiagAction action)
 {
+    if (g_candidate_count == 1) {
+        adjust_single_candidate(action == DIAG_ACTION_INCREASED ? TARGET_STEP : -TARGET_STEP);
+        return;
+    }
+
     size_t before = g_candidate_count;
     const char *label = action == DIAG_ACTION_DECREASED ? "DOWN" : "UP";
 
@@ -950,6 +1054,7 @@ int diag_start_worker(void)
     g_mode = SCAN_MODE_INT32;
 
     ensure_output_dir();
+    load_single_candidate_from_file();
 
     return scePthreadCreate(&g_worker_thread, NULL, worker_main, NULL,
                             "career_diag_worker");
