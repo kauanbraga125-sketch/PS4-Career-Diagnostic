@@ -18,7 +18,8 @@ typedef enum DiagAction {
     DIAG_ACTION_TEST_NEXT,
     DIAG_ACTION_MEASURE_DOWN,
     DIAG_ACTION_MEASURE_UP,
-    DIAG_ACTION_FREEZE_TOGGLE
+    DIAG_ACTION_FREEZE_TOGGLE,
+    DIAG_ACTION_BATCH_TEST_ALL
 } DiagAction;
 
 int diag_start_worker(void);
