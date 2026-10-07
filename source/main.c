@@ -12,7 +12,7 @@
 attr_public const char *g_pluginName = "career_diag";
 attr_public const char *g_pluginDesc = "On-console player-career memory diagnostic";
 attr_public const char *g_pluginAuth = "Kauan project";
-attr_public uint32_t g_pluginVersion = 0x00000300;
+attr_public uint32_t g_pluginVersion = 0x00000400;
 
 HOOK_INIT(scePadRead);
 
@@ -26,10 +26,10 @@ static uint32_t newly_pressed(uint32_t buttons)
 
 static void handle_shortcuts(uint32_t buttons)
 {
-    const uint32_t gate = ORBIS_PAD_BUTTON_L3 | ORBIS_PAD_BUTTON_R3;
+    const uint32_t gate = ORBIS_PAD_BUTTON_TOUCH_PAD;
     uint32_t pressed = newly_pressed(buttons);
 
-    if ((buttons & gate) != gate)
+    if ((buttons & gate) == 0)
         return;
 
     if (pressed & ORBIS_PAD_BUTTON_SQUARE)
@@ -130,7 +130,7 @@ s32 attr_public plugin_load(s32 argc, const char *argv[])
 
     NotifyStatic(
         TEX_ICON_SYSTEM,
-        "[CareerDiag] Carregado. L3+R3+QUADRADO = snapshot."
+        "[CareerDiag] Carregado. TOUCHPAD+QUADRADO = snapshot."
     );
 
     return 0;
