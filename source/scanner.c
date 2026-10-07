@@ -49,6 +49,46 @@ static const TargetRange g_target_ranges[] = {
 };
 #define TARGET_RANGE_COUNT (sizeof(g_target_ranges) / sizeof(g_target_ranges[0]))
 
+static const uint64_t g_shortlist_candidates[] = {
+    0x000000108D86A268ULL,
+    0x000000108D86A2A0ULL,
+    0x000000108D86A2D8ULL,
+    0x000000108D86A310ULL,
+    0x000000108D86A348ULL,
+    0x000000108D86A3B8ULL,
+    0x000000108D86A3F0ULL,
+    0x000000108D86A428ULL,
+    0x000000108D86A460ULL,
+    0x000000108D86A498ULL,
+    0x000000108D86A4D0ULL,
+    0x000000108D86A508ULL,
+    0x000000108D86A5B0ULL,
+    0x000000108D86A5E8ULL,
+    0x000000108D86A620ULL,
+    0x000000108D86A658ULL,
+    0x000000108D86A690ULL,
+    0x000000108D86A6C8ULL,
+    0x000000108D86A700ULL,
+    0x000000108D86A738ULL,
+    0x000000108D86A770ULL,
+    0x000000108D86A7A8ULL,
+    0x000000108D86A7E0ULL,
+    0x000000108D86A818ULL,
+    0x000000108D86A850ULL,
+    0x000000108D86A888ULL,
+    0x000000108D86A8C0ULL,
+    0x000000108D86A8F8ULL,
+    0x000000108D86A930ULL,
+    0x000000108D86A968ULL,
+    0x000000108D86A9A0ULL,
+    0x000000108D86AA48ULL,
+    0x000000108D86AA80ULL,
+    0x000000108D86AAB8ULL,
+    0x000000108D86AAF0ULL,
+    0x000000108D86AB98ULL
+};
+#define SHORTLIST_COUNT (sizeof(g_shortlist_candidates) / sizeof(g_shortlist_candidates[0]))
+
 #define CHUNK_SIZE (512u * 1024u)
 #define MAX_CANDIDATES 2000000u
 #define MAX_DUMP_CANDIDATES 5000u
@@ -220,6 +260,53 @@ static int write_process(uint64_t address, const void *data, size_t length)
     rw.length = length;
     rw.write_flags = 1;
     return sys_sdk_proc_rw(&rw);
+}
+
+static void load_shortlist_candidates(void)
+{
+    g_candidate_count = 0;
+    g_measurement_index = 1;
+    g_mode = SCAN_MODE_INT32;
+
+    for (size_t i = 0; i < SHORTLIST_COUNT; i++) {
+        uint64_t address = g_shortlist_candidates[i];
+        OrbisKernelVirtualQueryInfo info;
+        uint32_t raw = 0;
+        int32_t value = 0;
+
+        if (sceKernelVirtualQuery((void *)(uintptr_t)address, 0,
+                                  &info, sizeof(info)) < 0 ||
+            (info.prot & CPU_READ) == 0 ||
+            (info.prot & CPU_WRITE) == 0) {
+            append_log("[CareerDiag SHORT36] skip %zu 0x%llX INVALIDO",
+                       i + 1, (unsigned long long)address);
+            continue;
+        }
+
+        if (read_process(address, &raw, sizeof(raw)) != 0) {
+            append_log("[CareerDiag SHORT36] skip %zu 0x%llX READ_FAIL",
+                       i + 1, (unsigned long long)address);
+            continue;
+        }
+
+        memcpy(&value, &raw, sizeof(value));
+        if (value < 0 || value > 255) {
+            append_log("[CareerDiag SHORT36] skip %zu 0x%llX value=%d FORA_FAIXA",
+                       i + 1, (unsigned long long)address, value);
+            continue;
+        }
+
+        g_candidate_address[g_candidate_count] = address;
+        g_candidate_previous[g_candidate_count] = raw;
+        append_log("[CareerDiag SHORT36] load %zu => cand %zu 0x%llX value=%d",
+                   i + 1, g_candidate_count + 1,
+                   (unsigned long long)address, value);
+        g_candidate_count++;
+    }
+
+    dump_candidates();
+    notify_status("[CareerDiag SHORT36 v1030] %zu/%zu candidatos carregados. R2+ESQ testa 1 por vez.",
+                  g_candidate_count, (size_t)SHORTLIST_COUNT);
 }
 
 static bool load_single_candidate_from_file(void)
@@ -492,7 +579,7 @@ static bool init_group_test_mode(void)
     if (fd >= 0) {
         char header[384];
         int n = snprintf(header, sizeof(header),
-                         "PS4 Career Diagnostic - TESTE POR GRUPOS\n"
+                         "PS4 Career Diagnostic - SHORT36 v1030\n"
                          "candidates=%zu\n"
                          "nivel_inicial=1\n"
                          "valor_teste=extremo_oposto (0 ou 255)\n"
@@ -1505,6 +1592,15 @@ int diag_start_worker(void)
     g_group_active_written = 0;
 
     ensure_output_dir();
+
+    {
+        int fd = open(DIAG_LOG, O_WRONLY | O_CREAT | O_TRUNC, 0666);
+        if (fd >= 0) close(fd);
+    }
+
+    append_log("=== CareerDiag SHORT36 v1030 ===");
+    append_log("shortlist_source=current 311-candidate session, original indices 101..136");
+    load_shortlist_candidates();
 
     return scePthreadCreate(&g_worker_thread, NULL, worker_main, NULL,
                             "career_diag_worker");
