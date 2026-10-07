@@ -25,6 +25,7 @@
 #define MAX_CANDIDATES 2000000u
 #define MAX_DUMP_CANDIDATES 5000u
 #define AUTO_MONITOR_THRESHOLD 50000u
+#define TEST_SUSPECT_ADDRESS 0x000000102AA22D10ULL
 
 typedef enum ScanMode {
     SCAN_MODE_INT32 = 0,
@@ -115,6 +116,63 @@ static int read_process(uint64_t address, void *data, size_t length)
     rw.length = length;
     rw.write_flags = 0;
     return sys_sdk_proc_rw(&rw);
+}
+
+static int write_process(uint64_t address, const void *data, size_t length)
+{
+    struct proc_rw rw;
+    memset(&rw, 0, sizeof(rw));
+    rw.address = address;
+    rw.data = (void *)data;
+    rw.length = length;
+    rw.write_flags = 1;
+    return sys_sdk_proc_rw(&rw);
+}
+
+static void test_suspect_plus_one(void)
+{
+    uint32_t raw = 0;
+    int32_t value = 0;
+    OrbisKernelVirtualQueryInfo info;
+
+    if (sceKernelVirtualQuery((void *)(uintptr_t)TEST_SUSPECT_ADDRESS, 0,
+                              &info, sizeof(info)) < 0 ||
+        (info.prot & CPU_READ) == 0 ||
+        (info.prot & CPU_WRITE) == 0) {
+        notify_status("[CareerDiag] TESTE: endereco antigo nao esta gravavel.");
+        return;
+    }
+
+    if (read_process(TEST_SUSPECT_ADDRESS, &raw, sizeof(raw)) != 0) {
+        notify_status("[CareerDiag] TESTE: falha ao ler 0x%llX.",
+                      (unsigned long long)TEST_SUSPECT_ADDRESS);
+        return;
+    }
+
+    memcpy(&value, &raw, sizeof(value));
+
+    if (value < 1 || value > 99) {
+        notify_status("[CareerDiag] TESTE: valor atual %d fora de 1..99; nao alterei.",
+                      value);
+        return;
+    }
+
+    {
+        int32_t next = value + 1;
+        if (write_process(TEST_SUSPECT_ADDRESS, &next, sizeof(next)) != 0) {
+            notify_status("[CareerDiag] TESTE: falha ao escrever.");
+            return;
+        }
+
+        uint32_t verify_raw = 0;
+        int32_t verify = 0;
+        if (read_process(TEST_SUSPECT_ADDRESS, &verify_raw, sizeof(verify_raw)) == 0)
+            memcpy(&verify, &verify_raw, sizeof(verify));
+
+        notify_status("[CareerDiag] TESTE 0x%llX: %d -> %d.",
+                      (unsigned long long)TEST_SUSPECT_ADDRESS,
+                      value, verify);
+    }
 }
 
 static bool is_internal_region(uintptr_t start, uintptr_t end)
@@ -701,6 +759,10 @@ static void execute_action(DiagAction action)
             } else {
                 start_monitor();
             }
+            break;
+
+        case DIAG_ACTION_TEST_PLUS_ONE:
+            test_suspect_plus_one();
             break;
 
         default:
