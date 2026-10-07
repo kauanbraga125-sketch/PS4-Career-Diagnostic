@@ -25,7 +25,18 @@
 #define MAX_CANDIDATES 2000000u
 #define MAX_DUMP_CANDIDATES 5000u
 #define AUTO_MONITOR_THRESHOLD 50000u
-#define TEST_SUSPECT_ADDRESS 0x000000102AA22D10ULL
+static const uint64_t g_test_candidates[] = {
+    0x000000102AA22D10ULL,
+    0x00000010277C3398ULL,
+    0x000000102AA368C8ULL,
+    0x000000001023DB24ULL,
+    0x0000001005FC26FCULL,
+    0x00000010276C5608ULL,
+    0x000000102771BB08ULL,
+    0x000000102793CB98ULL
+};
+#define TEST_CANDIDATE_COUNT (sizeof(g_test_candidates) / sizeof(g_test_candidates[0]))
+static size_t g_test_candidate_index = 0;
 
 typedef enum ScanMode {
     SCAN_MODE_INT32 = 0,
@@ -129,50 +140,64 @@ static int write_process(uint64_t address, const void *data, size_t length)
     return sys_sdk_proc_rw(&rw);
 }
 
-static void test_suspect_plus_one(void)
+static void test_candidate_plus_one(void)
 {
+    uint64_t address = g_test_candidates[g_test_candidate_index];
     uint32_t raw = 0;
     int32_t value = 0;
     OrbisKernelVirtualQueryInfo info;
 
-    if (sceKernelVirtualQuery((void *)(uintptr_t)TEST_SUSPECT_ADDRESS, 0,
+    if (sceKernelVirtualQuery((void *)(uintptr_t)address, 0,
                               &info, sizeof(info)) < 0 ||
         (info.prot & CPU_READ) == 0 ||
         (info.prot & CPU_WRITE) == 0) {
-        notify_status("[CareerDiag] TESTE: endereco antigo nao esta gravavel.");
+        notify_status("[CareerDiag] CAND %zu/%zu: endereco nao gravavel.",
+                      g_test_candidate_index + 1, (size_t)TEST_CANDIDATE_COUNT);
         return;
     }
 
-    if (read_process(TEST_SUSPECT_ADDRESS, &raw, sizeof(raw)) != 0) {
-        notify_status("[CareerDiag] TESTE: falha ao ler 0x%llX.",
-                      (unsigned long long)TEST_SUSPECT_ADDRESS);
+    if (read_process(address, &raw, sizeof(raw)) != 0) {
+        notify_status("[CareerDiag] CAND %zu/%zu: falha ao ler.",
+                      g_test_candidate_index + 1, (size_t)TEST_CANDIDATE_COUNT);
         return;
     }
 
     memcpy(&value, &raw, sizeof(value));
 
     if (value < 1 || value > 99) {
-        notify_status("[CareerDiag] TESTE: valor atual %d fora de 1..99; nao alterei.",
-                      value);
+        notify_status("[CareerDiag] CAND %zu/%zu: valor %d fora 1..99; pule.",
+                      g_test_candidate_index + 1, (size_t)TEST_CANDIDATE_COUNT, value);
         return;
     }
 
     {
         int32_t next = value + 1;
-        if (write_process(TEST_SUSPECT_ADDRESS, &next, sizeof(next)) != 0) {
-            notify_status("[CareerDiag] TESTE: falha ao escrever.");
+        if (write_process(address, &next, sizeof(next)) != 0) {
+            notify_status("[CareerDiag] CAND %zu/%zu: falha ao escrever.",
+                          g_test_candidate_index + 1, (size_t)TEST_CANDIDATE_COUNT);
             return;
         }
 
         uint32_t verify_raw = 0;
-        int32_t verify = 0;
-        if (read_process(TEST_SUSPECT_ADDRESS, &verify_raw, sizeof(verify_raw)) == 0)
+        int32_t verify = value;
+        if (read_process(address, &verify_raw, sizeof(verify_raw)) == 0)
             memcpy(&verify, &verify_raw, sizeof(verify));
 
-        notify_status("[CareerDiag] TESTE 0x%llX: %d -> %d.",
-                      (unsigned long long)TEST_SUSPECT_ADDRESS,
-                      value, verify);
+        notify_status("[CareerDiag] CAND %zu/%zu 0x%llX: %d -> %d.",
+                      g_test_candidate_index + 1, (size_t)TEST_CANDIDATE_COUNT,
+                      (unsigned long long)address, value, verify);
     }
+}
+
+static void test_next_candidate(void)
+{
+    g_test_candidate_index++;
+    if (g_test_candidate_index >= TEST_CANDIDATE_COUNT)
+        g_test_candidate_index = 0;
+
+    notify_status("[CareerDiag] Proximo: CAND %zu/%zu 0x%llX.",
+                  g_test_candidate_index + 1, (size_t)TEST_CANDIDATE_COUNT,
+                  (unsigned long long)g_test_candidates[g_test_candidate_index]);
 }
 
 static bool is_internal_region(uintptr_t start, uintptr_t end)
@@ -762,7 +787,11 @@ static void execute_action(DiagAction action)
             break;
 
         case DIAG_ACTION_TEST_PLUS_ONE:
-            test_suspect_plus_one();
+            test_candidate_plus_one();
+            break;
+
+        case DIAG_ACTION_TEST_NEXT:
+            test_next_candidate();
             break;
 
         default:
