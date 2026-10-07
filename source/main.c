@@ -8,7 +8,7 @@
 attr_public const char *g_pluginName = "career_diag";
 attr_public const char *g_pluginDesc = "On-console player-career memory diagnostic";
 attr_public const char *g_pluginAuth = "Kauan project";
-attr_public uint32_t g_pluginVersion = 0x00000100;
+attr_public uint32_t g_pluginVersion = 0x00000200;
 
 HOOK_INIT(scePadRead);
 
@@ -57,15 +57,19 @@ static void handle_shortcuts(uint32_t buttons)
 
 int32_t scePadRead_hook(int32_t handle, OrbisPadData *data, int32_t count)
 {
-    int32_t result = HOOK_CONTINUE(
-        scePadRead,
-        int32_t (*)(int32_t, OrbisPadData *, int32_t),
-        handle, data, count
-    );
+    /*
+     * Do not call HOOK_CONTINUE(scePadRead) here.
+     * The official GoldHEN gamepad_helper uses scePadReadExt() from inside
+     * the scePadRead hook, avoiding recursive/invalid continuation paths.
+     */
+    int32_t result = scePadReadExt(handle, data, count);
 
-    if (result > 0 && data != NULL) {
-        handle_shortcuts(data[0].buttons);
-        g_previous_buttons = data[0].buttons;
+    if (result <= 0 || data == NULL)
+        return result;
+
+    for (int32_t i = 0; i < result; i++) {
+        handle_shortcuts(data[i].buttons);
+        g_previous_buttons = data[i].buttons;
     }
 
     return result;
