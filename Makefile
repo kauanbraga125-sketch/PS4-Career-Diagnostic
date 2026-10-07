@@ -36,9 +36,14 @@ endif
 SOURCES := $(wildcard $(SRC_DIR)/*.c) $(wildcard $(COMMON_DIR)/*.c)
 OBJECTS := $(patsubst %.c,$(BUILD_DIR)/%.o,$(SOURCES))
 
-.PHONY: all sdk clean
+.PHONY: all sdk clean check
 
 all: sdk $(PRX)
+
+check:
+	@mkdir -p $(BUILD_DIR)/test-output
+	cc -std=c11 -O1 -g -Wall -Wextra -Werror -fsanitize=address,undefined -fno-omit-frame-pointer -Itests/stubs -I$(INCLUDE_DIR) tests/scanner_test.c -o $(BUILD_DIR)/scanner-test
+	./$(BUILD_DIR)/scanner-test
 
 sdk:
 	$(MAKE) -C $(GH_SDK) PRINTF=1 DEBUGFLAGS=1

@@ -13,7 +13,7 @@
 attr_public const char *g_pluginName = "career_diag";
 attr_public const char *g_pluginDesc = "Read-only player-career correlation tracer + ranked single-candidate test";
 attr_public const char *g_pluginAuth = "Kauan project";
-attr_public uint32_t g_pluginVersion = 0x00002100;
+attr_public uint32_t g_pluginVersion = 0x00002110;
 
 HOOK_INIT(scePadRead);
 
@@ -31,9 +31,10 @@ static bool chord_just_pressed(uint32_t buttons, uint32_t modifier, uint32_t but
 static void handle_shortcuts(uint32_t buttons)
 {
     /*
-     * CareerTrace v2100
+     * CareerTrace v2110 (mesma busca organizada da v2100)
      *
      * R1 + CIMA     = baseline completo (reinicia a busca)
+     * R1 + BAIXO    = fase atual, contagens e proximo passo
      * R2 + CIMA     = titularidade SUBIU
      * R2 + BAIXO    = titularidade DESCEU
      * R2 + DIREITA  = controle: titularidade NAO mudou
@@ -67,6 +68,11 @@ static void handle_shortcuts(uint32_t buttons)
         return;
     }
 
+    if (chord_just_pressed(buttons, ORBIS_PAD_BUTTON_R1, ORBIS_PAD_BUTTON_DOWN)) {
+        diag_request(DIAG_ACTION_STATUS);
+        return;
+    }
+
     if (chord_just_pressed(buttons, ORBIS_PAD_BUTTON_R2, ORBIS_PAD_BUTTON_UP)) {
         diag_request(DIAG_ACTION_INCREASED);
         return;
@@ -92,10 +98,10 @@ int32_t scePadRead_hook(int32_t handle, OrbisPadData *data, int32_t count)
 {
     int32_t result = scePadReadExt(handle, data, count);
 
-    if (result <= 0 || data == NULL)
+    if (result <= 0 || data == NULL || count <= 0)
         return result;
 
-    for (int32_t i = 0; i < result; i++) {
+    for (int32_t i = 0; i < result && i < count; i++) {
         handle_shortcuts(data[i].buttons);
         g_previous_buttons = data[i].buttons;
     }
@@ -147,7 +153,7 @@ s32 attr_public plugin_load(s32 argc, const char *argv[])
 
     NotifyStatic(
         TEX_ICON_SYSTEM,
-        "[CareerTrace v2100] R1+CIMA baseline | R2+CIMA UP | R2+BAIXO DOWN | R2+DIR SAME | R2+ESQ FOCUS."
+        "[CareerTrace v2110] R1+CIMA inicia | R1+BAIXO mostra fase e proximo passo. Atalhos de filtro mantidos."
     );
 
     return 0;

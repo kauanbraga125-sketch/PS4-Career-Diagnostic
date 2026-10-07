@@ -17,6 +17,9 @@ jobs:
       - name: Checkout project
         uses: actions/checkout@v4
 
+      - name: Test scanner logic with memory simulation
+        run: make check
+
       - name: Checkout GoldHEN Plugin SDK
         uses: actions/checkout@v4
         with:

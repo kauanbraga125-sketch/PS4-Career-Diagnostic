@@ -13,16 +13,20 @@
 #include <stdarg.h>
 #include <sys/stat.h>
 
+#ifndef DIAG_DIR
 #define DIAG_DIR GOLDHEN_PATH "/career_diag"
+#endif
 #define DIAG_LOG DIAG_DIR "/diagnostic.log"
 #define TRACE_EVENTS DIAG_DIR "/trace_events.txt"
 #define TRACE_PAGES DIAG_DIR "/trace_pages.txt"
 #define TRACE_RANK DIAG_DIR "/trace_rank.txt"
 #define TRACE_TEST DIAG_DIR "/trace_test.txt"
+#define TRACE_STATUS DIAG_DIR "/trace_status.txt"
 
 #define VQ_FIND_NEXT 1
 #define CPU_READ  0x01
 #define CPU_WRITE 0x02
+#define CPU_EXEC  0x04
 
 #define TRACE_PAGE_SIZE 4096u
 #define TRACE_CHUNK_SIZE (512u * 1024u)
@@ -31,6 +35,9 @@
 #define TRACE_MAX_FOCUS_BYTES (TRACE_MAX_FOCUS_PAGES * TRACE_PAGE_SIZE)
 #define TRACE_TOP_RESULTS 300u
 #define TRACE_TEST_QUEUE 64u
+/* Every event contributes at most 8: scores stay exact in int16_t. */
+#define TRACE_MAX_DETAIL_EVENTS 3000u
+#define TRACE_TEST_DURATION_US 10000000ULL
 
 typedef enum TracePhase {
     TRACE_PHASE_IDLE = 0,
@@ -62,22 +69,31 @@ typedef struct TracePage {
     int16_t score;
     uint8_t changes;
     uint8_t noise;
+    uint8_t valid;
 } TracePage;
 
 typedef struct RankItem {
-    int8_t score;
+    int16_t score;
     uint8_t type;
     uint16_t page_index;
     uint16_t offset;
     uint16_t reserved;
 } RankItem;
 
+typedef struct TraceEvidence {
+    uint16_t up;
+    uint16_t down;
+    uint16_t same;
+} TraceEvidence;
+
 static TracePage g_pages[TRACE_MAX_PAGES];
 static uint8_t g_chunk[TRACE_CHUNK_SIZE];
 
 static uint64_t g_focus_address[TRACE_MAX_FOCUS_PAGES];
 static uint8_t g_focus_prev[TRACE_MAX_FOCUS_BYTES];
-static int8_t g_detail_score[TRACE_TYPE_COUNT][TRACE_MAX_FOCUS_BYTES];
+static int16_t g_detail_score[TRACE_TYPE_COUNT][TRACE_MAX_FOCUS_BYTES];
+static TraceEvidence g_focus_evidence[TRACE_MAX_FOCUS_PAGES];
+static bool g_focus_valid[TRACE_MAX_FOCUS_PAGES];
 
 static RankItem g_top_results[TRACE_TOP_RESULTS];
 static size_t g_top_count = 0;
@@ -89,6 +105,11 @@ static bool g_test_armed = false;
 static bool g_test_active = false;
 static uint64_t g_test_active_address = 0;
 static uint64_t g_test_original_raw = 0;
+static uint64_t g_test_applied_raw = 0;
+static uint64_t g_test_deadline = 0;
+static uintptr_t g_test_region_start = 0;
+static uintptr_t g_test_region_end = 0;
+static bool g_detail_needs_refresh = false;
 static size_t g_test_active_size = 0;
 static TraceType g_test_active_type = TRACE_U8;
 
@@ -106,20 +127,55 @@ static uint32_t g_detail_up = 0;
 static uint32_t g_detail_down = 0;
 static uint32_t g_detail_same = 0;
 
-static volatile int g_pending_action = DIAG_ACTION_NONE;
-static volatile int g_worker_running = 0;
-static volatile int g_busy = 0;
+static int g_pending_action = DIAG_ACTION_NONE;
+static int g_worker_running = 0;
+static int g_busy = 0;
+static int g_rejected_action = DIAG_ACTION_NONE;
 static OrbisPthread g_worker_thread;
 
-static void restore_active_test(void);
+typedef enum RestoreResult {
+    RESTORE_NONE, RESTORE_OK, RESTORE_GAME_CHANGED, RESTORE_RETRY
+} RestoreResult;
+
+static RestoreResult restore_active_test(void);
 static void dump_detail_ranking(void);
+static void show_status(void);
+
+static bool worker_running(void)
+{
+    return __atomic_load_n(&g_worker_running, __ATOMIC_ACQUIRE) != 0;
+}
+
+static bool write_all(int fd, const char *data, size_t length)
+{
+    while (length > 0) {
+        ssize_t n = write(fd, data, length);
+        /* Fail closed on any error: the PS4 libc stub does not export
+         * __errno_location, and an incomplete journal must block a test. */
+        if (n <= 0) return false;
+        data += n;
+        length -= (size_t)n;
+    }
+    return true;
+}
+
+static bool write_format(int fd, const char *fmt, ...)
+{
+    char line[1024];
+    va_list args;
+    va_start(args, fmt);
+    int n = vsnprintf(line, sizeof(line), fmt, args);
+    va_end(args);
+    /* snprintf returns the required length, not the available bytes. */
+    return n >= 0 && (size_t)n < sizeof(line) && write_all(fd, line, (size_t)n);
+}
 
 static void ensure_output_dir(void)
 {
     mkdir(DIAG_DIR, 0777);
 }
 
-static void append_file_line(const char *path, const char *fmt, va_list args)
+static bool append_file_line(const char *path, const char *fmt, va_list args)
 {
     char line[768];
     int fd;
@@ -129,17 +185,17 @@ static void append_file_line(const char *path, const char *fmt, va_list args)
 
     len = vsnprintf(line, sizeof(line), fmt, args);
     if (len <= 0)
-        return;
+        return false;
     if ((size_t)len >= sizeof(line))
-        len = (int)sizeof(line) - 1;
+        return false;
 
     fd = open(path, O_WRONLY | O_CREAT | O_APPEND, 0666);
     if (fd < 0)
-        return;
+        return false;
 
-    write(fd, line, (size_t)len);
-    write(fd, "\n", 1);
-    close(fd);
+    bool ok = write_all(fd, line, (size_t)len) && write_all(fd, "\n", 1);
+    if (close(fd) != 0) ok = false;
+    return ok;
 }
 
 static void append_log(const char *fmt, ...)
@@ -158,12 +214,13 @@ static void append_event_line(const char *fmt, ...)
     va_end(args);
 }
 
-static void append_test_line(const char *fmt, ...)
+static bool append_test_line(const char *fmt, ...)
 {
     va_list args;
     va_start(args, fmt);
-    append_file_line(TRACE_TEST, fmt, args);
+    bool ok = append_file_line(TRACE_TEST, fmt, args);
     va_end(args);
+    return ok;
 }
 
 static void notify_status(const char *fmt, ...)
@@ -227,7 +284,7 @@ static bool overlaps_internal_region(uintptr_t start, uintptr_t end)
         return true;
     if (ranges_overlap(start, end,
                        (uintptr_t)&g_detail_score[0][0],
-                       (uintptr_t)&g_detail_score[TRACE_TYPE_COUNT - 1][TRACE_MAX_FOCUS_BYTES - 1] + 1))
+                       (uintptr_t)(&g_detail_score[TRACE_TYPE_COUNT - 1][TRACE_MAX_FOCUS_BYTES - 1] + 1)))
         return true;
     return false;
 }
@@ -255,11 +312,11 @@ static int16_t sat_page_score(int value)
     return (int16_t)value;
 }
 
-static int8_t sat_detail_score(int value)
+static int16_t sat_detail_score(int value)
 {
-    if (value > 120) return 120;
-    if (value < -120) return -120;
-    return (int8_t)value;
+    if (value > 30000) return 30000;
+    if (value < -30000) return -30000;
+    return (int16_t)value;
 }
 
 static const char *label_name(TraceLabel label)
@@ -317,6 +374,7 @@ static void clear_trace_files(void)
     truncate_file(TRACE_PAGES);
     truncate_file(TRACE_RANK);
     truncate_file(TRACE_TEST);
+    truncate_file(TRACE_STATUS);
 }
 
 static void reset_trace_state(void)
@@ -341,8 +399,11 @@ static void reset_trace_state(void)
     g_test_queue_count = 0;
     g_test_queue_cursor = 0;
     g_test_armed = false;
+    g_detail_needs_refresh = false;
 
     memset(g_detail_score, 0, sizeof(g_detail_score));
+    memset(g_focus_evidence, 0, sizeof(g_focus_evidence));
+    memset(g_focus_valid, 0, sizeof(g_focus_valid));
 }
 
 static void initial_page_snapshot(void)
@@ -354,13 +415,17 @@ static void initial_page_snapshot(void)
     uint32_t regions_scanned = 0;
     bool hit_cap = false;
 
+    if (restore_active_test() == RESTORE_RETRY) {
+        notify_status("[CareerTrace] Restauracao pendente. R1+DIR tenta novamente antes de reiniciar.");
+        return;
+    }
     reset_trace_state();
     clear_trace_files();
 
-    notify_status("[CareerTrace v2100] Baseline completo iniciado. Aguarde.");
-    append_log("=== CareerTrace v2100 page baseline ===");
+    notify_status("[CareerTrace v2110] Baseline completo iniciado. Aguarde.");
+    append_log("=== CareerTrace v2110 page baseline ===");
 
-    while (!hit_cap &&
+    while (worker_running() && !hit_cap &&
            sceKernelVirtualQuery(cursor, VQ_FIND_NEXT, &info, sizeof(info)) >= 0) {
         uintptr_t start = (uintptr_t)info.start_addr;
         uintptr_t end = (uintptr_t)info.end_addr;
@@ -373,7 +438,7 @@ static void initial_page_snapshot(void)
 
         if ((info.prot & (CPU_READ | CPU_WRITE)) != (CPU_READ | CPU_WRITE))
             continue;
-        if (info.isStack)
+        if (info.isStack || (info.prot & CPU_EXEC))
             continue;
         if (overlaps_internal_region(start, end))
             continue;
@@ -381,7 +446,7 @@ static void initial_page_snapshot(void)
         regions_scanned++;
 
         uintptr_t current = start;
-        while (current + TRACE_PAGE_SIZE <= end && !hit_cap) {
+        while (worker_running() && current + TRACE_PAGE_SIZE <= end && !hit_cap) {
             size_t remaining = (size_t)(end - current);
             size_t amount = remaining < TRACE_CHUNK_SIZE ?
                             remaining : TRACE_CHUNK_SIZE;
@@ -409,6 +474,7 @@ static void initial_page_snapshot(void)
                 p->score = 0;
                 p->changes = 0;
                 p->noise = 0;
+                p->valid = 1;
             }
 
             bytes_scanned += amount;
@@ -417,7 +483,8 @@ static void initial_page_snapshot(void)
         }
     }
 
-    g_phase = TRACE_PHASE_PAGES;
+    if (!worker_running()) return;
+    g_phase = g_page_count ? TRACE_PHASE_PAGES : TRACE_PHASE_IDLE;
 
     append_log("baseline regions=%u bytes=%llu pages=%zu cap=%d",
                regions_scanned,
@@ -425,15 +492,17 @@ static void initial_page_snapshot(void)
                g_page_count,
                hit_cap ? 1 : 0);
 
-    append_event_line("CareerTrace v2100");
+    append_event_line("CareerTrace v2110");
     append_event_line("BASELINE pages=%zu bytes=%llu regions=%u cap=%d",
                       g_page_count,
                       (unsigned long long)bytes_scanned,
                       regions_scanned,
                       hit_cap ? 1 : 0);
 
-    notify_status("[CareerTrace] Baseline: %zu paginas. Faça 2 UP + 2 DOWN + 1 SAME antes do FOCUS.",
-                  g_page_count);
+    if (g_page_count == 0)
+        notify_status("[CareerTrace] Nenhuma pagina lida. Baseline nao criado; veja diagnostic.log.");
+    else
+        notify_status("[CareerTrace] FASE 1: %zu paginas. Registre 2 subidas, 2 quedas e 1 igual. R1+BAIXO: ajuda.", g_page_count);
 }
 
 static void page_apply_event(TracePage *p, bool changed, TraceLabel label)
@@ -465,7 +534,7 @@ static size_t rescan_pages(TraceLabel label, size_t *read_fail_out)
     size_t read_fail = 0;
     size_t i = 0;
 
-    while (i < g_page_count) {
+    while (worker_running() && i < g_page_count) {
         uint64_t start = g_pages[i].address;
         size_t pages_in_chunk = 1;
 
@@ -482,6 +551,11 @@ static size_t rescan_pages(TraceLabel label, size_t *read_fail_out)
             for (size_t j = 0; j < pages_in_chunk; j++) {
                 TracePage *p = &g_pages[i + j];
                 uint64_t now_hash = hash_page(g_chunk + j * TRACE_PAGE_SIZE);
+                if (!p->valid) {
+                    p->hash = now_hash;
+                    p->valid = 1;
+                    continue;
+                }
                 bool changed = now_hash != p->hash;
 
                 if (changed)
@@ -496,10 +570,18 @@ static size_t rescan_pages(TraceLabel label, size_t *read_fail_out)
 
                 if (read_process(p->address, g_chunk, TRACE_PAGE_SIZE) != 0) {
                     read_fail++;
+                    p->valid = 0;
+                    p->score = 0;
+                    p->changes = p->noise = 0;
                     continue;
                 }
 
                 uint64_t now_hash = hash_page(g_chunk);
+                if (!p->valid) {
+                    p->hash = now_hash;
+                    p->valid = 1;
+                    continue;
+                }
                 bool changed = now_hash != p->hash;
 
                 if (changed)
@@ -549,11 +631,11 @@ static void write_page_ranking(void)
 
     {
         int n = snprintf(line, sizeof(line),
-                         "CareerTrace v2100 - page ranking\n"
+                         "CareerTrace v2110 - page ranking\n"
                          "page_events=%u up=%u down=%u same=%u pages=%zu\n\n",
                          g_page_events, g_page_up, g_page_down,
                          g_page_same, g_page_count);
-        if (n > 0) write(fd, line, (size_t)n);
+        if (n > 0 && (size_t)n < sizeof(line)) write_all(fd, line, (size_t)n);
     }
 
     limit = g_page_count < 300 ? g_page_count : 300;
@@ -565,7 +647,7 @@ static void write_page_ranking(void)
                          (unsigned)g_pages[i].changes,
                          (unsigned)g_pages[i].noise,
                          (unsigned long long)g_pages[i].address);
-        if (n > 0) write(fd, line, (size_t)n);
+        if (n > 0 && (size_t)n < sizeof(line)) write_all(fd, line, (size_t)n);
     }
 
     close(fd);
@@ -599,7 +681,7 @@ static bool capture_focus_pages(void)
     for (size_t i = 0;
          i < g_page_count && captured < TRACE_MAX_FOCUS_PAGES;
          i++) {
-        if (g_pages[i].changes == 0)
+        if (!g_pages[i].valid || g_pages[i].changes == 0)
             continue;
 
         if (g_pages[i].score < 0 && captured >= 128)
@@ -610,6 +692,8 @@ static bool capture_focus_pages(void)
             continue;
 
         g_focus_address[captured] = g_pages[i].address;
+        g_focus_valid[captured] = true;
+        memset(&g_focus_evidence[captured], 0, sizeof(g_focus_evidence[captured]));
         captured++;
     }
 
@@ -762,7 +846,7 @@ static int relation_f64(const uint8_t *p, const uint8_t *c,
     return 0;
 }
 
-static void score_relation(int8_t *score, int relation, TraceLabel label)
+static void score_relation(int16_t *score, int relation, TraceLabel label)
 {
     int delta;
 
@@ -824,7 +908,7 @@ static void heap_sift_down(RankItem *heap, size_t count, size_t index)
 }
 
 static void rank_consider(RankItem *heap, size_t *count,
-                          int8_t score, TraceType type,
+                          int16_t score, TraceType type,
                           uint16_t page_index, uint16_t offset)
 {
     RankItem item;
@@ -868,15 +952,21 @@ static int rank_desc_cmp(const void *a, const void *b)
     return 0;
 }
 
-static int detail_max_score(void)
+static int detail_max_score(size_t page)
 {
-    return (int)(g_detail_up + g_detail_down) * 8 +
-           (int)g_detail_same * 3;
+    const TraceEvidence *e = &g_focus_evidence[page];
+    return (int)(e->up + e->down) * 8 + (int)e->same * 3;
+}
+
+static bool focus_evidence_ready(size_t page)
+{
+    const TraceEvidence *e = &g_focus_evidence[page];
+    return g_focus_valid[page] && e->up >= 2 && e->down >= 2 && e->same >= 1;
 }
 
 static int item_confidence(const RankItem *r)
 {
-    int max_score = detail_max_score();
+    int max_score = detail_max_score(r->page_index);
     int score = (int)r->score;
 
     if (max_score <= 0 || score <= 0)
@@ -931,6 +1021,8 @@ static void rebuild_test_queue(void)
     for (size_t i = 0;
          i < g_top_count && g_test_queue_count < TRACE_TEST_QUEUE;
          i++) {
+        if (!focus_evidence_ready(g_top_results[i].page_index))
+            continue;
         if (g_top_results[i].score < 8)
             continue;
         if (item_confidence(&g_top_results[i]) < 55)
@@ -945,10 +1037,15 @@ static void rebuild_test_queue(void)
             RankItem *old = &g_top_results[g_test_queue[q]];
             uint64_t old_address =
                 g_focus_address[old->page_index] + old->offset;
-            uint64_t diff = address > old_address ?
-                            address - old_address :
-                            old_address - address;
-            if (diff <= 7) {
+            /* Signed/unsigned views of the same width are aliases.
+             * Adjacent values and float/int views remain distinct. */
+            unsigned type = g_top_results[i].type;
+            unsigned old_type = old->type;
+            if (type == TRACE_I16) type = TRACE_U16;
+            if (type == TRACE_I32) type = TRACE_U32;
+            if (old_type == TRACE_I16) old_type = TRACE_U16;
+            if (old_type == TRACE_I32) old_type = TRACE_U32;
+            if (address == old_address && type == old_type) {
                 near_duplicate = true;
                 break;
             }
@@ -964,7 +1061,6 @@ static void dump_detail_ranking(void)
     RankItem heap[TRACE_TOP_RESULTS];
     size_t heap_count = 0;
     int fd;
-    char line[420];
 
     if (g_phase != TRACE_PHASE_DETAIL || g_focus_count == 0) {
         notify_status("[CareerTrace] Ranking exato ainda nao existe. Primeiro faca FOCUS.");
@@ -972,6 +1068,7 @@ static void dump_detail_ranking(void)
     }
 
     for (size_t p = 0; p < g_focus_count; p++) {
+        if (!g_focus_valid[p]) continue;
         size_t base = p * TRACE_PAGE_SIZE;
 
         for (size_t off = 0; off < TRACE_PAGE_SIZE; off++) {
@@ -1023,52 +1120,48 @@ static void dump_detail_ranking(void)
 
     ensure_output_dir();
     fd = open(TRACE_RANK, O_WRONLY | O_CREAT | O_TRUNC, 0666);
-    if (fd < 0)
+    if (fd < 0) {
+        notify_status("[CareerTrace] Ranking calculado, mas falhou ao salvar trace_rank.txt.");
         return;
-
-    {
-        int n = snprintf(line, sizeof(line),
-                         "CareerTrace v2100 - exact correlation ranking\n"
-                         "focused_pages=%zu detail_events=%u UP=%u DOWN=%u SAME=%u\n"
-                         "types=u8,u16,i16,u32,i32,i64,f32,f64; unaligned offsets included\n"
-                         "score: direction match +8, opposite -8, no-change on directional -2, SAME stable +3, SAME noise -10\n"
-                         "confidence = score / best possible score for labeled events\n"
-                         "test_queue=%zu (confidence>=55%%, score>=8, near-duplicates collapsed)\n\n",
-                         g_focus_count, g_detail_events,
-                         g_detail_up, g_detail_down, g_detail_same,
-                         g_test_queue_count);
-        if (n > 0) write(fd, line, (size_t)n);
     }
+
+    bool saved = write_format(fd,
+        "CareerTrace v2110 - ranking de correlacao\n"
+        "focused_pages=%zu detail_events=%u UP=%u DOWN=%u SAME=%u\n"
+        "types=u8,u16,i16,u32,i32,i64,f32,f64; unaligned offsets included\n"
+        "score: match +8, opposite -8, stationary -2, SAME stable +3, SAME noise -10\n"
+        "match = score / maximum for this page's valid comparisons; NOT probability or proof\n"
+        "test_queue=%zu (match>=55%%, score>=8, at least 2 UP + 2 DOWN + 1 SAME per page)\n"
+        "Only equivalent signed/unsigned views at the same address are collapsed.\n\n",
+        g_focus_count, g_detail_events, g_detail_up, g_detail_down,
+        g_detail_same, g_test_queue_count);
 
     for (size_t i = 0; i < heap_count; i++) {
         RankItem *r = &heap[i];
         size_t base = (size_t)r->page_index * TRACE_PAGE_SIZE;
         const uint8_t *ptr = g_focus_prev + base + r->offset;
         uint64_t address = g_focus_address[r->page_index] + r->offset;
+        const TraceEvidence *e = &g_focus_evidence[r->page_index];
         char value[80];
-
         format_value(value, sizeof(value), (TraceType)r->type, ptr);
-
-        int n = snprintf(line, sizeof(line),
-                         "%03zu score=%d conf=%d%% type=%s addr=0x%016llX value=%s page=%u off=0x%03X\n",
-                         i + 1,
-                         (int)r->score,
-                         item_confidence(r),
-                         type_name((TraceType)r->type),
-                         (unsigned long long)address,
-                         value,
-                         (unsigned)r->page_index,
-                         (unsigned)r->offset);
-        if (n > 0) write(fd, line, (size_t)n);
+        if (!write_format(fd,
+                "%03zu score=%d match=%d%% type=%s addr=0x%016llX value=%s U=%u D=%u S=%u ready=%d page=%u off=0x%03X\n",
+                i + 1, (int)r->score, item_confidence(r),
+                type_name((TraceType)r->type), (unsigned long long)address, value,
+                e->up, e->down, e->same, focus_evidence_ready(r->page_index),
+                (unsigned)r->page_index, (unsigned)r->offset)) saved = false;
     }
-
-    close(fd);
+    if (close(fd) != 0) saved = false;
+    if (!saved) {
+        notify_status("[CareerTrace] Erro salvando ranking completo. Ranking mantido em memoria.");
+        return;
+    }
 
     if (heap_count > 0) {
         RankItem *top = &heap[0];
         uint64_t address = g_focus_address[top->page_index] + top->offset;
 
-        notify_status("[CareerTrace] TOP: score=%d conf=%d%% %s 0x%llX | fila teste=%zu.",
+        notify_status("[CareerTrace] FASE 2 TOP: score=%d match=%d%% %s 0x%llX | fila teste=%zu.",
                       (int)top->score,
                       item_confidence(top),
                       type_name((TraceType)top->type),
@@ -1083,12 +1176,30 @@ static void detail_event(TraceLabel label)
 {
     size_t pages_read = 0;
     size_t pages_failed = 0;
+    size_t pages_rebased = 0;
 
-    for (size_t p = 0; p < g_focus_count; p++) {
+    if (g_detail_events >= TRACE_MAX_DETAIL_EVENTS) {
+        notify_status("[CareerTrace] Limite de %u eventos. Salve o ranking e reinicie o baseline.", TRACE_MAX_DETAIL_EVENTS);
+        return;
+    }
+
+    for (size_t p = 0; worker_running() && p < g_focus_count; p++) {
         uint8_t *prev = g_focus_prev + p * TRACE_PAGE_SIZE;
 
         if (read_process(g_focus_address[p], g_chunk, TRACE_PAGE_SIZE) != 0) {
             pages_failed++;
+            g_focus_valid[p] = false;
+            memset(&g_focus_evidence[p], 0, sizeof(g_focus_evidence[p]));
+            for (size_t t = 0; t < TRACE_TYPE_COUNT; t++)
+                memset(g_detail_score[t] + p * TRACE_PAGE_SIZE, 0,
+                       TRACE_PAGE_SIZE * sizeof(g_detail_score[0][0]));
+            continue;
+        }
+
+        if (!g_focus_valid[p]) {
+            memcpy(prev, g_chunk, TRACE_PAGE_SIZE);
+            g_focus_valid[p] = true;
+            pages_rebased++;
             continue;
         }
 
@@ -1120,6 +1231,8 @@ static void detail_event(TraceLabel label)
                 rel = relation_f32(prev, g_chunk, off, &valid);
                 if (valid)
                     score_relation(&g_detail_score[TRACE_F32][idx], rel, label);
+                else
+                    g_detail_score[TRACE_F32][idx] = 0;
             }
 
             if (off + 8 <= TRACE_PAGE_SIZE) {
@@ -1129,11 +1242,25 @@ static void detail_event(TraceLabel label)
                 rel = relation_f64(prev, g_chunk, off, &valid);
                 if (valid)
                     score_relation(&g_detail_score[TRACE_F64][idx], rel, label);
+                else
+                    g_detail_score[TRACE_F64][idx] = 0;
             }
         }
 
         memcpy(prev, g_chunk, TRACE_PAGE_SIZE);
+        TraceEvidence *e = &g_focus_evidence[p];
+        if (label == TRACE_LABEL_UP) e->up++;
+        else if (label == TRACE_LABEL_DOWN) e->down++;
+        else e->same++;
         sceKernelUsleep(250);
+    }
+
+    if (!worker_running()) return;
+    if (pages_read == 0) {
+        g_top_count = g_test_queue_count = 0;
+        notify_status("[CareerTrace] Evento nao contado: sem comparacoes validas (%zu falhas, %zu referencias renovadas).", pages_failed, pages_rebased);
+        dump_detail_ranking();
+        return;
     }
 
     g_detail_events++;
@@ -1141,9 +1268,9 @@ static void detail_event(TraceLabel label)
     else if (label == TRACE_LABEL_DOWN) g_detail_down++;
     else g_detail_same++;
 
-    append_event_line("DETAIL %u %s read=%zu fail=%zu focused=%zu U=%u D=%u S=%u",
+    append_event_line("DETAIL %u %s read=%zu fail=%zu rebased=%zu focused=%zu U=%u D=%u S=%u",
                       g_detail_events, label_name(label),
-                      pages_read, pages_failed, g_focus_count,
+                      pages_read, pages_failed, pages_rebased, g_focus_count,
                       g_detail_up, g_detail_down, g_detail_same);
 
     dump_detail_ranking();
@@ -1165,6 +1292,12 @@ static void record_event(TraceLabel label)
         size_t fail = 0;
         size_t changed = rescan_pages(label, &fail);
 
+        if (!worker_running()) return;
+        if (fail == g_page_count) {
+            notify_status("[CareerTrace] Evento nao contado: nenhuma pagina legivel.");
+            return;
+        }
+
         g_page_events++;
         if (label == TRACE_LABEL_UP) g_page_up++;
         else if (label == TRACE_LABEL_DOWN) g_page_down++;
@@ -1185,6 +1318,10 @@ static void record_event(TraceLabel label)
 
 static void dump_or_focus(void)
 {
+    if (g_test_armed || g_test_active) {
+        notify_status("[CareerTrace] Ranking preservado durante teste. L1+R1 desarma antes de refiltrar.");
+        return;
+    }
     if (g_phase == TRACE_PHASE_IDLE) {
         notify_status("[CareerTrace] Nada ainda. R1+CIMA cria o baseline.");
         return;
@@ -1205,29 +1342,83 @@ static bool detail_evidence_ready(void)
            g_detail_same >= 1;
 }
 
-static void restore_active_test(void)
+static bool query_test_region(uint64_t address, size_t size,
+                              OrbisKernelVirtualQueryInfo *info)
 {
-    if (!g_test_active)
-        return;
+    if (!size || size > sizeof(uint64_t) || address > UINT64_MAX - size)
+        return false;
+    if (sceKernelVirtualQuery((void *)(uintptr_t)address, 0,
+                              info, sizeof(*info)) < 0)
+        return false;
+    return (uintptr_t)info->start_addr <= address &&
+           address + size <= (uintptr_t)info->end_addr &&
+           (info->prot & (CPU_READ | CPU_WRITE)) == (CPU_READ | CPU_WRITE) &&
+           !(info->prot & CPU_EXEC) && !info->isStack &&
+           !overlaps_internal_region((uintptr_t)address, (uintptr_t)(address + size));
+}
 
-    if (write_process(g_test_active_address,
-                      &g_test_original_raw,
-                      g_test_active_size) == 0) {
-        append_test_line("RESTORE type=%s addr=0x%016llX size=%zu",
-                         type_name(g_test_active_type),
-                         (unsigned long long)g_test_active_address,
-                         g_test_active_size);
-    } else {
-        append_test_line("RESTORE_FAIL type=%s addr=0x%016llX size=%zu",
-                         type_name(g_test_active_type),
-                         (unsigned long long)g_test_active_address,
-                         g_test_active_size);
-    }
-
+static void clear_active_test(void)
+{
     g_test_active = false;
     g_test_active_address = 0;
     g_test_active_size = 0;
-    g_test_original_raw = 0;
+    g_test_original_raw = g_test_applied_raw = g_test_deadline = 0;
+}
+
+static RestoreResult restore_active_test(void)
+{
+    OrbisKernelVirtualQueryInfo info;
+    uint64_t current = 0, verify = 0;
+    if (!g_test_active) return RESTORE_NONE;
+
+    if (!query_test_region(g_test_active_address, g_test_active_size, &info) ||
+        read_process(g_test_active_address, &current, g_test_active_size) != 0) {
+        append_test_line("RESTORE_PENDING addr=0x%016llX original=0x%016llX applied=0x%016llX size=%zu",
+                         (unsigned long long)g_test_active_address,
+                         (unsigned long long)g_test_original_raw,
+                         (unsigned long long)g_test_applied_raw, g_test_active_size);
+        return RESTORE_RETRY;
+    }
+    if ((uintptr_t)info.start_addr != g_test_region_start ||
+        (uintptr_t)info.end_addr != g_test_region_end ||
+        (memcmp(&current, &g_test_applied_raw, g_test_active_size) != 0 &&
+         memcmp(&current, &g_test_original_raw, g_test_active_size) != 0)) {
+        append_test_line("RESTORE_SKIPPED_GAME_CHANGED addr=0x%016llX current=0x%016llX",
+                         (unsigned long long)g_test_active_address,
+                         (unsigned long long)current);
+        clear_active_test();
+        return RESTORE_GAME_CHANGED;
+    }
+    if (memcmp(&current, &g_test_original_raw, g_test_active_size) != 0) {
+        if (write_process(g_test_active_address, &g_test_original_raw, g_test_active_size) != 0 ||
+            read_process(g_test_active_address, &verify, g_test_active_size) != 0 ||
+            memcmp(&verify, &g_test_original_raw, g_test_active_size) != 0) {
+            append_test_line("RESTORE_PENDING verification_failed addr=0x%016llX",
+                             (unsigned long long)g_test_active_address);
+            return RESTORE_RETRY;
+        }
+    }
+    append_test_line("RESTORED type=%s addr=0x%016llX size=%zu",
+                     type_name(g_test_active_type),
+                     (unsigned long long)g_test_active_address, g_test_active_size);
+    clear_active_test();
+    return RESTORE_OK;
+}
+
+/* Test writes must never be learned as natural changes of titularidade. */
+static void refresh_detail_reference(void)
+{
+    if (!g_detail_needs_refresh) return;
+    memset(g_detail_score, 0, sizeof(g_detail_score));
+    memset(g_focus_evidence, 0, sizeof(g_focus_evidence));
+    for (size_t p = 0; p < g_focus_count; p++)
+        g_focus_valid[p] = read_process(g_focus_address[p],
+                                      g_focus_prev + p * TRACE_PAGE_SIZE,
+                                      TRACE_PAGE_SIZE) == 0;
+    g_detail_events = g_detail_up = g_detail_down = g_detail_same = 0;
+    g_top_count = g_test_queue_count = g_test_queue_cursor = 0;
+    g_detail_needs_refresh = false;
+    append_event_line("DETAIL_REBASE_AFTER_TEST collect_new_natural_events");
 }
 
 static bool make_test_value(TraceType type, uint64_t original,
@@ -1239,41 +1430,44 @@ static bool make_test_value(TraceType type, uint64_t original,
 
     if (type == TRACE_U8) {
         uint8_t a = (uint8_t)original;
-        uint8_t b = a <= 247 ? (uint8_t)(a + 8) : (uint8_t)(a - 8);
+        uint8_t b = a < 255 ? (uint8_t)(a + 1) : (uint8_t)(a - 1);
         test = b;
         snprintf(before, before_size, "%u", (unsigned)a);
         snprintf(after, after_size, "%u", (unsigned)b);
     } else if (type == TRACE_U16) {
         uint16_t a = (uint16_t)original;
-        uint16_t b = a <= 65503 ? (uint16_t)(a + 32) : (uint16_t)(a - 32);
+        uint16_t b = a < 65535 ? (uint16_t)(a + 1) : (uint16_t)(a - 1);
         test = b;
         snprintf(before, before_size, "%u", (unsigned)a);
         snprintf(after, after_size, "%u", (unsigned)b);
     } else if (type == TRACE_I16) {
         int16_t a;
         memcpy(&a, &original, sizeof(a));
-        int16_t b = a <= 32735 ? (int16_t)(a + 32) : (int16_t)(a - 32);
+        int16_t b = a < 32767 ? (int16_t)(a + 1) : (int16_t)(a - 1);
         memcpy(&test, &b, sizeof(b));
         snprintf(before, before_size, "%d", (int)a);
         snprintf(after, after_size, "%d", (int)b);
     } else if (type == TRACE_U32) {
         uint32_t a;
         memcpy(&a, &original, sizeof(a));
-        uint32_t b = a <= 0xFFFFFFDFu ? a + 32u : a - 32u;
+        if (a > 1000000u) return false;
+        uint32_t b = a + 1u;
         memcpy(&test, &b, sizeof(b));
         snprintf(before, before_size, "%u", (unsigned)a);
         snprintf(after, after_size, "%u", (unsigned)b);
     } else if (type == TRACE_I32) {
         int32_t a;
         memcpy(&a, &original, sizeof(a));
-        int32_t b = a <= 2147483615 ? a + 32 : a - 32;
+        if (a < -1000000 || a > 1000000) return false;
+        int32_t b = a + 1;
         memcpy(&test, &b, sizeof(b));
         snprintf(before, before_size, "%d", a);
         snprintf(after, after_size, "%d", b);
     } else if (type == TRACE_I64) {
         int64_t a;
         memcpy(&a, &original, sizeof(a));
-        int64_t b = a <= 9223372036854775743LL ? a + 64 : a - 64;
+        if (a < -1000000 || a > 1000000) return false;
+        int64_t b = a + 1;
         memcpy(&test, &b, sizeof(b));
         snprintf(before, before_size, "%lld", (long long)a);
         snprintf(after, after_size, "%lld", (long long)b);
@@ -1286,10 +1480,11 @@ static bool make_test_value(TraceType type, uint64_t original,
         memcpy(&a, &bits, sizeof(a));
 
         float aa = a < 0.0f ? -a : a;
-        float delta = aa * 0.10f;
-        if (delta < 0.05f) delta = 0.05f;
-        if (delta > 5.0f) delta = 5.0f;
+        if (aa > 1000000.0f || (aa > 0.0f && aa < 0.000001f)) return false;
+        float delta = aa <= 1.0f ? 0.01f : 1.0f;
         b = a + delta;
+        if (a >= 0.0f && a <= 1.0f && b > 1.0f) b = a - delta;
+        if (b == a) return false;
         memcpy(&test, &b, sizeof(b));
         snprintf(before, before_size, "%.8g", (double)a);
         snprintf(after, after_size, "%.8g", (double)b);
@@ -1300,10 +1495,11 @@ static bool make_test_value(TraceType type, uint64_t original,
         memcpy(&a, &original, sizeof(a));
 
         double aa = a < 0.0 ? -a : a;
-        double delta = aa * 0.10;
-        if (delta < 0.05) delta = 0.05;
-        if (delta > 5.0) delta = 5.0;
+        if (aa > 1000000.0 || (aa > 0.0 && aa < 0.000000001)) return false;
+        double delta = aa <= 1.0 ? 0.01 : 1.0;
         b = a + delta;
+        if (a >= 0.0 && a <= 1.0 && b > 1.0) b = a - delta;
+        if (b == a) return false;
         memcpy(&test, &b, sizeof(b));
         snprintf(before, before_size, "%.12g", a);
         snprintf(after, after_size, "%.12g", b);
@@ -1318,10 +1514,18 @@ static bool make_test_value(TraceType type, uint64_t original,
 static void toggle_test_arm(void)
 {
     if (g_test_armed) {
-        restore_active_test();
+        RestoreResult result = restore_active_test();
+        if (result == RESTORE_RETRY) {
+            notify_status("[CareerTrace] Restauracao pendente. R1+DIR tenta novamente.");
+            return;
+        }
         g_test_armed = false;
         g_test_queue_cursor = 0;
-        notify_status("[CareerTrace] TESTE desarmado; valor restaurado.");
+        bool refresh = g_detail_needs_refresh;
+        refresh_detail_reference();
+        notify_status("[CareerTrace] TESTE desarmado.%s%s",
+                      result == RESTORE_GAME_CHANGED ? " Jogo mudou valor; restauracao ignorada." : "",
+                      refresh ? " Referencia renovada: repita eventos na FASE 2." : " Filtragem preservada.");
         return;
     }
 
@@ -1334,12 +1538,11 @@ static void toggle_test_arm(void)
     dump_detail_ranking();
 
     if (g_test_queue_count == 0) {
-        notify_status("[CareerTrace] Nenhum candidato com confianca >=55%% ainda. Colete mais eventos.");
+        notify_status("[CareerTrace] Nenhum candidato com aderencia >=55%% ainda. Colete mais eventos.");
         return;
     }
 
-    truncate_file(TRACE_TEST);
-    append_test_line("CareerTrace v2100 test queue=%zu", g_test_queue_count);
+    append_test_line("CareerTrace v2110 test queue=%zu", g_test_queue_count);
 
     g_test_armed = true;
     g_test_queue_cursor = 0;
@@ -1347,111 +1550,171 @@ static void toggle_test_arm(void)
     RankItem *top = &g_top_results[g_test_queue[0]];
     uint64_t address = g_focus_address[top->page_index] + top->offset;
 
-    notify_status("[CareerTrace] TESTE ARMADO: %zu candidatos. TOP conf=%d%% %s 0x%llX. R1+ESQ testa 1.",
+    notify_status("[CareerTrace] TESTE ARMADO: %zu candidatos. TOP match=%d%% %s 0x%llX. R1+ESQ testa 1.",
                   g_test_queue_count,
                   item_confidence(top),
                   type_name((TraceType)top->type),
                   (unsigned long long)address);
 }
 
+static void report_restore(RestoreResult result)
+{
+    if (result == RESTORE_OK)
+        notify_status("[CareerTrace] Valor restaurado e verificado.");
+    else if (result == RESTORE_GAME_CHANGED)
+        notify_status("[CareerTrace] O jogo mudou o valor/regiao. Restauracao antiga ignorada; veja trace_test.txt.");
+    else if (result == RESTORE_RETRY)
+        notify_status("[CareerTrace] Restauracao pendente. Novos testes bloqueados; R1+DIR tenta novamente.");
+    else
+        notify_status("[CareerTrace] Nenhum teste ativo.");
+}
+
 static void test_next_ranked(void)
 {
     OrbisKernelVirtualQueryInfo info;
-    uint64_t raw = 0;
-    uint64_t test = 0;
-    char before[64];
-    char after[64];
-
+    uint64_t raw = 0, test = 0, verify = 0;
+    char before[64], after[64];
     if (!g_test_armed) {
         notify_status("[CareerTrace] Primeiro arme TESTE com L1+R1.");
         return;
     }
-
-    restore_active_test();
-
-    if (g_test_queue_count == 0)
+    RestoreResult restored = restore_active_test();
+    if (restored == RESTORE_RETRY) {
+        report_restore(restored);
         return;
+    }
+    if (g_test_queue_cursor >= g_test_queue_count) {
+        notify_status("[CareerTrace] Fila concluida. L1+R1 desarma e prepara nova filtragem.");
+        return;
+    }
 
-    if (g_test_queue_cursor >= g_test_queue_count)
-        g_test_queue_cursor = 0;
-
-    size_t rank_index = g_test_queue[g_test_queue_cursor];
+    size_t rank_index = g_test_queue[g_test_queue_cursor++];
     RankItem *r = &g_top_results[rank_index];
     TraceType type = (TraceType)r->type;
     uint64_t address = g_focus_address[r->page_index] + r->offset;
     size_t size = type_size(type);
+    const uint8_t *expected = g_focus_prev + r->page_index * TRACE_PAGE_SIZE + r->offset;
 
-    g_test_queue_cursor++;
-
-    if (sceKernelVirtualQuery((void *)(uintptr_t)address, 0,
-                              &info, sizeof(info)) < 0 ||
-        (info.prot & CPU_READ) == 0 ||
-        (info.prot & CPU_WRITE) == 0) {
-        append_test_line("SKIP rank=%zu addr=0x%016llX INVALID",
-                         rank_index + 1, (unsigned long long)address);
-        notify_status("[CareerTrace] TOP %zu invalido agora; R1+ESQ proximo.",
-                      rank_index + 1);
+    if (!query_test_region(address, size, &info) ||
+        read_process(address, &raw, size) != 0 || memcmp(&raw, expected, size) != 0) {
+        append_test_line("SKIP rank=%zu addr=0x%016llX stale_or_unreadable", rank_index + 1,
+                         (unsigned long long)address);
+        notify_status("[CareerTrace] TOP %zu mudou desde a medicao ou esta ilegivel; candidato ignorado.", rank_index + 1);
         return;
     }
-
-    if (read_process(address, &raw, size) != 0) {
-        notify_status("[CareerTrace] Falha lendo TOP %zu.", rank_index + 1);
+    if (!make_test_value(type, raw, &test, before, sizeof(before), after, sizeof(after))) {
+        append_test_line("SKIP rank=%zu addr=0x%016llX type=%s unsupported_value",
+                         rank_index + 1, (unsigned long long)address, type_name(type));
+        notify_status("[CareerTrace] TOP %zu fora dos limites do teste. Permanece no ranking.", rank_index + 1);
         return;
     }
-
-    if (!make_test_value(type, raw, &test,
-                         before, sizeof(before),
-                         after, sizeof(after))) {
-        notify_status("[CareerTrace] TOP %zu tipo %s nao seguro para teste.",
-                      rank_index + 1, type_name(type));
+    if (!append_test_line("PREPARE queue=%zu/%zu rank=%zu type=%s addr=0x%016llX size=%zu original=0x%016llX applied=0x%016llX %s -> %s",
+                          g_test_queue_cursor, g_test_queue_count, rank_index + 1, type_name(type),
+                          (unsigned long long)address, size, (unsigned long long)raw,
+                          (unsigned long long)test, before, after)) {
+        notify_status("[CareerTrace] Teste cancelado: falha salvando valores originais.");
         return;
     }
-
-    if (write_process(address, &test, size) != 0) {
-        notify_status("[CareerTrace] Falha escrevendo TOP %zu.", rank_index + 1);
+    /* Re-read after logging; a file write can take longer than a game update. */
+    if (read_process(address, &verify, size) != 0 || memcmp(&verify, &raw, size) != 0) {
+        append_test_line("SKIP rank=%zu changed_before_write", rank_index + 1);
+        notify_status("[CareerTrace] Candidato mudou antes da escrita; ignorado.");
         return;
     }
 
     g_test_active = true;
     g_test_active_address = address;
     g_test_original_raw = raw;
+    g_test_applied_raw = test;
     g_test_active_size = size;
     g_test_active_type = type;
+    g_test_region_start = (uintptr_t)info.start_addr;
+    g_test_region_end = (uintptr_t)info.end_addr;
+    g_test_deadline = sceKernelGetProcessTime() + TRACE_TEST_DURATION_US;
+    g_detail_needs_refresh = true;
 
-    append_test_line("ACTIVE queue=%zu/%zu rank=%zu score=%d conf=%d%% type=%s addr=0x%016llX %s -> %s",
-                     g_test_queue_cursor,
-                     g_test_queue_count,
-                     rank_index + 1,
-                     (int)r->score,
-                     item_confidence(r),
-                     type_name(type),
-                     (unsigned long long)address,
-                     before, after);
-
-    notify_status("[CareerTrace] TEST %zu/%zu | rank %zu conf=%d%% %s 0x%llX | %s -> %s. R1+DIR restaura.",
-                  g_test_queue_cursor,
-                  g_test_queue_count,
-                  rank_index + 1,
-                  item_confidence(r),
-                  type_name(type),
-                  (unsigned long long)address,
-                  before, after);
+    verify = 0;
+    if (write_process(address, &test, size) != 0 ||
+        read_process(address, &verify, size) != 0 || memcmp(&verify, &test, size) != 0) {
+        append_test_line("WRITE_NOT_CONFIRMED rank=%zu", rank_index + 1);
+        notify_status("[CareerTrace] Escrita nao confirmada; interrompendo teste.");
+        report_restore(restore_active_test());
+        return;
+    }
+    append_test_line("ACTIVE rank=%zu match=%d%% timeout_seconds=10", rank_index + 1, item_confidence(r));
+    notify_status("[CareerTrace] TESTE %zu/%zu | %s %s -> %s | ate 10s. R1+DIR restaura.",
+                  g_test_queue_cursor, g_test_queue_count, type_name(type), before, after);
 }
 
 static void manual_restore_test(void)
 {
-    if (!g_test_active) {
-        notify_status("[CareerTrace] Nenhum teste ativo.");
-        return;
-    }
+    report_restore(restore_active_test());
+}
 
-    restore_active_test();
-    notify_status("[CareerTrace] Valor do teste restaurado. R1+ESQ testa o proximo.");
+static unsigned remaining(unsigned required, unsigned current)
+{
+    return current < required ? required - current : 0;
+}
+
+static void format_status(char *out, size_t capacity)
+{
+    if (g_test_active) {
+        snprintf(out, capacity, "TESTE %zu/%zu ativo. R1+DIR restaura. L1+R1 desarma.",
+                 g_test_queue_cursor, g_test_queue_count);
+    } else if (g_test_armed) {
+        snprintf(out, capacity, "TESTE armado: %zu/%zu percorridos. R1+ESQ proximo; L1+R1 desarma.",
+                 g_test_queue_cursor, g_test_queue_count);
+    } else if (g_phase == TRACE_PHASE_IDLE) {
+        snprintf(out, capacity, "INICIO: entre na Carreira de Jogador e use R1+CIMA para criar a referencia.");
+    } else {
+        bool detail = g_phase == TRACE_PHASE_DETAIL;
+        unsigned up = detail ? g_detail_up : g_page_up;
+        unsigned down = detail ? g_detail_down : g_page_down;
+        unsigned same = detail ? g_detail_same : g_page_same;
+        if (detail && g_top_count) {
+            const TraceEvidence *e = &g_focus_evidence[g_top_results[0].page_index];
+            up = e->up; down = e->down; same = e->same;
+        }
+        const char *next = !detail ? "R2+ESQ faz FOCUS" :
+                           g_test_queue_count ? "R2+ESQ salva; L1+R1 arma teste opcional" :
+                           "Colete mais mudancas naturais; ainda sem fila apta";
+        snprintf(out, capacity,
+                 "FASE %u %s | U%u D%u S%u | faltam: %u subidas, %u quedas, %u igual. %s.",
+                 detail ? 2u : 1u, detail ? "VALORES" : "REGIOES", up, down, same,
+                 remaining(2, up), remaining(2, down), remaining(1, same),
+                 up >= 2 && down >= 2 && same >= 1 ? next : "Registre mudancas reais com R2+setas");
+    }
+}
+
+static void save_status(void)
+{
+    char status[512];
+    format_status(status, sizeof(status));
+    int fd = open(TRACE_STATUS, O_WRONLY | O_CREAT | O_TRUNC, 0666);
+    if (fd < 0) return;
+    write_format(fd, "CareerTrace v2110\n%s\nR2+CIMA=subiu | R2+BAIXO=desceu | R2+DIREITA=igual\nR1+BAIXO=mostrar este resumo\n", status);
+    close(fd);
+}
+
+static void show_status(void)
+{
+    char status[512];
+    format_status(status, sizeof(status));
+    notify_status("[CareerTrace] %s", status);
+}
+
+static void expire_active_test(void)
+{
+    if (!g_test_active || !g_test_deadline || sceKernelGetProcessTime() < g_test_deadline)
+        return;
+    g_test_deadline = 0; /* A failed restore requires an explicit retry, not a tight loop. */
+    report_restore(restore_active_test());
+    save_status();
 }
 
 static void execute_action(DiagAction action)
 {
-    g_busy = 1;
+    __atomic_store_n(&g_busy, 1, __ATOMIC_RELEASE);
 
     switch (action) {
         case DIAG_ACTION_SNAPSHOT:
@@ -1478,24 +1741,34 @@ static void execute_action(DiagAction action)
         case DIAG_ACTION_TEST_RESTORE:
             manual_restore_test();
             break;
+        case DIAG_ACTION_STATUS:
+            show_status();
+            break;
         default:
             break;
     }
 
-    g_busy = 0;
+    save_status();
+    __atomic_store_n(&g_busy, 0, __ATOMIC_RELEASE);
 }
 
 static void *worker_main(void *arg)
 {
     (void)arg;
 
-    while (g_worker_running) {
-        DiagAction action = (DiagAction)g_pending_action;
+    while (worker_running()) {
+        DiagAction action = (DiagAction)__atomic_exchange_n(&g_pending_action,
+                                            DIAG_ACTION_NONE, __ATOMIC_ACQ_REL);
 
-        if (action != DIAG_ACTION_NONE && !g_busy) {
-            g_pending_action = DIAG_ACTION_NONE;
+        if (action != DIAG_ACTION_NONE) {
             execute_action(action);
         }
+
+        expire_active_test();
+        int rejected = __atomic_exchange_n(&g_rejected_action, DIAG_ACTION_NONE, __ATOMIC_ACQ_REL);
+        if (rejected == DIAG_ACTION_STATUS) show_status();
+        else if (rejected != DIAG_ACTION_NONE)
+            notify_status("[CareerTrace] O ultimo comando chegou durante outra operacao e NAO foi registrado. Agora repita esse comando.");
 
         sceKernelUsleep(50000);
     }
@@ -1506,9 +1779,10 @@ static void *worker_main(void *arg)
 
 int diag_start_worker(void)
 {
-    g_worker_running = 1;
-    g_pending_action = DIAG_ACTION_NONE;
-    g_busy = 0;
+    __atomic_store_n(&g_worker_running, 1, __ATOMIC_RELEASE);
+    __atomic_store_n(&g_pending_action, DIAG_ACTION_NONE, __ATOMIC_RELEASE);
+    __atomic_store_n(&g_busy, 0, __ATOMIC_RELEASE);
+    __atomic_store_n(&g_rejected_action, DIAG_ACTION_NONE, __ATOMIC_RELEASE);
 
     g_page_count = 0;
     g_focus_count = 0;
@@ -1517,34 +1791,44 @@ int diag_start_worker(void)
     g_test_active = false;
 
     ensure_output_dir();
-    truncate_file(DIAG_LOG);
+    append_log("--- new plugin session ---");
 
-    append_log("=== CareerTrace v2100 ===");
+    append_log("=== CareerTrace v2110 ===");
     append_log("read-only correlation search until explicit TEST mode");
     append_log("two-stage: full-RAM page fingerprint -> exact multi-type ranking");
     append_log("types=u8,u16,i16,u32,i32,i64,f32,f64; unaligned exact scan");
     append_log("SAME controls penalize background noise; candidates are scored, not destructively deleted");
 
-    return scePthreadCreate(&g_worker_thread, NULL, worker_main, NULL,
-                            "career_trace_worker");
+    save_status();
+    int result = scePthreadCreate(&g_worker_thread, NULL, worker_main, NULL,
+                                 "career_trace_worker");
+    if (result != 0) __atomic_store_n(&g_worker_running, 0, __ATOMIC_RELEASE);
+    return result;
 }
 
 void diag_stop_worker(void)
 {
-    if (!g_worker_running)
+    if (!worker_running())
         return;
 
-    g_worker_running = 0;
+    __atomic_store_n(&g_worker_running, 0, __ATOMIC_RELEASE);
     scePthreadJoin(g_worker_thread, NULL);
     restore_active_test();
 }
 
 void diag_request(DiagAction action)
 {
-    if (!g_worker_running)
+    if (!worker_running())
         return;
-    if (g_busy)
+    if (action == DIAG_ACTION_TEST_RESTORE) {
+        int displaced = __atomic_exchange_n(&g_pending_action, (int)action, __ATOMIC_ACQ_REL);
+        if (displaced != DIAG_ACTION_NONE && displaced != (int)action)
+            __atomic_store_n(&g_rejected_action, displaced, __ATOMIC_RELEASE);
         return;
-    if (g_pending_action == DIAG_ACTION_NONE)
-        g_pending_action = (int)action;
+    }
+    int expected = DIAG_ACTION_NONE;
+    if (__atomic_load_n(&g_busy, __ATOMIC_ACQUIRE) ||
+        !__atomic_compare_exchange_n(&g_pending_action, &expected, (int)action,
+                                      false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE))
+        __atomic_store_n(&g_rejected_action, (int)action, __ATOMIC_RELEASE);
 }
