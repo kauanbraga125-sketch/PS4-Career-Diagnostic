@@ -13,7 +13,7 @@
 attr_public const char *g_pluginName = "career_diag";
 attr_public const char *g_pluginDesc = "On-console player-career memory diagnostic";
 attr_public const char *g_pluginAuth = "Kauan project";
-attr_public uint32_t g_pluginVersion = 0x00000900;
+attr_public uint32_t g_pluginVersion = 0x00000A00;
 
 HOOK_INIT(scePadRead);
 
@@ -148,7 +148,7 @@ s32 attr_public plugin_load(s32 argc, const char *argv[])
 
     NotifyStatic(
         TEX_ICON_SYSTEM,
-        "[CareerDiag] LOGGER: TOUCH+QUADRADO inicia; R1+BAIXO/CIma registra."
+        "[CareerDiag] R1+CIMA/BAIXO filtra; com 1 alvo vira +/-20."
     );
 
     return 0;
