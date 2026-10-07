@@ -13,7 +13,7 @@
 attr_public const char *g_pluginName = "career_diag";
 attr_public const char *g_pluginDesc = "On-console player-career memory diagnostic";
 attr_public const char *g_pluginAuth = "Kauan project";
-attr_public uint32_t g_pluginVersion = 0x00000600;
+attr_public uint32_t g_pluginVersion = 0x00000700;
 
 HOOK_INIT(scePadRead);
 
@@ -59,6 +59,9 @@ static void handle_shortcuts(uint32_t buttons)
 
     if (combo_just_pressed(buttons, ORBIS_PAD_BUTTON_R1))
         diag_request(DIAG_ACTION_AUTO_TOGGLE);
+
+    if (combo_just_pressed(buttons, ORBIS_PAD_BUTTON_L1))
+        diag_request(DIAG_ACTION_TEST_PLUS_ONE);
 }
 
 int32_t scePadRead_hook(int32_t handle, OrbisPadData *data, int32_t count)
@@ -131,7 +134,7 @@ s32 attr_public plugin_load(s32 argc, const char *argv[])
 
     NotifyStatic(
         TEX_ICON_SYSTEM,
-        "[CareerDiag] Carregado. TOUCH+QUADRADO snapshot; AUTO apos filtro."
+        "[CareerDiag] Carregado. TOUCH+L1 testa candidato +1."
     );
 
     return 0;
