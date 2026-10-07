@@ -709,7 +709,7 @@ static void initial_snapshot(void)
             const char *header =
                 "PS4 Career Diagnostic - Manager Reputation measurements\n"
                 "initial_range=101..255 int32\n"
-                "R1+DOWN=diminuiu  R1+UP=aumentou\n\n";
+                "R2+DOWN=diminuiu  R2+UP=aumentou\n\n";
             write(fd, header, strlen(header));
             close(fd);
         }
@@ -1024,16 +1024,11 @@ static void filter_candidates(DiagAction action, bool allow_auto)
 
 static void record_measurement(DiagAction action)
 {
-    if (g_candidate_count == 1) {
-        adjust_single_candidate(action == DIAG_ACTION_INCREASED ? TARGET_STEP : -TARGET_STEP);
-        return;
-    }
-
     size_t before = g_candidate_count;
     const char *label = action == DIAG_ACTION_DECREASED ? "DOWN" : "UP";
 
     if (g_candidate_count == 0) {
-        notify_status("[CareerDiag] Sem candidatos. TOUCH+QUADRADO primeiro.");
+        notify_status("[CareerDiag] Sem candidatos. Use R1+CIMA no menu primeiro.");
         return;
     }
 
@@ -1261,7 +1256,6 @@ int diag_start_worker(void)
     g_freeze_max = 0;
 
     ensure_output_dir();
-    load_single_candidate_from_file();
 
     return scePthreadCreate(&g_worker_thread, NULL, worker_main, NULL,
                             "career_diag_worker");
