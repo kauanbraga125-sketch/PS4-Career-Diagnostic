@@ -16,6 +16,7 @@
 #define DIAG_LOG DIAG_DIR "/diagnostic.log"
 #define DIAG_RESULTS DIAG_DIR "/candidates.txt"
 #define DIAG_MONITOR DIAG_DIR "/monitor.txt"
+#define DIAG_MEASUREMENTS DIAG_DIR "/measurements.txt"
 
 #define VQ_FIND_NEXT 1
 #define CPU_READ  0x01
@@ -68,6 +69,7 @@ static uint32_t *g_monitor_changes = NULL;
 static size_t g_monitor_count = 0;
 static uint64_t g_monitor_samples = 0;
 static volatile int g_monitoring = 0;
+static uint32_t g_measurement_index = 0;
 
 static void dump_candidates(void);
 static void dump_monitor_report(void);
@@ -254,11 +256,22 @@ static bool plausible_value(uint32_t raw)
     if (g_mode == SCAN_MODE_INT32) {
         int32_t value;
         memcpy(&value, &raw, sizeof(value));
-        return value >= 1 && value <= 100;
+        return value >= 0 && value <= 255;
     }
 
     float value = raw_as_float(raw);
     return value >= 1.0f && value <= 100.0f;
+}
+
+static bool initial_plausible_value(uint32_t raw)
+{
+    if (g_mode == SCAN_MODE_INT32) {
+        int32_t value;
+        memcpy(&value, &raw, sizeof(value));
+        return value >= 101 && value <= 255;
+    }
+
+    return plausible_value(raw);
 }
 
 static bool compare_value(uint32_t previous, uint32_t current, DiagAction action)
@@ -362,7 +375,7 @@ static void scan_region(uintptr_t start, uintptr_t end, uint64_t *bytes_scanned,
             uint32_t raw;
             memcpy(&raw, &g_chunk[off], sizeof(raw));
 
-            if (!plausible_value(raw))
+            if (!initial_plausible_value(raw))
                 continue;
 
             if (!add_candidate((uint64_t)(current + off), raw)) {
@@ -389,6 +402,7 @@ static void initial_snapshot(void)
     bool hit_cap = false;
 
     reset_candidates();
+    g_measurement_index = 0;
     ensure_output_dir();
 
     {
@@ -396,9 +410,20 @@ static void initial_snapshot(void)
         if (fd >= 0)
             close(fd);
     }
+    {
+        int fd = open(DIAG_MEASUREMENTS, O_WRONLY | O_CREAT | O_TRUNC, 0666);
+        if (fd >= 0) {
+            const char *header =
+                "PS4 Career Diagnostic - Manager Reputation measurements\n"
+                "initial_range=101..255 int32\n"
+                "R1+DOWN=diminuiu  R1+UP=aumentou\n\n";
+            write(fd, header, strlen(header));
+            close(fd);
+        }
+    }
 
     append_log("=== PS4 Career Diagnostic snapshot ===");
-    append_log("mode=%s value_window=1..100", mode_name());
+    append_log("mode=%s initial_window=%s", mode_name(), g_mode == SCAN_MODE_INT32 ? "101..255" : "1..100");
 
     while (!hit_cap && sceKernelVirtualQuery(cursor, VQ_FIND_NEXT, &info, sizeof(info)) >= 0) {
         uintptr_t start = (uintptr_t)info.start_addr;
@@ -626,7 +651,7 @@ static void dump_monitor_report(void)
     notify_status("[CareerDiag] AUTO salvo: %zu ativos em monitor.txt.", active);
 }
 
-static void filter_candidates(DiagAction action)
+static void filter_candidates(DiagAction action, bool allow_auto)
 {
     size_t read_index = 0;
     size_t write_index = 0;
@@ -696,11 +721,64 @@ static void filter_candidates(DiagAction action)
     if (g_candidate_count > 0 && g_candidate_count <= 20)
         dump_candidates();
 
-    if (g_candidate_count > 0 &&
+    if (allow_auto &&
+        g_candidate_count > 0 &&
         g_candidate_count <= AUTO_MONITOR_THRESHOLD &&
         !g_monitoring) {
         start_monitor();
     }
+}
+
+static void record_measurement(DiagAction action)
+{
+    size_t before = g_candidate_count;
+    const char *label = action == DIAG_ACTION_DECREASED ? "DOWN" : "UP";
+
+    if (g_candidate_count == 0) {
+        notify_status("[CareerDiag] Sem candidatos. TOUCH+QUADRADO primeiro.");
+        return;
+    }
+
+    if (g_monitoring) {
+        g_monitoring = 0;
+        free_monitor_stats();
+    }
+
+    filter_candidates(action, false);
+    g_measurement_index++;
+
+    ensure_output_dir();
+    {
+        int fd = open(DIAG_MEASUREMENTS, O_WRONLY | O_CREAT | O_APPEND, 0666);
+        if (fd >= 0) {
+            char line[256];
+            int n = snprintf(line, sizeof(line),
+                             "Medida %u: %s  candidatos=%zu -> %zu\n",
+                             g_measurement_index, label, before, g_candidate_count);
+            if (n > 0) write(fd, line, (size_t)n);
+
+            if (g_candidate_count > 0 && g_candidate_count <= 64) {
+                for (size_t i = 0; i < g_candidate_count; i++) {
+                    int32_t value = 0;
+                    memcpy(&value, &g_candidate_previous[i], sizeof(value));
+                    n = snprintf(line, sizeof(line),
+                                 "  %02zu  0x%016llX  value=%d\n",
+                                 i + 1,
+                                 (unsigned long long)g_candidate_address[i],
+                                 value);
+                    if (n > 0) write(fd, line, (size_t)n);
+                }
+            }
+
+            write(fd, "\n", 1);
+            close(fd);
+        }
+    }
+
+    dump_candidates();
+
+    notify_status("[CareerDiag] Medida %u %s salva: %zu -> %zu.",
+                  g_measurement_index, label, before, g_candidate_count);
 }
 
 static void dump_candidates(void)
@@ -780,7 +858,7 @@ static void execute_action(DiagAction action)
             if (g_monitoring) {
                 notify_status("[CareerDiag] AUTO ativo. OPTIONS salva; TOUCH+R1 desliga.");
             } else {
-                filter_candidates(action);
+                filter_candidates(action, true);
             }
             break;
 
@@ -823,6 +901,14 @@ static void execute_action(DiagAction action)
 
         case DIAG_ACTION_TEST_NEXT:
             test_next_candidate();
+            break;
+
+        case DIAG_ACTION_MEASURE_DOWN:
+            record_measurement(DIAG_ACTION_DECREASED);
+            break;
+
+        case DIAG_ACTION_MEASURE_UP:
+            record_measurement(DIAG_ACTION_INCREASED);
             break;
 
         default:
