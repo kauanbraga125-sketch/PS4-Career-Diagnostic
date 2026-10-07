@@ -13,7 +13,7 @@
 attr_public const char *g_pluginName = "career_diag";
 attr_public const char *g_pluginDesc = "On-console player-career memory diagnostic";
 attr_public const char *g_pluginAuth = "Kauan project";
-attr_public uint32_t g_pluginVersion = 0x00000A00;
+attr_public uint32_t g_pluginVersion = 0x00000B00;
 
 HOOK_INIT(scePadRead);
 
@@ -43,6 +43,9 @@ static void handle_shortcuts(uint32_t buttons)
 
     if (chord_just_pressed(buttons, ORBIS_PAD_BUTTON_R1, ORBIS_PAD_BUTTON_UP))
         diag_request(DIAG_ACTION_MEASURE_UP);
+
+    if (chord_just_pressed(buttons, ORBIS_PAD_BUTTON_R1, ORBIS_PAD_BUTTON_TRIANGLE))
+        diag_request(DIAG_ACTION_FREEZE_TOGGLE);
 
     if (combo_just_pressed(buttons, ORBIS_PAD_BUTTON_SQUARE))
         diag_request(DIAG_ACTION_SNAPSHOT);
@@ -148,7 +151,7 @@ s32 attr_public plugin_load(s32 argc, const char *argv[])
 
     NotifyStatic(
         TEX_ICON_SYSTEM,
-        "[CareerDiag] R1+CIMA/BAIXO filtra; com 1 alvo vira +/-20."
+        "[CareerDiag] 1 alvo: R1+CIMA/BAIXO +/-20; R1+TRIANGULO fixa 255."
     );
 
     return 0;
