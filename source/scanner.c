@@ -50,220 +50,57 @@ static const TargetRange g_target_ranges[] = {
 #define TARGET_RANGE_COUNT (sizeof(g_target_ranges) / sizeof(g_target_ranges[0]))
 
 static const uint64_t g_master_candidates[] = {
-    0x0000000800490538ULL,
-    0x000000080049053CULL,
-    0x0000000FE032CC58ULL,
-    0x0000000FE032CC88ULL,
-    0x0000000FE032CC9CULL,
-    0x0000000FE032CCA0ULL,
-    0x0000000FE032CCB4ULL,
-    0x0000000FE032CCB8ULL,
-    0x0000000FE032CCCCULL,
-    0x0000000FE032CCD0ULL,
-    0x0000000FE032CCE4ULL,
-    0x0000000FE032CCFCULL,
-    0x0000000FE032CD00ULL,
-    0x0000000FE032CD14ULL,
-    0x0000000FE032CD18ULL,
-    0x0000000FE032CD2CULL,
-    0x0000000FE032CD44ULL,
-    0x0000000FE032CD5CULL,
-    0x0000000FE032CD60ULL,
-    0x0000000FE032CEB0ULL,
-    0x0000000FE032CEF4ULL,
-    0x0000000FE032CEF8ULL,
-    0x0000000FE032CF3CULL,
-    0x0000000FE032CF58ULL,
-    0x0000000FE032CF9CULL,
-    0x0000000FE032CFA0ULL,
-    0x0000000FE032CFE4ULL,
-    0x0000000FE032CFE8ULL,
-    0x0000000FE032D018ULL,
-    0x0000000FE032D030ULL,
-    0x0000000FE032D044ULL,
-    0x0000000FE032D048ULL,
-    0x0000000FE032D05CULL,
-    0x0000000FE032D060ULL,
-    0x0000000FE032D08CULL,
-    0x0000000FE032D090ULL,
-    0x0000000FE032D0D4ULL,
-    0x0000000FE032D134ULL,
-    0x0000000FE032D138ULL,
-    0x0000000FE032D150ULL,
-    0x0000000FE032D17CULL,
-    0x0000000FE032D194ULL,
-    0x0000000FE032D198ULL,
-    0x0000001005DE04CCULL,
     0x0000001005DE04D0ULL,
-    0x0000001005EF378CULL,
-    0x0000001005FBC1A0ULL,
     0x0000001005FC2380ULL,
-    0x0000001005FC2384ULL,
-    0x0000001005FC2388ULL,
-    0x0000001005FC238CULL,
     0x0000001005FC29B8ULL,
-    0x0000001005FC29BCULL,
-    0x0000001005FC29C0ULL,
-    0x0000001005FC2A40ULL,
-    0x0000001005FC2A44ULL,
-    0x0000001005FC2A48ULL,
-    0x0000001005FC2A4CULL,
-    0x0000001005FC2A50ULL,
-    0x0000001005FC2A54ULL,
     0x0000001005FC2A58ULL,
     0x0000001005FC5250ULL,
     0x0000001005FC5254ULL,
     0x0000001005FC5A18ULL,
     0x0000001005FC5A28ULL,
     0x0000001005FC5D38ULL,
-    0x0000001005FC5D3CULL,
     0x0000001005FC5D50ULL,
-    0x0000001005FC97ACULL,
     0x0000001005FC97B0ULL,
-    0x0000001005FCAF10ULL,
     0x0000001005FCB46CULL,
     0x0000001005FCB470ULL,
-    0x0000001024022ECCULL,
     0x000000102412AECCULL,
-    0x000000102734D044ULL,
     0x000000102741B94CULL,
-    0x0000001027610438ULL,
-    0x0000001027614938ULL,
     0x0000001027680DB8ULL,
-    0x000000102769A9B8ULL,
     0x0000001027707638ULL,
     0x00000010277522DCULL,
-    0x00000010277878B8ULL,
-    0x0000001027798038ULL,
-    0x00000010277C2138ULL,
     0x00000010277E0420ULL,
     0x000000102781BCB8ULL,
-    0x0000001027840938ULL,
-    0x00000010278459B8ULL,
-    0x000000102784FD38ULL,
-    0x0000001027853DB8ULL,
     0x000000102785D1F8ULL,
     0x00000010278A08F8ULL,
-    0x00000010278F9FB8ULL,
     0x0000001027911E38ULL,
-    0x000000102791CEB8ULL,
-    0x000000102792BA38ULL,
     0x0000001027960A38ULL,
-    0x00000010279660B8ULL,
-    0x0000001027969D38ULL,
-    0x000000102796D638ULL,
-    0x000000102796E2B8ULL,
     0x0000001027A32F74ULL,
     0x0000001027A69538ULL,
     0x0000001027BC473CULL,
     0x0000001027BE39ECULL,
     0x0000001027D3B3C0ULL,
     0x0000001027DB20B4ULL,
-    0x0000001027DD7F04ULL,
-    0x0000001028896B48ULL,
-    0x0000001028896F48ULL,
     0x000000102935E098ULL,
     0x000000102AA29E68ULL,
-    0x000000102E9E2BA8ULL,
-    0x000000102E9E37A8ULL,
-    0x000000102E9E5BA8ULL,
-    0x000000102E9E63A8ULL,
-    0x000000102E9E77A8ULL,
-    0x000000102E9EBBA8ULL,
     0x000000102EA769CCULL,
     0x000000102EA76ACCULL,
-    0x000000102EA92108ULL,
-    0x000000102EA92190ULL,
-    0x000000102EA93108ULL,
-    0x000000102EA93190ULL,
-    0x000000102EBC6FC0ULL,
     0x0000001031BDF0E0ULL,
-    0x0000001031BF29C8ULL,
-    0x0000001031BF3048ULL,
-    0x0000001031BF32C8ULL,
-    0x0000001031BF3348ULL,
-    0x000000103AA668DCULL,
-    0x000000103AA7689CULL,
-    0x000000103AA79218ULL,
-    0x000000103AA7A018ULL,
     0x000000103AA89118ULL,
-    0x000000103AA8911CULL,
-    0x000000103AAA4F1CULL,
     0x000000103AAAF8D8ULL,
     0x000000103AAB041CULL,
-    0x000000103AACD498ULL,
-    0x000000103AB50418ULL,
-    0x000000103AB50A18ULL,
-    0x000000103AC01144ULL,
-    0x000000103AC1D79CULL,
-    0x000000103ACDFB4CULL,
     0x000000103ACF06B8ULL,
-    0x000000103ACF06BCULL,
-    0x000000103AD0843CULL,
-    0x000000103AD4C018ULL,
-    0x000000103AD59F1CULL,
-    0x000000103AD77F48ULL,
-    0x000000103AD77F4CULL,
     0x000000103AE5FAE8ULL,
-    0x000000103AE5FAECULL,
-    0x000000103AED7B5CULL,
-    0x000000103AED7C3CULL,
-    0x000000103AEDFDD8ULL,
-    0x000000103AEE25B0ULL,
-    0x000000103AEE25B4ULL,
-    0x000000103AEE2694ULL,
-    0x000000103AEE273CULL,
-    0x000000103AEE2854ULL,
-    0x000000103AEE28FCULL,
-    0x000000103AEE5604ULL,
-    0x000000103AEE5754ULL,
-    0x000000103AEE866CULL,
-    0x000000103AEE874CULL,
-    0x000000103AEE8944ULL,
     0x000000103AEE89E8ULL,
-    0x000000103AEE89ECULL,
-    0x000000103CCE8F90ULL,
     0x000000103CD40FE0ULL,
     0x000000103CD40FE4ULL,
     0x000000103CD41070ULL,
-    0x000000103CD9B728ULL,
-    0x000000103CD9E188ULL,
     0x000000103CDBCEF8ULL,
-    0x000000103CDC56F8ULL,
-    0x000000103CDC7518ULL,
-    0x000000103CDD1CD8ULL,
-    0x000000103CDD4538ULL,
-    0x000000103CDF3288ULL,
-    0x000000103CDFE668ULL,
-    0x000000103CE1D3D8ULL,
-    0x000000103CE2C218ULL,
-    0x000000103CE3B058ULL,
     0x000000103CE495A8ULL,
     0x000000103CE583E8ULL,
     0x000000103CE58C48ULL,
-    0x000000103CE64C08ULL,
-    0x000000103CE7EAD8ULL,
-    0x000000103CE90378ULL,
-    0x000000103CE943E8ULL,
-    0x000000103CE9FC08ULL,
-    0x000000103CEA3128ULL,
-    0x000000103CEA89A8ULL,
-    0x000000103CEACB08ULL,
-    0x000000103CEF3098ULL,
-    0x000000103CEF5158ULL,
-    0x000000104022EAB4ULL,
     0x0000001040289CDCULL,
-    0x00000010402A00B0ULL,
-    0x000000104043B730ULL,
-    0x00000010404B48C0ULL,
-    0x0000001040CA257CULL,
     0x0000001040D17718ULL,
-    0x0000001040DD1F1CULL,
-    0x0000001040DF4104ULL,
-    0x0000001040DF5A04ULL,
     0x0000001040E0EDA0ULL,
-    0x0000001040EA31CCULL,
-    0x0000001040F83B18ULL,
     0x000000104100CE88ULL,
     0x000000104100E238ULL,
     0x000000104100E478ULL,
@@ -2722,11 +2559,11 @@ static void load_master_candidates(void)
 
     dump_candidates();
     append_log("=== CareerDiag MASTER100 v1040 live load ===");
-    append_log("master_compiled=%zu risk_excluded_compile=397 live=%zu invalid=%zu out_of_range=%zu read_fail=%zu",
+    append_log("master_compiled=%zu risk_excluded_compile=397 tested_no_effect_excluded=162 crash_suspect_excluded=1 live=%zu invalid=%zu out_of_range=%zu read_fail=%zu",
                (size_t)MASTER_CANDIDATE_COUNT, g_candidate_count,
                invalid, out_of_range, read_fail);
 
-    notify_status("[CareerDiag MASTER100 v1040] %zu/%zu validos agora. R2+ESQ testa 100.",
+    notify_status("[CareerDiag MASTER50 v1050] %zu/%zu validos agora. R2+ESQ testa 50.",
                   g_candidate_count, (size_t)MASTER_CANDIDATE_COUNT);
 }
 
@@ -2961,7 +2798,7 @@ static void reset_group_test_state(void)
     g_group_mode_initialized = false;
     g_group_domain_start = 0;
     g_group_domain_count = 0;
-    g_group_block_size = 100;
+    g_group_block_size = 50;
     g_group_cursor = 0;
     g_group_active_range_start = 0;
     g_group_active_range_count = 0;
@@ -2976,7 +2813,7 @@ static bool init_group_test_mode(void)
         load_master_candidates();
 
     if (g_candidate_count == 0) {
-        notify_status("[CareerDiag MASTER100] nenhum candidato valido nesta tela.");
+        notify_status("[CareerDiag MASTER50] nenhum candidato valido nesta tela.");
         return false;
     }
 
@@ -2987,7 +2824,7 @@ static bool init_group_test_mode(void)
 
     g_group_domain_start = 0;
     g_group_domain_count = g_candidate_count;
-    g_group_block_size = 100;
+    g_group_block_size = 50;
     g_group_cursor = 0;
     g_group_active = false;
     g_group_active_written = 0;
@@ -2998,13 +2835,13 @@ static bool init_group_test_mode(void)
     if (fd >= 0) {
         char header[384];
         int n = snprintf(header, sizeof(header),
-                         "PS4 Career Diagnostic - MASTER100 v1040\n"
+                         "PS4 Career Diagnostic - MASTER50 v1050\n"
                          "candidates=%zu\n"
-                         "nivel_inicial=100\n"
+                         "nivel_inicial=50\n"
                          "valor_teste=nudge seguro (+1, ou -1 em 255)\n"
-                         "risk_excluded_compile=397\n"
-                         "R2+LEFT=restaura anterior e testa proximo bloco de 100\n"
-                         "L1+R1=isola bloco atual (100->10->1)\n\n",
+                         "risk_excluded_compile=397 | no_effect_excluded=162 | crash_excluded=1\n"
+                         "R2+LEFT=restaura anterior e testa proximo bloco de 50\n"
+                         "L1+R1=isola bloco atual (50->10->1)\n\n",
                          g_candidate_count);
         if (n > 0) write(fd, header, (size_t)n);
         close(fd);
@@ -3106,13 +2943,13 @@ static void group_test_next(void)
         uint32_t raw_now = 0;
         if (read_process(g_candidate_address[start], &raw_now, sizeof(raw_now)) == 0)
             memcpy(&now, &raw_now, sizeof(now));
-        notify_status("[CareerDiag MASTER100] CAND %zu/%zu | 0x%llX | teste=%d. R2+ESQ proximo | L1+R1 marca.",
+        notify_status("[CareerDiag MASTER50] CAND %zu/%zu | 0x%llX | teste=%d. R2+ESQ proximo | L1+R1 marca.",
                       start + 1,
                       g_group_domain_count,
                       (unsigned long long)g_candidate_address[start],
                       now);
     } else {
-        notify_status("[CareerDiag MASTER100] bloco %zu/%zu | cand %zu-%zu | %zu alterados.",
+        notify_status("[CareerDiag MASTER50] bloco %zu/%zu | cand %zu-%zu | %zu alterados.",
                       block_number, total_blocks, start + 1, start + count, written);
     }
 }
@@ -3502,10 +3339,10 @@ static void initial_snapshot(void)
     dump_candidates();
 
     if (hit_cap) {
-        notify_status("[CareerDiag MASTER100] limite de %u candidatos atingido.",
+        notify_status("[CareerDiag MASTER50] limite de %u candidatos atingido.",
                       MAX_CANDIDATES);
     } else {
-        notify_status("[CareerDiag MASTER100] snapshot: %zu candidatos em 5 regioes. Faca mudanca e R2+CIMA/BAIXO.",
+        notify_status("[CareerDiag MASTER50] snapshot: %zu candidatos em 5 regioes. Faca mudanca e R2+CIMA/BAIXO.",
                       g_candidate_count);
     }
 
@@ -4018,8 +3855,8 @@ int diag_start_worker(void)
         if (fd >= 0) close(fd);
     }
 
-    append_log("=== CareerDiag MASTER100 v1040 ===");
-    append_log("compiled_unique_before_risk=2848 risk_excluded=397 master_compiled=2451");
+    append_log("=== CareerDiag MASTER50 v1050 ===");
+    append_log("compiled_unique_before_risk=2848 risk_excluded=397 tested_no_effect_excluded=162 crash_suspect_excluded=1 master_compiled=2288");
 
     return scePthreadCreate(&g_worker_thread, NULL, worker_main, NULL,
                             "career_diag_worker");
