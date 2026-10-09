@@ -4,6 +4,53 @@ extends RefCounted
 static var materials: Dictionary = {}
 static var meshes: Dictionary = {}
 
+# Bake every articulated part into one vertex-coloured mesh. The body, two
+# arms and two legs remain independently animated, without one draw per box.
+static func batch_parts(root: Node3D) -> void:
+	var vertices = PackedVector3Array()
+	var normals = PackedVector3Array()
+	var colors = PackedColorArray()
+	var indices = PackedInt32Array()
+	var remove: Array[MeshInstance3D] = []
+	for child in root.get_children():
+		if child is MeshInstance3D and child.mesh:
+			var arrays = child.mesh.surface_get_arrays(0)
+			var source: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+			var normal: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL]
+			var offset = vertices.size()
+			var transform: Transform3D = child.transform
+			var normal_basis = transform.basis.inverse().transposed()
+			var color = child.material_override.albedo_color
+			for i in range(source.size()):
+				vertices.append(transform*source[i])
+				normals.append((normal_basis*normal[i]).normalized())
+				colors.append(color)
+			var source_indices: PackedInt32Array = arrays[Mesh.ARRAY_INDEX]
+			if source_indices.is_empty():
+				for i in range(source.size()): indices.append(offset+i)
+			else:
+				for i in source_indices: indices.append(offset+i)
+			remove.append(child)
+		elif child is Node3D:
+			batch_parts(child)
+	if vertices.is_empty(): return
+	var data = []
+	data.resize(Mesh.ARRAY_MAX)
+	data[Mesh.ARRAY_VERTEX] = vertices
+	data[Mesh.ARRAY_NORMAL] = normals
+	data[Mesh.ARRAY_COLOR] = colors
+	data[Mesh.ARRAY_INDEX] = indices
+	var mesh = ArrayMesh.new()
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES,data)
+	var material = StandardMaterial3D.new()
+	material.vertex_color_use_as_albedo = true
+	material.roughness = 0.78
+	var instance = MeshInstance3D.new()
+	instance.mesh = mesh
+	instance.material_override = material
+	for child in remove: child.free()
+	root.add_child(instance)
+
 static func mat(color: Color, roughness: float = 0.85) -> StandardMaterial3D:
 	var key = str(color) + str(roughness)
 	if not materials.has(key):
@@ -80,6 +127,7 @@ static func person(style: int = 0) -> Node3D:
 		part(root, Vector3(0.32,0.04,0.22), Vector3(0,1.88,-0.20), shirt)
 	if style % 4 == 2:
 		part(root, Vector3(0.29,0.36,0.18), Vector3(0,1.26,0.23), Color("363930"))
+	batch_parts(root)
 	return root
 
 static func animate_person(root: Node3D, phase: float, walking: float, aiming: bool = false) -> void:
@@ -115,6 +163,7 @@ static func car(style: int = 0) -> Node3D:
 			wheel.name = "Wheel" + str(root.get_child_count())
 			var rim = part(root, Vector3(0.40,0.24,0.40), Vector3(x,0.40,z), Color("9b9d99"), "cylinder")
 			rim.rotation.z = PI/2
+	batch_parts(root)
 	return root
 
 static func bike(style: int = 0) -> Node3D:
@@ -133,6 +182,7 @@ static func bike(style: int = 0) -> Node3D:
 	part(root, Vector3(0.81,0.06,0.08), Vector3(0,1.28,-0.49),Color("343a3e"))
 	part(root, Vector3(0.26,0.25,0.13), Vector3(0,1.16,-0.68),Color("e7dcb4"),"sphere")
 	segment(root, Vector3(0.25,0.49,0.12),Vector3(0.25,0.49,0.83),0.10,Color("949a95"))
+	batch_parts(root)
 	return root
 
 static func gun(kind: int) -> Node3D:
@@ -145,4 +195,5 @@ static func gun(kind: int) -> Node3D:
 		part(root, Vector3(0.07,0.25,0.13),Vector3(0,-0.15,-0.03),Color("292e33"))
 	if kind>1:
 		part(root, Vector3(0.09,0.15,0.28),Vector3(0,0.0,length*0.5),Color("6f5f46"))
+	batch_parts(root)
 	return root

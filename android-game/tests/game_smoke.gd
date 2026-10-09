@@ -17,6 +17,30 @@ func run(game) -> void:
 	check(StreetMissions.STORIES.size()==10,"Ten campaign missions")
 	# Mount, exit, and character/collision restoration are integration paths.
 	var car = game.vehicles[0]
+	# Simulate real physics ticks: acceleration and contact with a solid wall.
+	game.player.position=Vector3(18,0.2,60)
+	car.position=Vector3(40,0.2,6)
+	car.rotation.y=-PI/2
+	car.set_driver(true)
+	game.controls.joystick=Vector2(0,-1)
+	var wall = StaticBody3D.new()
+	wall.collision_layer=1
+	game.add_child(wall)
+	wall.position=Vector3(70,3,6)
+	var shape=CollisionShape3D.new()
+	var box=BoxShape3D.new()
+	box.size=Vector3(1,6,12)
+	shape.shape=box
+	wall.add_child(shape)
+	for frame in range(240): await get_tree().physics_frame
+	check(car.position.x>45,"Vehicle accelerates and moves through physics ticks")
+	check(car.position.x<69,"Vehicle cannot pass through a solid wall")
+	check(car.position.y>-1,"Vehicle remains on the road")
+	wall.queue_free()
+	car.set_driver(false)
+	car.speed=0
+	game.controls.clear()
+	await get_tree().physics_frame
 	game.player.position = car.position+Vector3(2.2,0,0)
 	await get_tree().physics_frame
 	game.interact()
