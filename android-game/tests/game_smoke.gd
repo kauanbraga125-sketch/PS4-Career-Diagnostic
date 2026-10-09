@@ -19,20 +19,21 @@ func run(game) -> void:
 	var car = game.vehicles[0]
 	# Simulate real physics ticks: acceleration and contact with a solid wall.
 	game.player.position=Vector3(18,0.2,60)
-	car.position=Vector3(40,0.2,6)
+	car.position=Vector3(40,0.2,-6)
 	car.rotation.y=-PI/2
 	car.set_driver(true)
 	game.controls.joystick=Vector2(0,-1)
 	var wall = StaticBody3D.new()
 	wall.collision_layer=1
 	game.add_child(wall)
-	wall.position=Vector3(70,3,6)
+	wall.position=Vector3(70,3,-6)
 	var shape=CollisionShape3D.new()
 	var box=BoxShape3D.new()
 	box.size=Vector3(1,6,12)
 	shape.shape=box
 	wall.add_child(shape)
 	for frame in range(240): await get_tree().physics_frame
+	print("PHYSICS_CHECK: car=",car.position," speed=",car.speed," health=",car.health)
 	check(car.position.x>45,"Vehicle accelerates and moves through physics ticks")
 	check(car.position.x<69,"Vehicle cannot pass through a solid wall")
 	check(car.position.y>-1,"Vehicle remains on the road")
