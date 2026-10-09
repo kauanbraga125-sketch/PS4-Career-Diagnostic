@@ -44,9 +44,18 @@ func _physics_process(dt: float) -> void:
 		if dead_time>15: queue_free()
 		return
 	var player_pos = game.focus_position()
+	# A rescued passenger stays with the vehicle even across streaming boundaries.
+	if role=="hostage" and game.missions.index==5 and game.missions.stage==1 and game.player.vehicle:
+		visible = false
+		global_position = player_pos+Vector3(1.3,0,0)
+		velocity = Vector3.ZERO
+		return
 	var dist = global_position.distance_to(player_pos)
 	visible = dist < game.draw_distance*0.65
 	if dist>160: return
+	if not game.world.is_loaded(global_position):
+		velocity = Vector3.ZERO
+		return
 	decision -= dt
 	panic = maxf(0,panic-dt)
 	var aggressive = role=="enemy" or (role=="police" and game.heat>5)

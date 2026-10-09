@@ -83,6 +83,9 @@ func set_quality(q: int) -> void:
 	radius = [1,2,3][q]
 	center = Vector2i(999,999)
 
+func is_loaded(pos: Vector3) -> bool:
+	return chunks.has(Vector2i(floori(pos.x/BLOCK),floori(pos.z/BLOCK)))
+
 func box(p: Vector3,size: Vector3,color: Color,solid: bool=false,rot: Vector3=Vector3.ZERO,kind: String="box") -> void:
 	var key = str(color)+kind
 	if not batches.has(key): batches[key] = {"color":color,"kind":kind,"transforms":[]}

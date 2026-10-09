@@ -15,6 +15,16 @@ func run(game) -> void:
 	check(game.vehicles.size()>=10,"Cars and motorcycles available")
 	check(game.pickups.size()==12,"Twelve discoverable weapon placements")
 	check(StreetMissions.STORIES.size()==10,"Ten campaign missions")
+	# Nearby entities outside the active terrain must not fall into unloaded space.
+	game.player.position=Vector3(115,0.2,6)
+	var idle_car=game.vehicles[2]
+	idle_car.position=Vector3(260,0.2,5)
+	var waiting_npc=game.spawn_npc(Vector3(260,0,18),2,"hostage")
+	check(not game.world.is_loaded(idle_car.position),"Streaming test starts outside loaded terrain")
+	for frame in range(40): await get_tree().physics_frame
+	check(idle_car.position.y>0,"Vehicle waits safely for terrain collision")
+	check(waiting_npc.position.y>0,"NPC waits safely for terrain collision")
+	waiting_npc.queue_free()
 	# Mount, exit, and character/collision restoration are integration paths.
 	var car = game.vehicles[0]
 	# Simulate real physics ticks: acceleration and contact with a solid wall.

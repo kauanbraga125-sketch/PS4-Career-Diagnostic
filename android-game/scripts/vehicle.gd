@@ -46,6 +46,10 @@ func setup(owner_game,bike: bool,style: int,auto_drive: bool = false) -> void:
 
 func _physics_process(dt: float) -> void:
 	if not game or not game.running: return
+	# Suspend gravity until the streamed terrain has collision underneath us.
+	if not game.world.is_loaded(global_position):
+		velocity = Vector3.ZERO
+		return
 	if global_position.distance_squared_to(game.focus_position())>pow(340,2) and not driver:
 		return
 	if driver:

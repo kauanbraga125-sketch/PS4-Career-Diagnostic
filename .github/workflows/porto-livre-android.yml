@@ -17,6 +17,9 @@ jobs:
   android:
     runs-on: ubuntu-24.04
     timeout-minutes: 25
+    defaults:
+      run:
+        shell: bash
     env:
       GODOT_VERSION: 4.5.1
     steps:
@@ -58,6 +61,7 @@ jobs:
       - name: Import and test complete campaign
         run: |
           mkdir -p android-game/build
+          touch android-game/build/.gdignore
           godot --headless --path android-game --editor --import 2>&1 | tee android-game/build/import.log
           timeout 120 godot --headless --path android-game -- --self-test 2>&1 | tee android-game/build/test.log
           grep -q PORTO_SELF_TEST_OK android-game/build/test.log
@@ -67,7 +71,7 @@ jobs:
           PORTO_CAPTURE_PATH: ${{ github.workspace }}/android-game/build/PortoLivre-preview.png
           LIBGL_ALWAYS_SOFTWARE: '1'
         run: |
-          timeout 60 xvfb-run -a godot --path android-game --rendering-method gl_compatibility -- --capture 2>&1 | tee android-game/build/preview.log
+          timeout 60 xvfb-run -a godot --path android-game --rendering-method gl_compatibility --audio-driver Dummy -- --capture 2>&1 | tee android-game/build/preview.log
           test -s android-game/build/PortoLivre-preview.png
       - name: Cache development signing key
         uses: actions/cache@v4
@@ -104,4 +108,6 @@ jobs:
         if: always()
         with:
           name: PortoLivre-build-logs
-          path: android-game/build/*.log
+          path: |
+            android-game/build/*.log
+            android-game/build/*.png
