@@ -1,0 +1,103 @@
+name: Porto Livre Android APK
+
+on:
+  push:
+    branches: [game/porto-livre-android]
+    paths: ['android-game/**', '.github/workflows/porto-livre-android.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: porto-livre-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  android:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      GODOT_VERSION: 4.5.1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install Android packages and virtual display
+        run: |
+          sdkmanager 'platform-tools' 'platforms;android-35' 'build-tools;35.0.0'
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq xvfb libgl1-mesa-dri
+      - name: Cache Godot editor and Android templates
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.local/bin/godot
+            ~/.local/share/godot/export_templates/4.5.1.stable
+          key: porto-godot-4.5.1-android-v1
+      - name: Download pinned official Godot distribution
+        run: |
+          mkdir -p "$HOME/.local/bin" "$HOME/.local/share/godot/export_templates/4.5.1.stable"
+          if [ ! -f "$HOME/.local/bin/godot" ]; then
+            curl -fL --retry 3 -o /tmp/godot.zip https://github.com/godotengine/godot-builds/releases/download/4.5.1-stable/Godot_v4.5.1-stable_linux.x86_64.zip
+            unzip -q /tmp/godot.zip -d /tmp/godot-editor
+            cp /tmp/godot-editor/Godot_v4.5.1-stable_linux.x86_64 "$HOME/.local/bin/godot"
+            chmod +x "$HOME/.local/bin/godot"
+          fi
+          if [ ! -f "$HOME/.local/share/godot/export_templates/4.5.1.stable/android_debug.apk" ]; then
+            curl -fL --retry 3 -o /tmp/templates.tpz https://github.com/godotengine/godot-builds/releases/download/4.5.1-stable/Godot_v4.5.1-stable_export_templates.tpz
+            unzip -j -q /tmp/templates.tpz templates/android_debug.apk templates/android_release.apk templates/version.txt -d "$HOME/.local/share/godot/export_templates/4.5.1.stable"
+          fi
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Import and test complete campaign
+        run: |
+          mkdir -p android-game/build
+          godot --headless --path android-game --editor --import 2>&1 | tee android-game/build/import.log
+          timeout 120 godot --headless --path android-game -- --self-test 2>&1 | tee android-game/build/test.log
+          grep -q PORTO_SELF_TEST_OK android-game/build/test.log
+          if grep -E 'SCRIPT ERROR|TEST_FAIL' android-game/build/test.log; then exit 1; fi
+      - name: Render desktop gameplay preview
+        env:
+          PORTO_CAPTURE_PATH: ${{ github.workspace }}/android-game/build/PortoLivre-preview.png
+          LIBGL_ALWAYS_SOFTWARE: '1'
+        run: |
+          timeout 60 xvfb-run -a godot --path android-game --rendering-method gl_compatibility -- --capture 2>&1 | tee android-game/build/preview.log
+          test -s android-game/build/PortoLivre-preview.png
+      - name: Cache development signing key
+        uses: actions/cache@v4
+        with:
+          path: ~/.android/porto-debug.keystore
+          key: porto-debug-key-v1
+      - name: Configure Android export
+        run: |
+          mkdir -p "$HOME/.config/godot" "$HOME/.android"
+          if [ ! -f "$HOME/.android/porto-debug.keystore" ]; then
+            keytool -genkeypair -keystore "$HOME/.android/porto-debug.keystore" -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname 'CN=Porto Livre Development,O=Kauan,C=BR'
+          fi
+          python3 android-game/tools/configure_export.py
+          echo "GODOT_ANDROID_KEYSTORE_DEBUG_PATH=$HOME/.android/porto-debug.keystore" >> "$GITHUB_ENV"
+          echo "GODOT_ANDROID_KEYSTORE_DEBUG_USER=androiddebugkey" >> "$GITHUB_ENV"
+          echo "GODOT_ANDROID_KEYSTORE_DEBUG_PASSWORD=android" >> "$GITHUB_ENV"
+      - name: Export APK and verify signature
+        run: |
+          godot --headless --path android-game --export-debug Android build/PortoLivre-v0.1.0.apk 2>&1 | tee android-game/build/export.log
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose android-game/build/PortoLivre-v0.1.0.apk
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging android-game/build/PortoLivre-v0.1.0.apk > android-game/build/apk-info.txt
+          sha256sum android-game/build/PortoLivre-v0.1.0.apk > android-game/build/SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PortoLivre-Android-v0.1.0
+          path: |
+            android-game/build/*.apk
+            android-game/build/*.png
+            android-game/build/*.txt
+            android-game/README.md
+          if-no-files-found: error
+          retention-days: 30
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: PortoLivre-build-logs
+          path: android-game/build/*.log
