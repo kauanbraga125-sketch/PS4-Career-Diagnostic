@@ -1,0 +1,46 @@
+name: Porto Livre Realism Assets
+
+on:
+  push:
+    branches: [game/porto-livre-android]
+    paths: ['android-game/tools/assets/**', '.github/workflows/porto-realism-assets.yml']
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  assets:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
+        with:
+          path: |
+            .porto-asset-cache
+            .blender-tools
+          key: porto-realism-tools-v1
+      - name: Install pinned Blender
+        run: |
+          mkdir -p .blender-tools
+          if [ ! -x .blender-tools/blender-4.3.2-linux-x64/blender ]; then
+            curl -fL --retry 3 -o /tmp/blender.tar.xz https://download.blender.org/release/Blender4.3/blender-4.3.2-linux-x64.tar.xz
+            tar -xf /tmp/blender.tar.xz -C .blender-tools
+          fi
+      - name: Prepare licensed models, textures and sound
+        env:
+          PORTO_BLENDER: ${{ github.workspace }}/.blender-tools/blender-4.3.2-linux-x64/blender
+        run: python3 android-game/tools/assets/prepare.py 2>&1 | tee android-game/assets-build.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: PortoLivre-realism-assets
+          path: |
+            android-game/assets/realism
+            android-game/assets-build.log
+          retention-days: 30

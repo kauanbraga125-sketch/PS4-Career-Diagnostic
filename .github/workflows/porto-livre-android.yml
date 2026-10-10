@@ -3,7 +3,7 @@ name: Porto Livre Android APK
 on:
   push:
     branches: [game/porto-livre-android]
-    paths: ['android-game/**', '.github/workflows/porto-livre-android.yml']
+    paths: ['android-game/**', '!android-game/tools/assets/**', '.github/workflows/porto-livre-android.yml']
   workflow_dispatch:
 
 permissions:
