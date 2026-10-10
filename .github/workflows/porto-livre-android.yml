@@ -70,6 +70,8 @@ jobs:
           mkdir -p android-game/build
           touch android-game/build/.gdignore
           godot --headless --path android-game --editor --import 2>&1 | tee android-game/build/import.log
+          python3 android-game/tools/configure_imports.py
+          godot --headless --path android-game --editor --import 2>&1 | tee android-game/build/textures.log
           timeout 120 godot --headless --path android-game -- --self-test 2>&1 | tee android-game/build/test.log
           grep -q PORTO_SELF_TEST_OK android-game/build/test.log
           if grep -E 'SCRIPT ERROR|TEST_FAIL' android-game/build/test.log; then exit 1; fi

@@ -22,6 +22,20 @@ func run(game) -> void:
 	check(game.player.visual.skeleton.find_bone("RightHand")>=0,"Weapon attaches to an animated hand")
 	check(StreetModels.surface("asphalt").albedo_texture!=null,"Photographic road texture imported")
 	check(game.sound.clips.music.get_length()>30,"Full music track bundled offline")
+	var review_actor = StreetModels.person(0)
+	add_child(review_actor)
+	var thigh = review_actor.skeleton.find_bone("LeftUpLeg")
+	var poses: Array[Quaternion] = []
+	for label in ["idle","walk","run","jump"]:
+		review_actor.animator.play(review_actor.clips[label],0)
+		review_actor.animator.advance(0)
+		review_actor.animator.seek(0.25,true)
+		review_actor.animator.advance(0)
+		poses.append(review_actor.skeleton.get_bone_pose_rotation(thigh))
+	print("ANIMATION_POSES: ",poses)
+	check(poses[0].angle_to(poses[1])>0.05,"Walking moves the skinned leg from its idle pose")
+	check(poses[1].angle_to(poses[2])>0.05,"Running has a distinct stride")
+	review_actor.queue_free()
 	# Nearby entities outside the active terrain must not fall into unloaded space.
 	game.player.position=Vector3(115,0.2,6)
 	var idle_car=game.vehicles[2]

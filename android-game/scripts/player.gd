@@ -32,6 +32,7 @@ func setup(owner_game) -> void:
 	shape.position.y = 0.9
 	add_child(shape)
 	visual = StreetModels.person(0)
+	visual.rotation.y = -PI/2
 	add_child(visual)
 
 func _physics_process(dt: float) -> void:

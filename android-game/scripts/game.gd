@@ -111,7 +111,7 @@ func setup_environment() -> void:
 	sky_material.sky_horizon_color = Color("d6ceb8")
 	sky_material.ground_horizon_color = Color("d6ceb8")
 	sky_material.ground_bottom_color = Color("58675b")
-	sky_material.sun_angle_max = 8
+	sky_material.sun_angle_max = 3
 	sky.sky_material = sky_material
 	environment.sky = sky
 	environment.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
@@ -128,7 +128,7 @@ func setup_environment() -> void:
 	sun = DirectionalLight3D.new()
 	sun.rotation_degrees = Vector3(-42,-34,0)
 	sun.light_color = Color("fff1d9")
-	sun.light_energy = 1.4
+	sun.light_energy = 0.88
 	sun.shadow_enabled = false
 	add_child(sun)
 
@@ -176,6 +176,9 @@ func start_game() -> void:
 	notify(StreetMissions.STORIES[missions.index][1] if missions.index<10 else "Bem-vindo de volta a Porto Livre.",7)
 
 func toggle_pause() -> void:
+	if hud.credits_open:
+		hud.credits_open = false
+		return
 	if hud.map_open:
 		hud.map_open = false
 		running = true
@@ -198,7 +201,7 @@ func set_quality(value: int) -> void:
 	get_viewport().msaa_3d = [Viewport.MSAA_DISABLED,Viewport.MSAA_2X,Viewport.MSAA_4X][quality]
 	sun.directional_shadow_max_distance = [50.0,75.0,120.0][quality]
 	if world: world.set_quality(quality)
-	environment.fog_density = [0.005,0.0035,0.0025][quality]
+	environment.fog_density = [0.0035,0.0022,0.0015][quality]
 
 func focus_position() -> Vector3:
 	if not player: return START
@@ -539,14 +542,16 @@ func capture_preview() -> void:
 	review.add_child(review_tree)
 	review_tree.position = Vector3(-6,0,6)
 	review_tree.scale = Vector3.ONE*0.55
-	camera.position = review.position+Vector3(5,4,-12)
-	camera.look_at(review.position+Vector3(0,1.5,1))
+	camera.position = review.position+Vector3(2,2.8,-9)
+	camera.fov = 52
+	camera.look_at(review.position+Vector3(0,1.4,0))
 	get_viewport().scaling_3d_scale = 1.0
 	await get_tree().process_frame
 	await RenderingServer.frame_post_draw
 	get_viewport().get_texture().get_image().save_png(path.get_basename()+"-models.png")
 	for i in range(4):
-		actors[i].play_state(["walk","run","jump","riding"][i])
+		actors[i].animator.play(actors[i].clips[["walk","run","jump","riding"][i]],0)
+		actors[i].animator.advance(0)
 		actors[i].animator.seek(0.25,true)
 		actors[i].animator.pause()
 	await get_tree().process_frame

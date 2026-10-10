@@ -133,4 +133,4 @@ func take_hit(amount: float) -> void:
 	if not driver: game.add_heat(8)
 
 func display_name() -> String:
-	return "MOTO / VENTO 250" if motorcycle else "CARRO / SEDAN COSTA"
+	return "MOTO / VENTO 250" if motorcycle else "CARRO / COSTA GT"

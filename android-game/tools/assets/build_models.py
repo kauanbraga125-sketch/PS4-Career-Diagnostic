@@ -306,19 +306,50 @@ def normalize_vehicle(length):
 
 def vehicles():
     clear()
-    bpy.ops.import_scene.fbx(filepath=str(next((CACHE / 'car').glob('*.fbx'))))
-    print('CAR_MATERIALS', [m.name for m in bpy.data.materials], flush=True)
-    body_texture = next((CACHE / 'car').glob('*Texture*.png'))
-    tyre_texture = next((CACHE / 'car').glob('*Tyres*.png'))
-    for obj in [o for o in bpy.context.scene.objects if o.type == 'MESH']:
-        for slot in obj.material_slots:
-            old = slot.material.name.lower() if slot.material else obj.name.lower()
-            if 'glass' in old:
-                slot.material = material('Glass', (.10, .16, .19, 1), metallic=.55, roughness=.16)
-            else:
-                tyre = 'tyre' in old or 'tire' in old or 'wheel' in old
-                slot.material = material('Tyres' if tyre else 'Paint', texture=tyre_texture if tyre else body_texture, metallic=.0 if tyre else .55, roughness=.82 if tyre else .28)
+    bpy.ops.import_scene.gltf(filepath=str(CACHE / 'concept-car.glb'))
+    # The chase camera cannot see inside opaque windows. Remove hidden cabin
+    # detail and trademark plates, then simplify the remaining exterior.
+    for obj in list(bpy.context.scene.objects):
+        if obj.type == 'MESH' and (obj.name.startswith('Interior') or obj.name in ('Engine', 'License Plate')):
+            bpy.data.objects.remove(obj, do_unlink=True)
+    for mat in bpy.data.materials:
+        if mat.name == 'Glass':
+            nodes = mat.node_tree.nodes
+            bsdf = next((n for n in nodes if n.type == 'BSDF_PRINCIPLED'), None)
+            if bsdf:
+                bsdf.inputs['Transmission Weight'].default_value = 0
+                bsdf.inputs['Base Color'].default_value = (.035, .065, .08, 1)
+                bsdf.inputs['Metallic'].default_value = .55
+                bsdf.inputs['Roughness'].default_value = .13
+        for node in mat.node_tree.nodes if mat.use_nodes else []:
+            if node.type == 'TEX_IMAGE' and node.image and max(node.image.size) > 1024:
+                node.image.scale(1024, 1024)
+                node.image.pack()
+    meshes = [o for o in bpy.context.scene.objects if o.type == 'MESH']
+    total = sum(len(o.data.polygons) for o in meshes)
+    ratio = min(1., 28000 / max(1, total))
+    for obj in meshes:
+        if len(obj.data.polygons) > 150:
+            activate(obj)
+            modifier = obj.modifiers.new('Mobile exterior', 'DECIMATE')
+            modifier.ratio = ratio
+            bpy.ops.object.modifier_apply(modifier=modifier.name)
     normalize_vehicle(4.3)
+    groups = {'CarBody': [], 'WFrontL': [], 'WFrontR': [], 'WRearL': [], 'WRearR': []}
+    for obj in [o for o in bpy.context.scene.objects if o.type == 'MESH']:
+        group = 'CarBody'
+        for prefix, label in [('WheelFrontL','WFrontL'), ('WheelFrontR','WFrontR'), ('WheelRearL','WRearL'), ('WheelRearR','WRearR')]:
+            if obj.name.startswith(prefix): group = label
+        groups[group].append(obj)
+    for name, group in groups.items():
+        if not group: continue
+        bpy.ops.object.select_all(action='DESELECT')
+        for obj in group: obj.select_set(True)
+        bpy.context.view_layer.objects.active = group[0]
+        bpy.ops.object.join()
+        obj = bpy.context.object
+        obj.name = name
+        bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='BOUNDS')
     glb('car')
     clear()
     with bpy.data.libraries.load(str(CACHE / 'bike.blend'), link=False) as (source, target):
@@ -337,6 +368,7 @@ def vehicles():
             color = tuple(old.diffuse_color) if old else (.2, .22, .25, 1)
             name = old.name.lower() if old else obj.name.lower()
             rubber = any(s in name for s in ('rubber', 'tire', 'tyre', 'seat')) or max(color[:3]) < .08
+            color = (.018, .023, .026, 1) if rubber else ((.035, .095, .16, 1) if name == 'neta' else (.32, .34, .36, 1))
             slot.material = material('Bike_' + name, color, metallic=0 if rubber else .65, roughness=.85 if rubber else .32)
     normalize_vehicle(2.15)
     glb('bike')

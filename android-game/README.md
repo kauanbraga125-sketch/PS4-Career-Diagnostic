@@ -57,12 +57,14 @@ Geometria estática agrupada em MultiMesh por material e bloco; malhas compartil
 
 ## Reproduzir o APK no GitHub
 
-Workflow: `.github/workflows/porto-livre-android.yml`, disparado por alterações desta pasta na branch `game/porto-livre-android`. Primeiro executa o workflow reutilizável de recursos: baixa as fontes CC0 e converte os modelos com Blender 4.3.2 e MPFB fixado por commit. Depois instala Java 17, SDK Android 35 e templates oficiais Godot 4.5.1, importa recursos, executa validação integrada, renderiza uma captura e exporta um APK assinado para testes. O artefato `PortoLivre-Android-v0.2.0` contém APK, imagem, hash e metadados. A chave de desenvolvimento fica no cache do Actions; se esse cache expirar, uma nova chave pode exigir reinstalação (faça backup do save antes de desinstalar). Não é uma assinatura de publicação na Play Store.
+Workflow: `.github/workflows/porto-livre-android.yml`, disparado por alterações desta pasta na branch `game/porto-livre-android`. Primeiro executa o workflow reutilizável de recursos: baixa as fontes CC0 e CC BY 4.0 e converte os modelos com Blender 4.3.2 e MPFB fixado por commit. Depois instala Java 17, SDK Android 35 e templates oficiais Godot 4.5.1, importa recursos, executa validação integrada, renderiza uma captura e exporta um APK assinado para testes. O artefato `PortoLivre-Android-v0.2.0` contém APK, imagem, hash e metadados. A chave de desenvolvimento fica no cache do Actions; se esse cache expirar, uma nova chave pode exigir reinstalação (faça backup do save antes de desinstalar). Não é uma assinatura de publicação na Play Store.
 
 Validação local:
 
 ```sh
 PORTO_BLENDER=/caminho/para/blender python3 android-game/tools/assets/prepare.py
+godot --headless --path android-game --editor --import
+python3 android-game/tools/configure_imports.py
 godot --headless --path android-game --editor --import
 godot --headless --path android-game -- --self-test
 ```

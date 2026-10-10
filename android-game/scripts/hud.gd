@@ -7,6 +7,7 @@ const GOLD = Color("efbc65")
 const TEAL = Color("5cbbc0")
 var game
 var map_open = false
+var credits_open = false
 var show_briefing = false
 var font: Font
 var waypoint = Vector3.ZERO
@@ -53,6 +54,9 @@ func button(rect: Rect2,title: String,subtitle: String="",highlight: bool=false)
 func _draw() -> void:
 	if not font or not game or not game.player: return
 	draw_set_transform(Vector2.ZERO,0,Vector2.ONE*ui_scale())
+	if credits_open:
+		draw_credits()
+		return
 	if map_open:
 		draw_map()
 		return
@@ -104,8 +108,8 @@ func _draw() -> void:
 		text_at(r.position+Vector2(10,r.size.y/2+5),titles[action],14)
 	text_at(Vector2(927,689),"ARRASTE PARA OLHAR",12,Color("d1d6ca"))
 	if game.notice_time>0:
-		panel(Rect2(342,454,570,96),Color(0.035,0.085,0.105,0.90))
-		paragraph(Vector2(365,486),game.notice,525,18)
+		panel(Rect2(342,612,570,72),Color(0.035,0.085,0.105,0.90))
+		paragraph(Vector2(365,640),game.notice,525,18)
 	text_at(Vector2(20,710),"PORTO LIVRE  /  ALPHA 0.2     %d FPS  ·  %s" % [int(game.fps),["LEVE","EQUILIBRADO","ALTO"][game.quality]],11,Color("d0d8cf"))
 	if game.damage_flash>0: draw_rect(Rect2(0,0,1280,720),Color(0.7,0.05,0.03,game.damage_flash*0.45))
 
@@ -122,6 +126,7 @@ func draw_menu() -> void:
 	button(Rect2(80,546,174,62),"EFEITOS: "+("SIM" if game.sound.enabled else "NÃO"))
 	button(Rect2(268,546,170,62),"MÚSICA: "+("SIM" if game.sound.music_enabled else "NÃO"))
 	button(Rect2(452,546,168,62),"MAPA")
+	button(Rect2(80,618,180,44),"CRÉDITOS")
 	text_at(Vector2(80,667),"Texturas e modelos 3D · recomendado para celulares potentes",14,Color("9eafb0"))
 	text_at(Vector2(775,80),"SUA HISTÓRIA",15,TEAL)
 	for i in range(10):
@@ -198,7 +203,27 @@ func draw_map() -> void:
 	paragraph(Vector2(40,318),"Interaja na oficina para recuperar saúde, munição e veículos próximos.",216,17)
 	button(Rect2(40,571,215,63),"VOLTAR", "M / voltar do Android",true)
 
+func draw_credits() -> void:
+	draw_rect(Rect2(0,0,1280,720),Color("10242e"))
+	text_at(Vector2(80,90),"PORTO LIVRE / CRÉDITOS",36,GOLD)
+	var rows = [
+		"Personagens: MakeHuman Community — CC0.",
+		"Texturas: artistas da Poly Haven — CC0. polyhaven.com/license",
+		"Car Concept: Eric Chadwick / Darmstadt Graphics Group GmbH, © 2024 — CC BY 4.0.",
+		"Carro adaptado: malha simplificada, texturas reduzidas, escala e materiais ajustados.",
+		"Fonte: github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/CarConcept",
+		"Licença: creativecommons.org/licenses/by/4.0/",
+		"Moto: Teh_Bucket. Árvore: musdasch, Yughues e para — CC0 / OpenGameArt.",
+		"Wednesday Night: Zane Little Music. Efeitos: rubberduck. Motor: domasx2 — CC0.",
+		"Engine Godot: colaboradores do Godot — MIT. godotengine.org/license"
+	]
+	for i in range(rows.size()): text_at(Vector2(80,155+i*45),rows[i],19)
+	button(Rect2(80,625,220,55),"VOLTAR", "",true)
+
 func menu_click(p: Vector2) -> void:
+	if credits_open:
+		if Rect2(80,625,220,55).has_point(p): credits_open = false
+		return
 	if map_open:
 		if Rect2(40,571,215,63).has_point(p): game.toggle_pause(); return
 		var rect = Rect2(292,110,790,552)
@@ -218,3 +243,4 @@ func menu_click(p: Vector2) -> void:
 		game.sound.music_enabled = not game.sound.music_enabled
 		game.save_game()
 	elif Rect2(452,546,168,62).has_point(p): map_open=true
+	elif Rect2(80,618,180,44).has_point(p): credits_open=true

@@ -122,8 +122,20 @@ static func person(style: int = 0) -> StreetActor:
 	actor.setup(style)
 	return actor
 
-static func car(_style: int = 0) -> Node3D:
-	return imported("car")
+static func car(style: int = 0) -> Node3D:
+	var root = imported("car")
+	var paint = [Color("6f1820"),Color("dedcd2"),Color("16445c"),Color("252c32"),Color("9b6634")][posmod(style,5)]
+	for part_node in root.find_children("*","MeshInstance3D",true,false):
+		for index in range(part_node.mesh.get_surface_count()):
+			var original = part_node.mesh.surface_get_material(index)
+			if original is BaseMaterial3D and String(original.resource_name).begins_with("Paint 1"):
+				var key = "car_paint_"+str(style)
+				if not materials.has(key):
+					var changed = original.duplicate()
+					changed.albedo_color = paint
+					materials[key] = changed
+				part_node.set_surface_override_material(index,materials[key])
+	return root
 
 static func bike(_style: int = 0) -> Node3D:
 	return imported("bike")
@@ -139,7 +151,7 @@ static func surface(name_value: String,tint: Color = Color.WHITE) -> StandardMat
 	m.normal_scale = 0.65
 	m.roughness_texture = load(base+"_rough.jpg")
 	m.roughness_texture_channel = BaseMaterial3D.TEXTURE_CHANNEL_RED
-	m.albedo_color = tint
+	m.albedo_color = tint*Color(0.55,0.55,0.58) if name_value=="asphalt" else tint
 	m.uv1_triplanar = true
 	m.uv1_world_triplanar = true
 	m.uv1_scale = Vector3.ONE*(0.5 if name_value in ["asphalt","grass","concrete"] else 0.8)

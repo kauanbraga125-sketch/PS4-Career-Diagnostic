@@ -6,7 +6,6 @@ import json
 import os
 import shutil
 import subprocess
-import tarfile
 import time
 import urllib.request
 import zipfile
@@ -19,7 +18,8 @@ SOURCES = {
     'human.zip': 'https://files.makehumancommunity.org/asset_packs/makehuman_system_assets/makehuman_system_assets_cc0.zip',
     'mpfb.zip': f'https://github.com/makehumancommunity/mpfb2/archive/{MPFB_COMMIT}.zip',
     'tree.zip': 'https://opengameart.org/sites/default/files/tree_1.zip',
-    'car.zip': 'https://opengameart.org/sites/default/files/StreetCar.zip',
+    'concept-car.glb': 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/edc7c9e67c639d230715049ee31f9a96a6babbbe/Models/CarConcept/glTF-Binary/CarConcept.glb',
+    'car-license.md': 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/edc7c9e67c639d230715049ee31f9a96a6babbbe/Models/CarConcept/LICENSE.md',
     'bike.blend': 'https://opengameart.org/sites/default/files/bike.blend',
     'sfx.zip': 'https://opengameart.org/sites/default/files/sfx_100_v2.zip',
     'engine.wav': 'https://opengameart.org/sites/default/files/loop_0.wav',
@@ -49,7 +49,7 @@ def fetch(item):
                 time.sleep(2 ** attempt)
     digest = hashlib.sha256(dest.read_bytes()).hexdigest()
     print(f'FETCHED {name} {dest.stat().st_size} {digest}', flush=True)
-    return {'file': name, 'url': url, 'sha256': digest, 'license': 'GPL-3.0 build tool only' if name == 'mpfb.zip' else 'CC0-1.0'}
+    return {'file': name, 'url': url, 'sha256': digest, 'license': ('GPL-3.0 build tool only' if name == 'mpfb.zip' else ('CC-BY-4.0' if name in ('concept-car.glb', 'car-license.md') else 'CC0-1.0'))}
 
 
 def unzip(name, folder):
@@ -74,18 +74,8 @@ def main():
         provenance = list(pool.map(fetch, SOURCES.items()))
     unzip('human.zip', 'human')
     mpfb = unzip('mpfb.zip', 'mpfb') / f'mpfb2-{MPFB_COMMIT}/src'
-    car = unzip('car.zip', 'car-package')
-    car_out = CACHE / 'car'
-    car_out.mkdir(exist_ok=True)
-    package = next(car.rglob('*.unitypackage'))
-    with tarfile.open(package) as archive:
-        members = {member.name: member for member in archive.getmembers() if member.isfile()}
-        for name in members:
-            if name.endswith('/pathname'):
-                filename = Path(archive.extractfile(name).read().decode().strip()).name
-                if Path(filename).suffix.lower() in ('.fbx', '.png', '.jpg'):
-                    asset = name.rsplit('/', 1)[0] + '/asset'
-                    (car_out / filename).write_bytes(archive.extractfile(asset).read())
+    (OUT / 'licenses').mkdir(exist_ok=True)
+    shutil.copyfile(CACHE / 'car-license.md', OUT / 'licenses/CarConcept-LICENSE.md')
     sfx = unzip('sfx.zip', 'sfx')
     audio = OUT / 'audio'
     audio.mkdir(exist_ok=True)
