@@ -133,6 +133,13 @@ static func car(style: int = 0) -> Node3D:
 				if not materials.has(key):
 					var changed = original.duplicate()
 					changed.albedo_color = paint
+					# The source's microscopic paint flakes shimmer after mobile
+					# compression. Use a smooth automotive clear coat at this scale.
+					changed.normal_enabled = false
+					changed.ao_enabled = false
+					changed.metallic = 0.55
+					changed.roughness = 0.30
+					changed.clearcoat = 0.5
 					materials[key] = changed
 				part_node.set_surface_override_material(index,materials[key])
 	return root

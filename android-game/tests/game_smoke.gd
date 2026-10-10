@@ -48,6 +48,9 @@ func run(game) -> void:
 	waiting_npc.queue_free()
 	# Mount, exit, and character/collision restoration are integration paths.
 	var car = game.vehicles[0]
+	for wheel in car.wheels:
+		if String(wheel.name).begins_with("WFront"):
+			check(wheel.position.z<0,"Front wheels face the vehicle's forward movement axis")
 	# Simulate real physics ticks: acceleration and contact with a solid wall.
 	game.player.position=Vector3(18,0.2,60)
 	car.position=Vector3(40,0.2,-6)
@@ -68,6 +71,7 @@ func run(game) -> void:
 	check(car.position.x>45,"Vehicle accelerates and moves through physics ticks")
 	check(car.position.x<69,"Vehicle cannot pass through a solid wall")
 	check(car.position.y>-1,"Vehicle remains on the road")
+	check(car.position.y>-0.02,"Imported tires do not sink under road collision")
 	wall.queue_free()
 	car.set_driver(false)
 	car.speed=0

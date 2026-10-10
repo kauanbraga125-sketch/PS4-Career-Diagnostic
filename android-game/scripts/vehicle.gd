@@ -28,17 +28,18 @@ func setup(owner_game,bike: bool,style: int,auto_drive: bool = false) -> void:
 	floor_max_angle = deg_to_rad(46)
 	var shape = CollisionShape3D.new()
 	var box = BoxShape3D.new()
-	box.size = Vector3(0.70,1.05,1.9) if bike else Vector3(1.8,1.35,4.16)
+	box.size = Vector3(0.70,1.05,1.9) if bike else Vector3(2.16,1.10,4.16)
 	shape.shape = box
-	shape.position.y = 0.78
+	# Imported models have their tires at local Y=0; the collider must too.
+	shape.position.y = box.size.y*0.5
 	add_child(shape)
 	visual = StreetModels.bike(style) if bike else StreetModels.car(style)
 	add_child(visual)
 	for child in visual.find_children("W*","MeshInstance3D",true,false): wheels.append(child)
-	if traffic or bike:
-		var rider = StreetModels.person(style+3)
+	if bike:
+		var rider = StreetModels.person(0)
 		rider.name = "Rider"
-		rider.position = Vector3(0,-0.16,0.20) if bike else Vector3(-0.4,0.40,0)
+		rider.position = Vector3(0,-0.30,0.20)
 		rider.scale = Vector3.ONE*0.94
 		rider.mount_pose()
 		visual.add_child(rider)
@@ -108,7 +109,7 @@ func _physics_process(dt: float) -> void:
 				speed *= clampf(1.0-loss/(absf(speed)+0.1),0.05,0.90)
 				if traffic: rotation.y += PI/2
 				break
-	wheel_angle = fmod(wheel_angle-speed*dt/0.33,TAU)
+	wheel_angle = fmod(wheel_angle-speed*dt/(0.31 if motorcycle else 0.40),TAU)
 	for wheel in wheels:
 		wheel.rotation = Vector3(wheel_angle,steering if String(wheel.name).begins_with("WFront") else 0.0,0)
 	var acceleration_now = (speed-old_speed)/maxf(dt,0.001)

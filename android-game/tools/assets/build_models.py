@@ -1,4 +1,4 @@
-"""Convert CC0 source art into bounded, skinned glTF assets using Blender 4.3.
+"""Convert licensed source art into bounded, skinned glTF assets using Blender 4.3.
 
 Locomotion clips are authored here; they are not motion-capture recordings.
 All characters wear complete outfits before export. Helpers and covered skin
@@ -117,13 +117,17 @@ def glb(name, animated=False):
     print('MODEL_OK', name, json.dumps(REPORT[name]), flush=True)
 
 
-def bone_rotation(rig, name, angle, axis='X', pre=None):
+def bone_rotation(rig, name, angle, axis='X', pre=None, parent_frame=None):
     bone = rig.pose.bones.get(name)
     if not bone:
         return
     world = Quaternion({'X': (1, 0, 0), 'Y': (0, 1, 0), 'Z': (0, 0, 1)}[axis], angle)
     if pre is not None:
         world = world @ pre
+    if parent_frame is not None:
+        # Bend in the lowered arm's sagittal plane, rather than twisting
+        # around the original T-pose forearm axis.
+        world = parent_frame.inverted() @ world @ parent_frame
     rest = bone.bone.matrix_local.to_quaternion()
     bone.rotation_mode = 'QUATERNION'
     bone.rotation_quaternion = rest.inverted() @ world @ rest
@@ -191,7 +195,7 @@ def animate(rig):
                 bone_rotation(rig, side + 'Leg', knee)
                 bone_rotation(rig, side + 'Foot', foot)
                 bone_rotation(rig, side + 'Arm', arm, pre=arm_down[side])
-                bone_rotation(rig, side + 'ForeArm', elbow)
+                bone_rotation(rig, side + 'ForeArm', elbow, parent_frame=arm_down[side])
             bone_rotation(rig, 'Spine', lean)
             if name == 'death':
                 bone_rotation(rig, 'Hips', lean)
@@ -269,6 +273,11 @@ def normalize_vehicle(length):
         if obj.type not in ('MESH', 'EMPTY'):
             bpy.data.objects.remove(obj, do_unlink=True)
     for obj in meshes:
+        if obj.parent and obj.parent.name.startswith(('WheelFront', 'WheelRear')):
+            # Some source tires have unnamed mesh nodes. Retain their wheel
+            # ownership before baking and removing the transform hierarchy.
+            if not obj.name.startswith(obj.parent.name):
+                obj.name = obj.parent.name + '_' + obj.name
         world = obj.matrix_world.copy()
         obj.parent = None
         obj.matrix_world = world
@@ -290,6 +299,13 @@ def normalize_vehicle(length):
     rotation = Matrix.Rotation(angle, 4, 'Z')
     for obj in meshes:
         obj.data.transform(rotation)
+    front = [v.co.y for o in meshes if o.name.startswith('WheelFront') for v in o.data.vertices]
+    rear = [v.co.y for o in meshes if o.name.startswith('WheelRear') for v in o.data.vertices]
+    if front and rear and sum(front)/len(front) < sum(rear)/len(rear):
+        # PCA has an arbitrary sign. Blender +Y becomes Godot -Z, which
+        # must be the vehicle's forward axis for steering and acceleration.
+        for obj in meshes:
+            obj.data.transform(Matrix.Rotation(math.pi, 4, 'Z'))
     points = [v.co for o in meshes for v in o.data.vertices]
     lo = Vector(tuple(min(p[i] for p in points) for i in range(3)))
     hi = Vector(tuple(max(p[i] for p in points) for i in range(3)))
