@@ -2,7 +2,7 @@ class_name StreetNPC
 extends CharacterBody3D
 
 var game
-var visual: Node3D
+var visual: StreetActor
 var role = "civilian"
 var health = 100.0
 var phase = 0.0
@@ -32,15 +32,12 @@ func setup(owner_game,style: int,kind: String = "civilian") -> void:
 	add_child(collider)
 	if kind in ["police","enemy"]:
 		var gun = StreetModels.gun(0)
-		visual.get_node("ArmR").add_child(gun)
-		gun.position = Vector3(0,-0.55,0)
-		gun.rotation.x = PI/2
+		visual.attach_weapon(gun)
 
 func _physics_process(dt: float) -> void:
 	if not game or not game.running: return
 	if dead:
 		dead_time += dt
-		visual.rotation.z = move_toward(visual.rotation.z,PI/2,dt*5)
 		if dead_time>15: queue_free()
 		return
 	var player_pos = game.focus_position()
@@ -100,7 +97,7 @@ func _physics_process(dt: float) -> void:
 	if direction.length()>0.1:
 		visual.rotation.y = lerp_angle(visual.rotation.y,atan2(-direction.x,-direction.z),minf(dt*8,1))
 	phase += dt*pace*2.8
-	StreetModels.animate_person(visual,phase,0.8 if direction.length()>0.1 else 0.0,aggressive and dist<40)
+	visual.move_pose(Vector2(velocity.x,velocity.z).length(),is_on_floor(),velocity.y,aggressive and dist<40,dt)
 	for v in game.vehicles:
 		if is_instance_valid(v) and absf(v.speed)>8 and v.global_position.distance_squared_to(global_position)<3.1:
 			take_hit(absf(v.speed)*5)
@@ -113,5 +110,6 @@ func take_hit(damage: float) -> void:
 	if role=="civilian" or role=="hostage" or role=="police": game.add_heat(22)
 	if health<=0:
 		dead = true
+		visual.death_pose()
 		collision_layer = 0
 		game.missions.on_defeat(self)

@@ -18,6 +18,7 @@ MPFB_COMMIT = 'd0a32e57a7f915cb2f2b95410e2117648c7bbb7e'
 SOURCES = {
     'human.zip': 'https://files.makehumancommunity.org/asset_packs/makehuman_system_assets/makehuman_system_assets_cc0.zip',
     'mpfb.zip': f'https://github.com/makehumancommunity/mpfb2/archive/{MPFB_COMMIT}.zip',
+    'tree.zip': 'https://opengameart.org/sites/default/files/tree_1.zip',
     'car.zip': 'https://opengameart.org/sites/default/files/StreetCar.zip',
     'bike.blend': 'https://opengameart.org/sites/default/files/bike.blend',
     'sfx.zip': 'https://opengameart.org/sites/default/files/sfx_100_v2.zip',
@@ -98,10 +99,12 @@ def main():
     for filename in ('engine.wav', 'music.ogg'):
         shutil.copyfile(CACHE / filename, audio / filename)
     shutil.copytree(CACHE / 'textures', OUT / 'textures', dirs_exist_ok=True)
+    (OUT / 'models').mkdir(exist_ok=True)
+    shutil.copyfile(next(unzip('tree.zip', 'tree').rglob('tree.glb')), OUT / 'models/tree.glb')
     (OUT / 'sources.json').write_text(json.dumps(provenance, indent=2) + '\n')
     env = os.environ | {'PORTO_ASSET_CACHE': str(CACHE), 'PORTO_ASSET_OUTPUT': str(OUT), 'PORTO_MPFB': str(mpfb)}
     subprocess.run([os.environ.get('PORTO_BLENDER', 'blender'), '--background', '--factory-startup', '--python-exit-code', '1', '--python', str(Path(__file__).with_name('build_models.py'))], env=env, check=True)
-    for name in ('person_0', 'person_1', 'person_2', 'person_3', 'car', 'bike'):
+    for name in ('person_0', 'person_1', 'person_2', 'person_3', 'car', 'bike', 'tree'):
         if not (OUT / 'models' / f'{name}.glb').is_file():
             raise RuntimeError(f'Missing model {name}')
     print('PORTO_ASSETS_OK', flush=True)

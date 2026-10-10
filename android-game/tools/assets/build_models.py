@@ -12,7 +12,8 @@ import os
 import sys
 import bpy
 import addon_utils
-from mathutils import Vector, Quaternion
+from mathutils import Vector, Quaternion, Matrix
+import numpy as np
 
 CACHE = Path(os.environ['PORTO_ASSET_CACHE'])
 OUT = Path(os.environ['PORTO_ASSET_OUTPUT']) / 'models'
@@ -155,28 +156,28 @@ def animate(rig):
                 hip, knee, foot, arm, elbow = 0., .04, 0., .015 * swing, -.12
                 if name in ('walk', 'run'):
                     running = name == 'run'
-                    hip = swing * (.68 if running else .40)
-                    knee = -(.12 + max(0, -swing) * (1.22 if running else .65))
+                    hip = -swing * (.68 if running else .40)
+                    knee = (.12 + max(0, -swing) * (1.22 if running else .65))
                     foot = -hip * .25 - knee * .25
                     arm = -swing * (.62 if running else .30)
                     elbow = -.90 if running else -.22
                     bob = (.035 if running else .015) * (1 - math.cos(phase * 2))
                     lean = .10 if running else .025
                 elif name == 'jump':
-                    hip = .38 * math.sin(t * math.pi) + .10
-                    knee = -.70 * math.sin(t * math.pi) - .15
+                    hip = -.38 * math.sin(t * math.pi) + .10
+                    knee = .70 * math.sin(t * math.pi) + .15
                     arm = -.55 * math.sin(t * math.pi)
                     elbow = -.70
                     lean = .12
                 elif name == 'fall':
-                    hip, knee, arm, elbow = .12 * sign, -.27, -.18, -.6
+                    hip, knee, arm, elbow = .12 * sign, .27, -.18, -.6
                 elif name == 'land':
                     crouch = math.sin(t * math.pi)
-                    hip, knee, arm, elbow = .48 * crouch, -.90 * crouch, -.3 * crouch, -.45
+                    hip, knee, arm, elbow = -.48 * crouch, .90 * crouch, -.3 * crouch, -.45
                     bob = -.13 * crouch
                     lean = .2 * crouch
                 elif name == 'riding':
-                    hip, knee, arm, elbow = 1.15, -1.45, -.92, -.38
+                    hip, knee, arm, elbow = -1.15, 1.45, -.92, -.38
                     lean = .14
                 elif name == 'aim':
                     arm, elbow = -1.35, -.16 if side == 'Right' else -.60
@@ -274,22 +275,32 @@ def normalize_vehicle(length):
     for obj in list(bpy.context.scene.objects):
         if obj.type == 'EMPTY':
             bpy.data.objects.remove(obj, do_unlink=True)
-    points = [o.matrix_world @ Vector(v) for o in meshes for v in o.bound_box]
-    sizes = [max(p[i] for p in points) - min(p[i] for p in points) for i in range(3)]
-    if sizes[0] > sizes[1]:
-        for obj in meshes:
-            obj.rotation_euler.z += math.pi / 2
-        bpy.context.view_layer.update()
-    points = [o.matrix_world @ Vector(v) for o in meshes for v in o.bound_box]
+    # Bake source transforms before finding the principal horizontal axis.
+    # Older .blend assets can store their orientation in a parent or mesh.
+    for obj in meshes:
+        obj.data.transform(obj.matrix_world)
+        obj.matrix_world = Matrix.Identity(4)
+        for modifier in list(obj.modifiers):
+            if modifier.type == 'ARMATURE':
+                obj.modifiers.remove(modifier)
+    points = np.array([tuple(v.co) for o in meshes for v in o.data.vertices])
+    _, vectors = np.linalg.eigh(np.cov(points[:, :2].T))
+    major = vectors[:, -1]
+    angle = math.pi / 2 - math.atan2(major[1], major[0])
+    rotation = Matrix.Rotation(angle, 4, 'Z')
+    for obj in meshes:
+        obj.data.transform(rotation)
+    points = [v.co for o in meshes for v in o.data.vertices]
     lo = Vector(tuple(min(p[i] for p in points) for i in range(3)))
     hi = Vector(tuple(max(p[i] for p in points) for i in range(3)))
     factor = length / (hi.y - lo.y)
     center = Vector(((lo.x + hi.x)/2, (lo.y + hi.y)/2, lo.z))
     for obj in meshes:
-        obj.location = (obj.location - center) * factor
-        obj.scale *= factor
-        activate(obj)
-        bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
+        for vertex in obj.data.vertices:
+            vertex.co = (vertex.co - center) * factor
+        if obj.name.startswith(('WFront', 'WRear')):
+            activate(obj)
+            bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='BOUNDS')
     print('VEHICLE_BOUNDS', list((hi - lo) * factor), flush=True)
 
 

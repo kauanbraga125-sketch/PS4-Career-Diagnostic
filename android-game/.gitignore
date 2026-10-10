@@ -3,3 +3,7 @@ build/
 *.keystore
 *.log
 *.import
+
+assets/realism/
+assets-build.log
+tools/assets/__pycache__/

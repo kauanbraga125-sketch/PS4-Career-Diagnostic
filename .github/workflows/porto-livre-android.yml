@@ -3,7 +3,7 @@ name: Porto Livre Android APK
 on:
   push:
     branches: [game/porto-livre-android]
-    paths: ['android-game/**', '!android-game/tools/assets/**', '.github/workflows/porto-livre-android.yml']
+    paths: ['android-game/**', '.github/workflows/porto-livre-android.yml']
   workflow_dispatch:
 
 permissions:
@@ -14,7 +14,10 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  assets:
+    uses: ./.github/workflows/porto-realism-assets.yml
   android:
+    needs: assets
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     defaults:
@@ -24,6 +27,10 @@ jobs:
       GODOT_VERSION: 4.5.1
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: PortoLivre-realism-assets
+          path: android-game
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
@@ -71,7 +78,7 @@ jobs:
           PORTO_CAPTURE_PATH: ${{ github.workspace }}/android-game/build/PortoLivre-preview.png
           LIBGL_ALWAYS_SOFTWARE: '1'
         run: |
-          timeout 60 xvfb-run -a godot --path android-game --rendering-method gl_compatibility --audio-driver Dummy -- --capture 2>&1 | tee android-game/build/preview.log
+          timeout 150 xvfb-run -a godot --path android-game --rendering-method gl_compatibility --audio-driver Dummy -- --capture 2>&1 | tee android-game/build/preview.log
           test -s android-game/build/PortoLivre-preview.png
       - name: Cache development signing key
         uses: actions/cache@v4
@@ -90,13 +97,13 @@ jobs:
           echo "GODOT_ANDROID_KEYSTORE_DEBUG_PASSWORD=android" >> "$GITHUB_ENV"
       - name: Export APK and verify signature
         run: |
-          godot --headless --path android-game --export-debug Android build/PortoLivre-v0.1.0.apk 2>&1 | tee android-game/build/export.log
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose android-game/build/PortoLivre-v0.1.0.apk
-          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging android-game/build/PortoLivre-v0.1.0.apk > android-game/build/apk-info.txt
-          sha256sum android-game/build/PortoLivre-v0.1.0.apk > android-game/build/SHA256SUMS.txt
+          godot --headless --path android-game --export-debug Android build/PortoLivre-v0.2.0.apk 2>&1 | tee android-game/build/export.log
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose android-game/build/PortoLivre-v0.2.0.apk
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging android-game/build/PortoLivre-v0.2.0.apk > android-game/build/apk-info.txt
+          sha256sum android-game/build/PortoLivre-v0.2.0.apk > android-game/build/SHA256SUMS.txt
       - uses: actions/upload-artifact@v4
         with:
-          name: PortoLivre-Android-v0.1.0
+          name: PortoLivre-Android-v0.2.0
           path: |
             android-game/build/*.apk
             android-game/build/*.png

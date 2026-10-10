@@ -106,7 +106,7 @@ func _draw() -> void:
 	if game.notice_time>0:
 		panel(Rect2(342,454,570,96),Color(0.035,0.085,0.105,0.90))
 		paragraph(Vector2(365,486),game.notice,525,18)
-	text_at(Vector2(20,710),"PORTO LIVRE  /  ALPHA 0.1     %d FPS  ·  %s" % [int(game.fps),["LEVE","EQUILIBRADO","ALTO"][game.quality]],11,Color("d0d8cf"))
+	text_at(Vector2(20,710),"PORTO LIVRE  /  ALPHA 0.2     %d FPS  ·  %s" % [int(game.fps),["LEVE","EQUILIBRADO","ALTO"][game.quality]],11,Color("d0d8cf"))
 	if game.damage_flash>0: draw_rect(Rect2(0,0,1280,720),Color(0.7,0.05,0.03,game.damage_flash*0.45))
 
 func draw_menu() -> void:
@@ -116,12 +116,13 @@ func draw_menu() -> void:
 	text_at(Vector2(74,181),"PORTO",92)
 	text_at(Vector2(74,269),"LIVRE",92,GOLD)
 	text_at(Vector2(80,315),"Seis distritos. Dez histórias. Seu caminho.",21)
-	text_at(Vector2(80,350),"ANDROID  ·  OFFLINE  ·  ALPHA 0.1",13,Color("a2b9bb"))
+	text_at(Vector2(80,350),"ANDROID  ·  OFFLINE  ·  ALPHA 0.2",13,Color("a2b9bb"))
 	button(Rect2(80,386,540,66),"CONTINUAR" if game.missions.index>0 or game.saved.size()>0 else "EXPLORAR PORTO LIVRE","Toque para jogar · progresso salvo automaticamente",true)
 	button(Rect2(80,468,540,62),"QUALIDADE: "+["LEVE","EQUILIBRADA","ALTA"][game.quality],"Toque para alternar · resolução 3D adaptativa")
-	button(Rect2(80,546,258,62),"SOM: "+("LIGADO" if game.sound.enabled else "DESLIGADO"))
-	button(Rect2(356,546,264,62),"MAPA DA CIDADE")
-	text_at(Vector2(80,667),"Visuais procedurais · desempenho depende do aparelho",14,Color("9eafb0"))
+	button(Rect2(80,546,174,62),"EFEITOS: "+("SIM" if game.sound.enabled else "NÃO"))
+	button(Rect2(268,546,170,62),"MÚSICA: "+("SIM" if game.sound.music_enabled else "NÃO"))
+	button(Rect2(452,546,168,62),"MAPA")
+	text_at(Vector2(80,667),"Texturas e modelos 3D · recomendado para celulares potentes",14,Color("9eafb0"))
 	text_at(Vector2(775,80),"SUA HISTÓRIA",15,TEAL)
 	for i in range(10):
 		var color = GOLD if i==game.missions.index else (TEAL if i<game.missions.index else Color("71878c"))
@@ -210,7 +211,10 @@ func menu_click(p: Vector2) -> void:
 	elif Rect2(80,468,540,62).has_point(p):
 		game.set_quality((game.quality+1)%3)
 		game.save_game()
-	elif Rect2(80,546,258,62).has_point(p):
+	elif Rect2(80,546,174,62).has_point(p):
 		game.sound.enabled = not game.sound.enabled
 		game.save_game()
-	elif Rect2(356,546,264,62).has_point(p): map_open=true
+	elif Rect2(268,546,170,62).has_point(p):
+		game.sound.music_enabled = not game.sound.music_enabled
+		game.save_game()
+	elif Rect2(452,546,168,62).has_point(p): map_open=true

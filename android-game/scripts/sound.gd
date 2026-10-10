@@ -5,10 +5,21 @@ var clips: Dictionary = {}
 var voices: Array[AudioStreamPlayer] = []
 var engine: AudioStreamPlayer
 var enabled = true
+var music_enabled = true
+var music: AudioStreamPlayer
+var ambience: AudioStreamPlayer
+var step_index = 0
 
 func _ready() -> void:
 	for name_value in ["shot","pickup","reload","mission","step","engine"]:
 		clips[name_value] = synth(name_value)
+	for key in ["step_1","step_2","grass","land","impact","door","reload","ambient","music"]:
+		clips[key] = load("res://assets/realism/audio/"+key+".ogg")
+	clips.engine = load("res://assets/realism/audio/engine.wav")
+	clips.engine.loop_mode = AudioStreamWAV.LOOP_FORWARD
+	clips.engine.loop_end = int(clips.engine.get_length()*clips.engine.mix_rate)
+	clips.music.loop = true
+	clips.ambient.loop = true
 	for i in range(7):
 		var voice = AudioStreamPlayer.new()
 		voice.volume_db = -15
@@ -18,6 +29,25 @@ func _ready() -> void:
 	engine.stream = clips.engine
 	engine.volume_db = -25
 	add_child(engine)
+	music = AudioStreamPlayer.new()
+	music.stream = clips.music
+	music.volume_db = -22
+	add_child(music)
+	ambience = AudioStreamPlayer.new()
+	ambience.stream = clips.ambient
+	ambience.volume_db = -31
+	add_child(ambience)
+
+func _process(_dt: float) -> void:
+	if music_enabled:
+		if not music.playing: music.play()
+	else: music.stop()
+	if enabled:
+		if not ambience.playing: ambience.play()
+	else:
+		ambience.stop()
+		engine.stop()
+		for voice in voices: voice.stop()
 
 func synth(kind: String) -> AudioStreamWAV:
 	var rate = 22050
@@ -49,6 +79,9 @@ func synth(kind: String) -> AudioStreamWAV:
 
 func play(key: String,pitch: float = 1.0) -> void:
 	if not enabled or not clips.has(key): return
+	if key=="step":
+		step_index = (step_index+1)%2
+		key = "step_%d" % (step_index+1)
 	for voice in voices:
 		if not voice.playing:
 			voice.stream = clips[key]

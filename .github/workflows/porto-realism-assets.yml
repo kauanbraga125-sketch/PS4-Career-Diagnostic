@@ -1,9 +1,6 @@
 name: Porto Livre Realism Assets
 
 on:
-  push:
-    branches: [game/porto-livre-android]
-    paths: ['android-game/tools/assets/**', '.github/workflows/porto-realism-assets.yml']
   workflow_dispatch:
   workflow_call:
 

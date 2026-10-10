@@ -6,7 +6,7 @@ const CAPACITY = [12,24,6,20]
 const DAMAGE = [28,17,15,42]
 const FIRE_DELAY = [0.30,0.10,0.80,0.22]
 var game
-var visual: Node3D
+var visual: StreetActor
 var health = 100.0
 var stamina = 100.0
 var owned: Array = [false,false,false,false]
@@ -58,7 +58,13 @@ func _physics_process(dt: float) -> void:
 		velocity.y = -0.4
 		if game.controls.consume("jump"): velocity.y = 7.4
 	stamina = clampf(stamina+(-21 if sprinting else 15)*dt,0,100)
+	var was_grounded = is_on_floor()
+	var impact_speed = -velocity.y
 	move_and_slide()
+	var landed = not was_grounded and is_on_floor() and impact_speed>3
+	if landed:
+		game.sound.play("land")
+		if impact_speed>12: take_hit((impact_speed-12)*4)
 	phase += Vector2(velocity.x,velocity.z).length()*dt*2.0
 	var moving = Vector2(velocity.x,velocity.z).length()/7.3
 	var aiming = game.controls.held("fire") and weapon>=0
@@ -66,7 +72,7 @@ func _physics_process(dt: float) -> void:
 		visual.rotation.y = lerp_angle(visual.rotation.y,game.camera_yaw,minf(dt*14,1))
 	elif moving>0.01:
 		visual.rotation.y = lerp_angle(visual.rotation.y,atan2(-velocity.x,-velocity.z),minf(dt*12,1))
-	StreetModels.animate_person(visual,phase,minf(moving*1.7,1),aiming)
+	visual.move_pose(Vector2(velocity.x,velocity.z).length(),is_on_floor(),velocity.y,aiming,dt,landed)
 	if aiming: fire()
 	if position.y < -8: take_hit(200)
 
@@ -76,9 +82,7 @@ func equip(index: int) -> void:
 	reload_left = 0
 	if gun_visual: gun_visual.queue_free()
 	gun_visual = StreetModels.gun(index)
-	visual.get_node("ArmR").add_child(gun_visual)
-	gun_visual.position = Vector3(0,-0.53,-0.06)
-	gun_visual.rotation.x = PI/2
+	visual.attach_weapon(gun_visual)
 
 func cycle_weapon() -> void:
 	for offset in range(1,5):

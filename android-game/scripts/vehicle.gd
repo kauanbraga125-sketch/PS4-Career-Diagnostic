@@ -15,6 +15,8 @@ var brake = false
 var visual: Node3D
 var ai_turn = 0.0
 var engine_pitch = 0.0
+var wheels: Array[Node3D] = []
+var wheel_angle = 0.0
 
 func setup(owner_game,bike: bool,style: int,auto_drive: bool = false) -> void:
 	game = owner_game
@@ -32,15 +34,13 @@ func setup(owner_game,bike: bool,style: int,auto_drive: bool = false) -> void:
 	add_child(shape)
 	visual = StreetModels.bike(style) if bike else StreetModels.car(style)
 	add_child(visual)
+	for child in visual.find_children("W*","MeshInstance3D",true,false): wheels.append(child)
 	if traffic or bike:
 		var rider = StreetModels.person(style+3)
 		rider.name = "Rider"
-		rider.position = Vector3(0,0.68,0.20) if bike else Vector3(-0.4,0.40,0)
-		rider.scale = Vector3.ONE*0.80
-		rider.get_node("LegL").rotation.x = -1.1
-		rider.get_node("LegR").rotation.x = -1.1
-		rider.get_node("ArmL").rotation.x = -1.1
-		rider.get_node("ArmR").rotation.x = -1.1
+		rider.position = Vector3(0,-0.16,0.20) if bike else Vector3(-0.4,0.40,0)
+		rider.scale = Vector3.ONE*0.94
+		rider.mount_pose()
 		visual.add_child(rider)
 		rider.visible = traffic
 
@@ -103,10 +103,14 @@ func _physics_process(dt: float) -> void:
 			var hit = get_slide_collision(i)
 			if absf(hit.get_normal().y)<0.65 and absf(speed)>2:
 				var loss = absf(before.dot(hit.get_normal()))
+				if loss>4 and driver: game.sound.play("impact")
 				health = maxf(0,health-maxf(0,loss-4)*0.75)
 				speed *= clampf(1.0-loss/(absf(speed)+0.1),0.05,0.90)
 				if traffic: rotation.y += PI/2
 				break
+	wheel_angle = fmod(wheel_angle-speed*dt/0.33,TAU)
+	for wheel in wheels:
+		wheel.rotation = Vector3(wheel_angle,steering if String(wheel.name).begins_with("WFront") else 0.0,0)
 	var acceleration_now = (speed-old_speed)/maxf(dt,0.001)
 	var roll = steering*speed*0.035 if not motorcycle else steering*speed*0.13
 	visual.rotation.z = lerpf(visual.rotation.z,clampf(roll,-0.45,0.45),minf(dt*7,1))

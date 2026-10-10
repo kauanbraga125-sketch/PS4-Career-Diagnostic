@@ -8,6 +8,8 @@ func check(value: bool,message: String) -> void:
 		push_error("TEST_FAIL: "+message)
 
 func run(game) -> void:
+	game.set_quality(0)
+	game.world.refresh(game.player.position,true)
 	game.running = true
 	game.sound.enabled = false
 	await get_tree().physics_frame
@@ -15,6 +17,11 @@ func run(game) -> void:
 	check(game.vehicles.size()>=10,"Cars and motorcycles available")
 	check(game.pickups.size()==12,"Twelve discoverable weapon placements")
 	check(StreetMissions.STORIES.size()==10,"Ten campaign missions")
+	for clip in ["idle","walk","run","jump","fall","land","death","riding","aim"]:
+		check(game.player.visual.clips.has(clip),"Character animation imported: "+clip)
+	check(game.player.visual.skeleton.find_bone("RightHand")>=0,"Weapon attaches to an animated hand")
+	check(StreetModels.surface("asphalt").albedo_texture!=null,"Photographic road texture imported")
+	check(game.sound.clips.music.get_length()>30,"Full music track bundled offline")
 	# Nearby entities outside the active terrain must not fall into unloaded space.
 	game.player.position=Vector3(115,0.2,6)
 	var idle_car=game.vehicles[2]

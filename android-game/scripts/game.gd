@@ -22,9 +22,9 @@ var pickups: Array[Node3D] = []
 var pickup_ids: Array = []
 var saved: Dictionary = {}
 var running = false
-var quality = 0
+var quality = 2
 var draw_distance = 235.0
-var camera_yaw = 0.0
+var camera_yaw = -PI/2
 var camera_pitch = -0.24
 var camera_look_idle = 0.0
 var heat = 0.0
@@ -46,7 +46,7 @@ var test_mode = false
 func _ready() -> void:
 	test_mode = "--self-test" in OS.get_cmdline_user_args()
 	if not test_mode: saved = read_save()
-	quality = clampi(int(saved.get("quality",0)),0,2)
+	quality = clampi(int(saved.get("quality",2)),0,2)
 	money = int(saved.get("money",0))
 	pickup_ids = saved.get("pickups",[])
 	setup_environment()
@@ -56,6 +56,7 @@ func _ready() -> void:
 	sound = StreetSound.new()
 	add_child(sound)
 	sound.enabled = saved.get("sound",true)
+	sound.music_enabled = saved.get("music",true)
 	world = CityWorld.new()
 	add_child(world)
 	world.setup(self)
@@ -113,9 +114,10 @@ func setup_environment() -> void:
 	sky_material.sun_angle_max = 8
 	sky.sky_material = sky_material
 	environment.sky = sky
-	environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+	environment.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
+	environment.reflected_light_source = Environment.REFLECTION_SOURCE_SKY
 	environment.ambient_light_color = Color("c8d6d6")
-	environment.ambient_light_energy = 0.66
+	environment.ambient_light_energy = 0.45
 	environment.tonemap_mode = Environment.TONE_MAPPER_FILMIC
 	environment.fog_enabled = true
 	environment.fog_light_color = Color("bdc8c4")
@@ -125,8 +127,8 @@ func setup_environment() -> void:
 	add_child(node)
 	sun = DirectionalLight3D.new()
 	sun.rotation_degrees = Vector3(-42,-34,0)
-	sun.light_color = Color("ffdfab")
-	sun.light_energy = 1.15
+	sun.light_color = Color("fff1d9")
+	sun.light_energy = 1.4
 	sun.shadow_enabled = false
 	add_child(sun)
 
@@ -192,8 +194,9 @@ func set_quality(value: int) -> void:
 	get_viewport().scaling_3d_scale = dynamic_resolution
 	Engine.max_fps = 30 if quality==0 else 60
 	if camera: camera.far = draw_distance
-	sun.shadow_enabled = quality==2
-	sun.directional_shadow_max_distance = 75
+	sun.shadow_enabled = quality>=1
+	get_viewport().msaa_3d = [Viewport.MSAA_DISABLED,Viewport.MSAA_2X,Viewport.MSAA_4X][quality]
+	sun.directional_shadow_max_distance = [50.0,75.0,120.0][quality]
 	if world: world.set_quality(quality)
 	environment.fog_density = [0.005,0.0035,0.0025][quality]
 
@@ -252,7 +255,7 @@ func _process(dt: float) -> void:
 	if frame_timer>3:
 		fps = frame_samples/frame_timer
 		var target_fps = 28.0 if quality==0 else 50.0
-		if fps<target_fps: dynamic_resolution=maxf(0.55,dynamic_resolution-0.035)
+		if fps<target_fps: dynamic_resolution=maxf([0.60,0.70,0.80][quality],dynamic_resolution-0.035)
 		elif fps>target_fps+4: dynamic_resolution=minf([0.75,0.88,1.0][quality],dynamic_resolution+0.02)
 		get_viewport().scaling_3d_scale = dynamic_resolution
 		frame_timer = 0
@@ -261,7 +264,7 @@ func _process(dt: float) -> void:
 	if not player.vehicle and Vector2(player.velocity.x,player.velocity.z).length()>1 and player.is_on_floor():
 		footstep -= dt
 		if footstep<=0:
-			footstep = 0.30 if controls.held("sprint") else 0.45
+			footstep = 0.34 if controls.held("sprint") else 0.48
 			sound.play("step")
 
 func update_camera(dt: float) -> void:
@@ -309,6 +312,7 @@ func interact() -> void:
 				break
 		if not safe: notify("Sem espaço para sair. Mova o veículo."); return
 		player.vehicle = null
+		sound.play("door")
 		v.set_driver(false)
 		player.position = exit_position
 		player.velocity = Vector3.ZERO
@@ -324,6 +328,7 @@ func interact() -> void:
 			if d<distance: nearest=v; distance=d
 	if nearest:
 		player.vehicle = nearest
+		sound.play("door")
 		player.collision_layer = 0
 		player.visible = false
 		nearest.set_driver(true)
@@ -470,7 +475,7 @@ func notify(message: String,duration: float = 3.5) -> void:
 
 func save_data() -> Dictionary:
 	var p = focus_position()
-	return {"version":1,"completed":missions.index,"money":money,"position":[p.x,p.y,p.z],"owned":player.owned,"magazines":player.magazines,"reserve":player.reserve,"weapon":player.weapon,"pickups":pickup_ids,"quality":quality,"sound":sound.enabled}
+	return {"version":1,"completed":missions.index,"money":money,"position":[p.x,p.y,p.z],"owned":player.owned,"magazines":player.magazines,"reserve":player.reserve,"weapon":player.weapon,"pickups":pickup_ids,"quality":quality,"sound":sound.enabled,"music":sound.music_enabled}
 
 func save_game() -> void:
 	if test_mode or not missions or not player: return
@@ -510,6 +515,43 @@ func capture_preview() -> void:
 	if path.is_empty(): path="user://porto-livre-preview.png"
 	get_viewport().get_texture().get_image().save_png(path)
 	print("CAPTURE_SAVED "+path)
+	# A second in-engine view checks imported materials, scale and handedness.
+	running = false
+	hud.hide()
+	var review = Node3D.new()
+	add_child(review)
+	review.position = Vector3(3000,0,3000)
+	var floor_mesh = StreetModels.part(review,Vector3(32,0.1,32),Vector3(0,-0.1,2),Color.WHITE)
+	floor_mesh.material_override = StreetModels.surface("concrete")
+	var actors: Array[StreetActor] = []
+	for i in range(4):
+		var actor = StreetModels.person(i)
+		review.add_child(actor)
+		actor.position = Vector3(-3+i*2,0,-1)
+		actors.append(actor)
+	var review_car = StreetModels.car()
+	review.add_child(review_car)
+	review_car.position = Vector3(-3,0,3)
+	var review_bike = StreetModels.bike()
+	review.add_child(review_bike)
+	review_bike.position = Vector3(3,0,3)
+	var review_tree = StreetModels.imported("tree")
+	review.add_child(review_tree)
+	review_tree.position = Vector3(-6,0,6)
+	review_tree.scale = Vector3.ONE*0.55
+	camera.position = review.position+Vector3(5,4,-12)
+	camera.look_at(review.position+Vector3(0,1.5,1))
+	get_viewport().scaling_3d_scale = 1.0
+	await get_tree().process_frame
+	await RenderingServer.frame_post_draw
+	get_viewport().get_texture().get_image().save_png(path.get_basename()+"-models.png")
+	for i in range(4):
+		actors[i].play_state(["walk","run","jump","riding"][i])
+		actors[i].animator.seek(0.25,true)
+		actors[i].animator.pause()
+	await get_tree().process_frame
+	await RenderingServer.frame_post_draw
+	get_viewport().get_texture().get_image().save_png(path.get_basename()+"-movement.png")
 	get_tree().quit()
 
 func run_self_test() -> void:
