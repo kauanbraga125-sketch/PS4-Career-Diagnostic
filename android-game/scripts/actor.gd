@@ -39,7 +39,7 @@ func play_state(next: String,rate: float = 1.0) -> void:
 	if not clips.has(next): return
 	if state!=next:
 		state = next
-		animator.play(clips[next],0.16,1.0)
+		animator.play(clips[next],0.26,1.0)
 	animator.speed_scale = rate
 
 func move_pose(speed: float,grounded: bool,vertical_speed: float,aiming: bool,dt: float,landed: bool = false) -> void:
@@ -52,10 +52,10 @@ func move_pose(speed: float,grounded: bool,vertical_speed: float,aiming: bool,dt
 		play_state("land")
 	elif aiming:
 		play_state("aim")
-	elif speed>4.5:
-		play_state("run",clampf(speed/6.5,0.75,1.3))
+	elif speed>4.85:
+		play_state("run",clampf(speed/7.3,0.78,1.22))
 	elif speed>0.15:
-		play_state("walk",clampf(speed/2.7,0.55,1.65))
+		play_state("walk",clampf(speed/3.8,0.60,1.45))
 	else:
 		play_state("idle")
 
