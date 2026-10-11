@@ -195,8 +195,14 @@ func build_chunk(key: Vector2i) -> void:
 			sign_at("UNIVERSIDADE DO PORTO",ground(Vector3(ox+70,0,oz+55),7),0)
 	elif port:
 		box(ground(Vector3(ox+68,0,oz+68),0.08),Vector3(88,0.10,88),Color.WHITE,false,Vector3.ZERO,"box","concrete")
+		if key==Vector2i(3,5):
+			box(ground(Vector3(ox+68,0,oz+68),0.17),Vector3(88,0.06,88),Color("d8c38f"))
+			for sunshade in range(4):
+				var at = ground(Vector3(ox+35+sunshade*18,0,oz+58))
+				box(at+Vector3(0,1.2,0),Vector3(0.13,2.4,0.13),Color("f6ecd7"),false,Vector3.ZERO,"cylinder")
+				box(at+Vector3(0,2.4,0),Vector3(4.7,0.65,4.7),Color("ed9973"),false,Vector3.ZERO,"sphere")
 		for i in range(5):
-			if key==Vector2i(4,5): continue
+			if key==Vector2i(4,5) or key==Vector2i(3,5): continue
 			var p = ground(Vector3(ox+40+(i%2)*28,0,oz+37+floori(i/2.0)*24))
 			box(p+Vector3(0,1.5,0),Vector3(12,3,5),PALETTE[i].lightened(0.2),true,Vector3.ZERO,"box","metal")
 			for rib in range(9):
