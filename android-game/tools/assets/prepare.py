@@ -25,6 +25,12 @@ SOURCES = {
     'engine.wav': 'https://opengameart.org/sites/default/files/loop_0.wav',
     'music.ogg': 'https://opengameart.org/sites/default/files/wednesday_night.ogg',
 }
+KENNEY_PIN = '08f0c913f6783cc81f9f6105a7cdda8562b1c192'
+for i, letter in enumerate('abcdefgh'):
+    SOURCES[f'building_{i}.glb'] = (
+        f'https://raw.githubusercontent.com/Hidencod/tge-assets/{KENNEY_PIN}/packs/city-kit-suburban/building-type-{letter}.glb'
+    )
+
 MATERIALS = {
     'asphalt': 'asphalt_03', 'concrete': 'concrete_wall_006',
     'paving': 'pavement_02', 'grass': 'aerial_grass_rock',
@@ -90,11 +96,13 @@ def main():
         shutil.copyfile(CACHE / filename, audio / filename)
     shutil.copytree(CACHE / 'textures', OUT / 'textures', dirs_exist_ok=True)
     (OUT / 'models').mkdir(exist_ok=True)
+    for i in range(8):
+        shutil.copyfile(CACHE / f'building_{i}.glb', OUT / 'models' / f'building_{i}.glb')
     shutil.copyfile(next(unzip('tree.zip', 'tree').rglob('tree.glb')), OUT / 'models/tree.glb')
     (OUT / 'sources.json').write_text(json.dumps(provenance, indent=2) + '\n')
     env = os.environ | {'PORTO_ASSET_CACHE': str(CACHE), 'PORTO_ASSET_OUTPUT': str(OUT), 'PORTO_MPFB': str(mpfb)}
     subprocess.run([os.environ.get('PORTO_BLENDER', 'blender'), '--background', '--factory-startup', '--python-exit-code', '1', '--python', str(Path(__file__).with_name('build_models.py'))], env=env, check=True)
-    for name in ('person_0', 'person_1', 'person_2', 'person_3', 'car', 'bike', 'tree'):
+    for name in ('person_0', 'person_1', 'person_2', 'person_3', 'car', 'bike', 'tree', *(f'building_{i}' for i in range(8))):
         if not (OUT / 'models' / f'{name}.glb').is_file():
             raise RuntimeError(f'Missing model {name}')
     print('PORTO_ASSETS_OK', flush=True)
