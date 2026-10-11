@@ -100,12 +100,13 @@ func _draw() -> void:
 	draw_arc(Vector2(155,570),79,0,TAU,48,Color(0.85,0.9,0.87,0.35),2)
 	draw_circle(Vector2(155,570)+game.controls.joystick*54,29,Color(0.9,0.92,0.87,0.53))
 	text_at(Vector2(110,677),"DIRIGIR" if p.vehicle else "MOVER",12)
-	var titles = {"fire":"ATIRAR","enter":"SAIR" if p.vehicle else "ENTRAR","jump":"FREIO" if p.vehicle else "PULAR","reload":"RECARGA","weapon":"ARMA","sprint":"CORRER"}
+	var titles = {"fire":"ATIRAR","enter":"SAIR" if p.vehicle else "ENTRAR","jump":"FREIO" if p.vehicle else "PULAR","reload":"RECARGA","weapon":"ARMA","sprint":"CORRER","accelerate":"ACELERAR"}
 	for action in titles:
 		if p.vehicle and action in ["fire","reload","sprint","weapon"]: continue
+		if not p.vehicle and action=="accelerate": continue
 		var r: Rect2 = game.controls.areas()[action]
 		panel(r,Color(0.18,0.30,0.33,0.68) if not game.controls.states.get(action,false) else Color(0.78,0.57,0.25,0.86))
-		text_at(r.position+Vector2(10,r.size.y/2+5),titles[action],14)
+		text_at(r.position+Vector2(7,r.size.y/2+5),titles[action],11 if action=="accelerate" else 14)
 	text_at(Vector2(927,689),"ARRASTE PARA OLHAR",12,Color("d1d6ca"))
 	if game.notice_time>0:
 		panel(Rect2(342,612,570,72),Color(0.035,0.085,0.105,0.90))
