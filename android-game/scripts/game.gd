@@ -107,10 +107,10 @@ func setup_environment() -> void:
 	environment.background_mode = Environment.BG_SKY
 	var sky = Sky.new()
 	var sky_material = ProceduralSkyMaterial.new()
-	sky_material.sky_top_color = Color("658fa8")
-	sky_material.sky_horizon_color = Color("d6ceb8")
-	sky_material.ground_horizon_color = Color("d6ceb8")
-	sky_material.ground_bottom_color = Color("58675b")
+	sky_material.sky_top_color = Color("489dcc")
+	sky_material.sky_horizon_color = Color("c8e4e6")
+	sky_material.ground_horizon_color = Color("e8dac0")
+	sky_material.ground_bottom_color = Color("6c9e8f")
 	sky_material.sun_angle_max = 3
 	sky.sky_material = sky_material
 	environment.sky = sky
@@ -120,15 +120,15 @@ func setup_environment() -> void:
 	environment.ambient_light_energy = 0.45
 	environment.tonemap_mode = Environment.TONE_MAPPER_FILMIC
 	environment.fog_enabled = true
-	environment.fog_light_color = Color("bdc8c4")
+	environment.fog_light_color = Color("b8d5d5")
 	environment.fog_density = 0.0025
 	var node = WorldEnvironment.new()
 	node.environment = environment
 	add_child(node)
 	sun = DirectionalLight3D.new()
 	sun.rotation_degrees = Vector3(-42,-34,0)
-	sun.light_color = Color("fff1d9")
-	sun.light_energy = 0.88
+	sun.light_color = Color("fff3db")
+	sun.light_energy = 1.12
 	sun.shadow_enabled = false
 	add_child(sun)
 	add_child(StreetAtmosphere.new())
