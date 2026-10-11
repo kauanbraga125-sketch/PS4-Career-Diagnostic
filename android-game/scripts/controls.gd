@@ -13,7 +13,7 @@ var presses: Dictionary = {}
 var mobile = OS.has_feature("android") or OS.has_feature("ios")
 
 func areas() -> Dictionary:
-	return {"fire":Rect2(1148,425,94,94),"enter":Rect2(1028,548,98,84),"jump":Rect2(1148,552,94,84),"reload":Rect2(1034,440,86,72),"weapon":Rect2(918,558,84,64),"sprint":Rect2(245,474,88,64),"pause":Rect2(1206,24,50,48),"map":Rect2(24,26,190,160)}
+	return {"fire":Rect2(1148,425,94,94),"accelerate":Rect2(1148,425,94,94),"enter":Rect2(1028,548,98,84),"jump":Rect2(1148,552,94,84),"reload":Rect2(1034,440,86,72),"weapon":Rect2(918,558,84,64),"sprint":Rect2(245,474,88,64),"pause":Rect2(1206,24,50,48),"map":Rect2(24,26,190,160)}
 
 func held(action: String) -> bool:
 	if action=="brake": return states.get("jump",false) or Input.is_physical_key_pressed(KEY_SPACE)
@@ -73,6 +73,8 @@ func _input(event: InputEvent) -> void:
 			game.hud.menu_click(p)
 			return
 		for action in areas():
+			if action=="fire" and game.player.vehicle: continue
+			if action=="accelerate" and not game.player.vehicle: continue
 			if areas()[action].has_point(p):
 				states[action] = true
 				presses[action] = true
