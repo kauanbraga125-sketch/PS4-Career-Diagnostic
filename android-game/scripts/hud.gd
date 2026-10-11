@@ -114,7 +114,7 @@ func _draw() -> void:
 	if game.notice_time>0:
 		panel(Rect2(342,612,570,72),Color(0.035,0.085,0.105,0.90))
 		paragraph(Vector2(365,640),game.notice,525,18)
-	text_at(Vector2(20,710),"PORTO LIVRE  /  ALPHA 0.2     %d FPS  ·  %s" % [int(game.fps),["LEVE","EQUILIBRADO","ALTO"][game.quality]],11,Color("d0d8cf"))
+	text_at(Vector2(20,710),"PORTO LIVRE  /  ALPHA 0.3     %d FPS  ·  %s" % [int(game.fps),["LEVE","EQUILIBRADO","ALTO"][game.quality]],11,Color("d0d8cf"))
 	if game.damage_flash>0: draw_rect(Rect2(0,0,1280,720),Color(0.7,0.05,0.03,game.damage_flash*0.45))
 
 func draw_menu() -> void:
@@ -124,7 +124,7 @@ func draw_menu() -> void:
 	text_at(Vector2(74,181),"PORTO",92)
 	text_at(Vector2(74,269),"LIVRE",92,GOLD)
 	text_at(Vector2(80,315),"Seis distritos. Dez histórias. Seu caminho.",21)
-	text_at(Vector2(80,350),"ANDROID  ·  OFFLINE  ·  ALPHA 0.2",13,Color("a2b9bb"))
+	text_at(Vector2(80,350),"ANDROID  ·  OFFLINE  ·  ALPHA 0.3",13,Color("a2b9bb"))
 	button(Rect2(80,386,540,66),"CONTINUAR" if game.missions.index>0 or game.saved.size()>0 else "EXPLORAR PORTO LIVRE","Toque para jogar · progresso salvo automaticamente",true)
 	button(Rect2(80,468,540,62),"QUALIDADE: "+["LEVE","EQUILIBRADA","ALTA"][game.quality],"Toque para alternar · resolução 3D adaptativa")
 	button(Rect2(80,546,174,62),"EFEITOS: "+("SIM" if game.sound.enabled else "NÃO"))
