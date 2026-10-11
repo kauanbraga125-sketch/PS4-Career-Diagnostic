@@ -147,6 +147,33 @@ static func car(style: int = 0) -> Node3D:
 static func bike(_style: int = 0) -> Node3D:
 	return imported("bike")
 
+static func aircraft(plane: bool) -> Node3D:
+	var root = Node3D.new()
+	if plane:
+		part(root,Vector3(1.9,1.05,6.1),Vector3(0,1.30,0),Color("f6e3be"),"sphere")
+		part(root,Vector3(12.4,0.22,1.65),Vector3(0,1.29,0.15),Color("db764a"))
+		part(root,Vector3(4.4,0.15,1.15),Vector3(0,1.87,2.37),Color("efb567"))
+		part(root,Vector3(0.2,2.15,1.25),Vector3(0,2.45,2.45),Color("db764a"))
+		part(root,Vector3(1.45,0.55,1.25),Vector3(0,1.83,-0.9),Color("6aa9bb"),"sphere")
+		part(root,Vector3(0.24,0.9,0.24),Vector3(-1.1,0.43,0.2),Color("293641"),"cylinder")
+		part(root,Vector3(0.24,0.9,0.24),Vector3(1.1,0.43,0.2),Color("293641"),"cylinder")
+	else:
+		part(root,Vector3(2.55,1.95,5.1),Vector3(0,1.55,0),Color("edbd68"),"sphere")
+		part(root,Vector3(2.2,1.12,2.4),Vector3(0,1.70,-1.18),Color("4c879b"),"sphere")
+		part(root,Vector3(0.35,0.4,5.6),Vector3(0,1.86,3.35),Color("e4aa54"))
+		part(root,Vector3(1.8,0.34,1.1),Vector3(0,2.50,5.60),Color("b65d44"))
+		for side in [-1,1]:
+			segment(root,Vector3(side*0.9,0.44,-1.15),Vector3(side*1.6,0.43,1.5),0.085,Color("293641"))
+		var rotor_root = Node3D.new()
+		rotor_root.name = "Rotor"
+		rotor_root.position = Vector3(0,3.0,0)
+		root.add_child(rotor_root)
+		part(rotor_root,Vector3(0.18,0.9,0.18),Vector3(0,0.15,0),Color("454b50"),"cylinder")
+		part(rotor_root,Vector3(9.2,0.10,0.32),Vector3(0,0.62,0),Color("363d42"))
+		part(rotor_root,Vector3(0.32,0.10,9.2),Vector3(0,0.62,0),Color("363d42"))
+	return root
+
+
 static func surface(name_value: String,tint: Color = Color.WHITE) -> StandardMaterial3D:
 	var key = name_value+str(tint)
 	if materials.has(key): return materials[key]
@@ -177,5 +204,12 @@ static func gun(kind: int) -> Node3D:
 		part(root, Vector3(0.07,0.25,0.13),Vector3(0,-0.15,-0.03),Color("292e33"))
 	if kind>1:
 		part(root, Vector3(0.09,0.15,0.28),Vector3(0,0.0,length*0.5),Color("6f5f46"))
+	# Readable silhouette at third-person distance: sights, rail, grip and stock.
+	part(root,Vector3(0.07,0.045,0.14),Vector3(0,0.095,-length*0.12),Color("11181e"))
+	part(root,Vector3(0.10,0.075,length*0.20),Vector3(0,0.06,length*0.25),Color("4b5257"))
+	if kind>0:
+		part(root,Vector3(0.07,0.17,0.27),Vector3(0,-0.035,length*0.55),Color("514738"))
+	if kind==3:
+		part(root,Vector3(0.085,0.09,0.35),Vector3(0,0.16,-0.09),Color("202d34"))
 	batch_parts(root)
 	return root
