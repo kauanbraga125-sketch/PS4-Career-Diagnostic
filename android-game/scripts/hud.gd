@@ -88,7 +88,8 @@ func _draw() -> void:
 		panel(Rect2(497,584,286,102))
 		text_at(Vector2(520,628),"%03d" % int(absf(p.vehicle.speed)*3.6),40)
 		text_at(Vector2(618,626),"km/h",17,Color("a9bebd"))
-		text_at(Vector2(520,663),"MOTO" if p.vehicle.motorcycle else "CARRO",15,TEAL)
+		var kind = p.vehicle.display_name().get_slice(" / ",0) if p.vehicle is StreetAircraft else ("MOTO" if p.vehicle.motorcycle else "CARRO")
+		text_at(Vector2(520,663),kind,15,TEAL)
 		text_at(Vector2(622,663),"ESTADO %d%%" % int(p.vehicle.health),13)
 	else:
 		draw_line(Vector2(630,360),Vector2(638,360),PAPER,2)
@@ -100,9 +101,11 @@ func _draw() -> void:
 	draw_arc(Vector2(155,570),79,0,TAU,48,Color(0.85,0.9,0.87,0.35),2)
 	draw_circle(Vector2(155,570)+game.controls.joystick*54,29,Color(0.9,0.92,0.87,0.53))
 	text_at(Vector2(110,677),"DIRIGIR" if p.vehicle else "MOVER",12)
-	var titles = {"fire":"ATIRAR","enter":"SAIR" if p.vehicle else "ENTRAR","jump":"FREIO" if p.vehicle else "PULAR","reload":"RECARGA","weapon":"ARMA","sprint":"CORRER","accelerate":"ACELERAR"}
+	var flying = p.vehicle is StreetAircraft
+	var titles = {"fire":"ATIRAR","enter":"SALTAR" if flying else ("SAIR" if p.vehicle else "ENTRAR"),"jump":"SUBIR" if flying else ("FREIO" if p.vehicle else "PULAR"),"reload":"RECARGA","weapon":"ARMA","sprint":"DESCER" if flying else "CORRER","accelerate":"ACELERAR"}
 	for action in titles:
-		if p.vehicle and action in ["fire","reload","sprint","weapon"]: continue
+		if p.vehicle and action in ["fire","reload","weapon"]: continue
+		if p.vehicle and action=="sprint" and not flying: continue
 		if not p.vehicle and action=="accelerate": continue
 		var r: Rect2 = game.controls.areas()[action]
 		panel(r,Color(0.18,0.30,0.33,0.68) if not game.controls.states.get(action,false) else Color(0.78,0.57,0.25,0.86))
