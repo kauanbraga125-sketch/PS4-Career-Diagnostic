@@ -1,4 +1,16 @@
-# Porto Livre — Android alpha 0.2
+# Porto Livre — Android alpha 0.3
+
+## Novidades da alpha 0.3 (experimental)
+
+- Visual cartoon ensolarado: cores mais claras, luz quente, nuvens em camadas 3D econômicas (não é volumetria por ray marching).
+- Casas variadas feitas com **8 modelos Kenney City Kit Suburban CC0**, recuperados por revisão fixa durante o build; edifícios altos ainda usam arquitetura procedural.
+- Montanhas orgânicas construídas a partir de malhas com alturas variáveis e colisão; morros acessíveis nos parques. Área arenosa com cactos no leste e trecho de praia com guarda-sóis.
+- Caminhar/correr com transições mais suaves, separação entre NPCs e recuperação ao encontrar paredes.
+- Rodas animadas em torno dos eixos locais sem descartar a transformação do modelo importado. Botão **ACELERAR** específico na tela de veículo; motor com mudança gradual de tom.
+- Protótipos jogáveis de **helicóptero** e **avião** no porto, controles SUBIR/DESCER e paraquedas automático ao saltar em altitude. São veículos de arcade com modelos geométricos próprios: não simuladores aeronáuticos.
+- Armas procedurais recebem miras, guarda-mão e detalhes adicionais. Ainda não foram substituídas por armas 3D externas.
+
+**Status:** os recursos precisam passar pela compilação no GitHub Actions e por testes em aparelhos Android. FPS e estabilidade não são garantidos. Esta versão preserva as dez missões e o save da alpha 0.2.
 
 Jogo original de exploração urbana em terceira pessoa, desenvolvido para Kauan. Projeto Godot **4.5.1**, separado dos arquivos do plugin FIFA/PS4 nesta mesma branch. Não usa mapas, personagens, marcas, sons ou assets de GTA ou Bully.
 
