@@ -14,8 +14,10 @@ func run(game) -> void:
 	game.sound.enabled = false
 	await get_tree().physics_frame
 	check(game.world.chunks.size()>=4,"Initial playable city chunks loaded")
-	check(game.vehicles.size()>=10,"Cars and motorcycles available")
+	check(game.vehicles.size()>=12,"Cars, motorcycles and aircraft available")
+	check(game.vehicles[10] is StreetAircraft and game.vehicles[11] is StreetAircraft,"Helicopter and airplane ready for boarding")
 	check(game.pickups.size()==12,"Twelve discoverable weapon placements")
+	check(StreetModels.architecture(2,Vector3(12,7,14))!=null,"Licensed Kenney building model imported")
 	check(StreetMissions.STORIES.size()==10,"Ten campaign missions")
 	for clip in ["idle","walk","run","jump","fall","land","death","riding","aim"]:
 		check(game.player.visual.clips.has(clip),"Character animation imported: "+clip)
