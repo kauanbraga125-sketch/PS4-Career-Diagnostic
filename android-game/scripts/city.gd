@@ -196,6 +196,7 @@ func build_chunk(key: Vector2i) -> void:
 	elif port:
 		box(ground(Vector3(ox+68,0,oz+68),0.08),Vector3(88,0.10,88),Color.WHITE,false,Vector3.ZERO,"box","concrete")
 		for i in range(5):
+			if key==Vector2i(4,5): continue
 			var p = ground(Vector3(ox+40+(i%2)*28,0,oz+37+floori(i/2.0)*24))
 			box(p+Vector3(0,1.5,0),Vector3(12,3,5),PALETTE[i].lightened(0.2),true,Vector3.ZERO,"box","metal")
 			for rib in range(9):
