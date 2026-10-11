@@ -216,6 +216,17 @@ func build_chunk(key: Vector2i) -> void:
 
 func building(p: Vector3,size: Vector3,style: int,windows: bool) -> void:
 	var base = ground(p)
+	if windows and size.y<14 and style%3!=0:
+		var house = StreetModels.architecture(style,size)
+		house.position += base
+		current_root.add_child(house)
+		var solid = CollisionShape3D.new()
+		var box_shape = BoxShape3D.new()
+		box_shape.size = size
+		solid.shape = box_shape
+		solid.position = base+Vector3(0,size.y*0.5,0)
+		current_body.add_child(solid)
+		return
 	box(base+Vector3(0,size.y*0.5,0),size,PALETTE[style].lightened(0.35),true,Vector3.ZERO,"box","concrete")
 	box(base+Vector3(0,size.y+0.15,0),Vector3(size.x+0.6,0.4,size.z+0.6),Color("d2d4d1"),false,Vector3.ZERO,"box","concrete")
 	box(base+Vector3(0,1.6,-size.z*0.5-0.05),Vector3(2.1,3.2,0.12),Color("394b50"))
