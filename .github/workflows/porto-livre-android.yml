@@ -99,13 +99,13 @@ jobs:
           echo "GODOT_ANDROID_KEYSTORE_DEBUG_PASSWORD=android" >> "$GITHUB_ENV"
       - name: Export APK and verify signature
         run: |
-          godot --headless --path android-game --export-debug Android build/PortoLivre-v0.2.0.apk 2>&1 | tee android-game/build/export.log
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose android-game/build/PortoLivre-v0.2.0.apk
-          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging android-game/build/PortoLivre-v0.2.0.apk > android-game/build/apk-info.txt
-          sha256sum android-game/build/PortoLivre-v0.2.0.apk > android-game/build/SHA256SUMS.txt
+          godot --headless --path android-game --export-debug Android build/PortoLivre-v0.3.0.apk 2>&1 | tee android-game/build/export.log
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose android-game/build/PortoLivre-v0.3.0.apk
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging android-game/build/PortoLivre-v0.3.0.apk > android-game/build/apk-info.txt
+          sha256sum android-game/build/PortoLivre-v0.3.0.apk > android-game/build/SHA256SUMS.txt
       - uses: actions/upload-artifact@v4
         with:
-          name: PortoLivre-Android-v0.2.0
+          name: PortoLivre-Android-v0.3.0
           path: |
             android-game/build/*.apk
             android-game/build/*.png
