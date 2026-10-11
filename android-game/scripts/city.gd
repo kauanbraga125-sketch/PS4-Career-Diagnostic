@@ -41,18 +41,50 @@ func setup(owner_game) -> void:
 			shape.shape = box
 			shape.position = Vector3(edge*719,45,0) if axis==0 else Vector3(0,45,edge*719)
 			floor_body.add_child(shape)
-	for i in range(12):
-		var hill = MeshInstance3D.new()
-		var cone = CylinderMesh.new()
-		cone.top_radius = 12
-		cone.bottom_radius = 130 + i%3*30
-		cone.height = 160+i%4*40
-		cone.radial_segments = 32
-		hill.mesh = cone
-		hill.position = Vector3(-940-i%2*80,40,-900+i*170)
-		hill.material_override = StreetModels.surface("grass",Color("727f69"))
-		add_child(hill)
+	# Sculpted heightfields instead of twelve artificial cylinder mountains.
+	for i in range(6):
+		landform(Vector2(-830.0-float(i%2)*80.0,-760.0+float(i)*305.0),205.0,125.0+float(i%3)*35.0,Color("8a9d7b"))
+	landform(Vector2(-535,417),36,14,Color("90aa73"))
+	landform(Vector2(-655,500),33,12,Color("9db17a"))
+	landform(Vector2(-365,480),36,14,Color("90ad7b"))
 	refresh(Vector3(60,0,6),true)
+
+
+func landform(center: Vector2,radius: float,peak: float,tint: Color) -> void:
+	var builder = SurfaceTool.new()
+	builder.begin(Mesh.PRIMITIVE_TRIANGLES)
+	builder.set_material(StreetModels.surface("grass",tint))
+	var resolution = 16
+	for x in range(resolution):
+		for z in range(resolution):
+			var x0 = (float(x)/resolution*2.0-1.0)*radius
+			var x1 = (float(x+1)/resolution*2.0-1.0)*radius
+			var z0 = (float(z)/resolution*2.0-1.0)*radius
+			var z1 = (float(z+1)/resolution*2.0-1.0)*radius
+			var a = land_vertex(center,Vector2(x0,z0),radius,peak)
+			var b = land_vertex(center,Vector2(x0,z1),radius,peak)
+			var c = land_vertex(center,Vector2(x1,z0),radius,peak)
+			var d = land_vertex(center,Vector2(x1,z1),radius,peak)
+			for vertex in [a,b,c,c,b,d]:
+				builder.set_uv(Vector2(vertex.x,vertex.z)*0.035)
+				builder.add_vertex(vertex)
+	builder.generate_normals()
+	var mesh = builder.commit()
+	var instance = MeshInstance3D.new()
+	instance.mesh = mesh
+	add_child(instance)
+	var solid = StaticBody3D.new()
+	solid.collision_layer = 1
+	var shape = CollisionShape3D.new()
+	shape.shape = mesh.create_trimesh_shape()
+	solid.add_child(shape)
+	add_child(solid)
+
+static func land_vertex(center: Vector2,offset: Vector2,radius: float,peak: float) -> Vector3:
+	var xx = center.x+offset.x
+	var zz = center.y+offset.y
+	var falloff = maxf(0.0,1.0-offset.length()/radius)
+	return Vector3(xx,elevation(xx)+0.10+peak*pow(falloff,1.7)*(0.9+0.1*cos(xx*0.09)*cos(zz*0.07)),zz)
 
 func refresh(pos: Vector3, immediate: bool = false) -> void:
 	var c = Vector2i(int(floor(pos.x/BLOCK)),int(floor(pos.z/BLOCK)))
