@@ -206,6 +206,14 @@ func build_chunk(key: Vector2i) -> void:
 			box(ground(Vector3(ox+65,0,oz+60),28),Vector3(9,1,9),Color("bd583e"),false,Vector3.ZERO,"cylinder")
 			box(ground(Vector3(ox+65,0,oz+60),31),Vector3(5,5,5),Color("465f63"))
 			sign_at("FAROL DA BARRA",ground(Vector3(ox+63,0,oz+51),3),0)
+	elif key.x>=4 and key.y<=-3:
+		box(ground(Vector3(ox+67,0,oz+67),0.06),Vector3(90,0.07,90),Color("cbb38c"))
+		for x in [42,88]:
+			for z in [42,89]:
+				building(Vector3(ox+x,0,oz+z),Vector3(21,7,24),rng.randi_range(0,5),true)
+		for cactus in range(4):
+			var p = ground(Vector3(ox+27+rng.randf()*75,0,oz+26+rng.randf()*75))
+			box(p+Vector3(0,1.8,0),Vector3(0.7,3.6,0.7),Color("6d9971"),false,Vector3.ZERO,"cylinder")
 	else:
 		for x in [42,88]:
 			for z in [42,89]:
