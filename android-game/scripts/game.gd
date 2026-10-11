@@ -131,6 +131,7 @@ func setup_environment() -> void:
 	sun.light_energy = 0.88
 	sun.shadow_enabled = false
 	add_child(sun)
+	add_child(StreetAtmosphere.new())
 
 func spawn_vehicles() -> void:
 	var spawns = [[78,6,false,0],[44,7,true,0],[125,-95,false,1],[-115,12,true,1],[365,8,false,2],[-475,-115,true,0],[485,14,false,3],[125,252,false,4],[-350,15,true,1],[605,365,false,1]]
@@ -141,6 +142,14 @@ func spawn_vehicles() -> void:
 		v.position = CityWorld.ground(Vector3(a[0],0,a[1]),0.15)
 		v.rotation.y = -PI/2
 		vehicles.append(v)
+	# The airfield sits on the port plateau, clear of container traffic.
+	for item in [[532.0,629.0,false],[572.0,658.0,true]]:
+		var aircraft = StreetAircraft.new()
+		aircraft.setup_aircraft(self,item[2])
+		add_child(aircraft)
+		aircraft.position = CityWorld.ground(Vector3(item[0],0,item[1]),1.0)
+		aircraft.rotation.y = -PI/2
+		vehicles.append(aircraft)
 
 func spawn_pickups() -> void:
 	for i in range(PICKUPS.size()):
@@ -295,6 +304,16 @@ func update_camera(dt: float) -> void:
 func interact() -> void:
 	if player.vehicle:
 		var v = player.vehicle
+		if v is StreetAircraft and v.global_position.y>CityWorld.elevation(v.global_position.x)+11:
+			player.vehicle = null
+			v.set_driver(false)
+			player.global_position = v.global_position+Vector3(3,-2,0)
+			player.velocity = Vector3.ZERO
+			player.collision_layer = 2
+			player.visible = true
+			player.deploy_parachute()
+			notify("PARAQUEDAS ABERTO! Direcione com o analógico.")
+			return
 		if absf(v.speed)>5:
 			notify("Freie antes de sair do veículo.")
 			return
@@ -337,7 +356,7 @@ func interact() -> void:
 		nearest.set_driver(true)
 		camera_yaw = nearest.rotation.y
 		controls.clear()
-		notify(nearest.display_name()+"  /  analógico: dirigir · FREIO: parar")
+		notify(nearest.display_name()+("  /  ACELERAR: voar · SUBIR/DESCER: altitude" if nearest is StreetAircraft else "  /  ACELERAR: dirigir · FREIO: parar"))
 	elif player.position.distance_to(CityWorld.ground(Vector3(60,0,18)))<14:
 		player.health=100
 		for i in range(4):
@@ -465,6 +484,8 @@ func perform_respawn() -> void:
 	player.velocity = Vector3.ZERO
 	player.health = 100
 	player.stamina = 100
+	player.parachute = false
+	player.chute_visual.visible = false
 	heat = 0
 	money = maxi(0,money-100)
 	world.refresh(player.position,true)
