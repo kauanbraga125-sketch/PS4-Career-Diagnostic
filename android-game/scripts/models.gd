@@ -102,6 +102,34 @@ static func imported(asset_name: String) -> Node3D:
 	assert(meshes[path] is PackedScene,"Missing required realism asset: "+path)
 	return meshes[path].instantiate()
 
+static func architecture(style: int,size: Vector3) -> Node3D:
+	# Scale individually licensed Kenney CC0 glTF houses to their plots.
+	var id = posmod(style,8)
+	var asset = "building_%d" % id
+	var root = imported(asset)
+	var key = asset+"_bounds"
+	if not meshes.has(key):
+		var parts: Array = []
+		collect_meshes(root,Transform3D.IDENTITY,parts)
+		var low = Vector3(1e12,1e12,1e12)
+		var high = Vector3(-1e12,-1e12,-1e12)
+		for part_value in parts:
+			var aabb: AABB = part_value.mesh.get_aabb()
+			var t: Transform3D = part_value.transform
+			for corner in range(8):
+				var p = t*aabb.get_endpoint(corner)
+				low = low.min(p)
+				high = high.max(p)
+		meshes[key] = {"low":low,"high":high}
+	var bounds: Dictionary = meshes[key]
+	var low: Vector3 = bounds.low
+	var high: Vector3 = bounds.high
+	var ext = high-low
+	var ratio = Vector3(size.x/maxf(ext.x,0.01),size.y/maxf(ext.y,0.01),size.z/maxf(ext.z,0.01))
+	root.scale = ratio
+	root.position = Vector3(-(low.x+high.x)*0.5*ratio.x,-low.y*ratio.y,-(low.z+high.z)*0.5*ratio.z)
+	return root
+
 static func tree_parts() -> Array:
 	if not meshes.has("tree_parts"):
 		var root = imported("tree")
