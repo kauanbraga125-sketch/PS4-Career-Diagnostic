@@ -18,6 +18,8 @@ var phase = 0.0
 var cooldown = 0.0
 var reload_left = 0.0
 var gun_visual: Node3D
+var parachute = false
+var chute_visual: Node3D
 
 func setup(owner_game) -> void:
 	game = owner_game
@@ -34,6 +36,13 @@ func setup(owner_game) -> void:
 	visual = StreetModels.person(0)
 	visual.rotation.y = -PI/2
 	add_child(visual)
+	chute_visual = Node3D.new()
+	chute_visual.visible = false
+	add_child(chute_visual)
+	StreetModels.part(chute_visual,Vector3(4.8,0.72,3.1),Vector3(0,3.65,0.3),Color("edbd68"),"sphere")
+	for side in [-1,1]:
+		for front in [-1,1]:
+			StreetModels.segment(chute_visual,Vector3(side*1.75,3.40,front*0.95),Vector3(side*0.26,1.3,0),0.022,Color("e5e1d4"))
 
 func _physics_process(dt: float) -> void:
 	if not game or not game.running: return
@@ -46,6 +55,8 @@ func _physics_process(dt: float) -> void:
 			reserve[weapon] -= count
 			game.sound.play("reload")
 	if vehicle:
+		parachute = false
+		chute_visual.visible = false
 		global_position = vehicle.global_position
 		return
 	var move = game.controls.move
@@ -54,7 +65,10 @@ func _physics_process(dt: float) -> void:
 	var target = direction.limit_length()* (7.3 if sprinting else 4.1)
 	velocity.x = move_toward(velocity.x,target.x,22*dt)
 	velocity.z = move_toward(velocity.z,target.z,22*dt)
-	velocity.y -= 23*dt
+	if parachute:
+		velocity.y = maxf(velocity.y-7.0*dt,-5.2)
+	else:
+		velocity.y -= 23*dt
 	if is_on_floor():
 		velocity.y = -0.4
 		if game.controls.consume("jump"): velocity.y = 7.4
@@ -63,6 +77,9 @@ func _physics_process(dt: float) -> void:
 	var impact_speed = -velocity.y
 	move_and_slide()
 	var landed = not was_grounded and is_on_floor() and impact_speed>3
+	if is_on_floor() and parachute:
+		parachute = false
+		chute_visual.visible = false
 	if landed:
 		game.sound.play("land")
 		if impact_speed>12: take_hit((impact_speed-12)*4)
@@ -76,6 +93,11 @@ func _physics_process(dt: float) -> void:
 	visual.move_pose(Vector2(velocity.x,velocity.z).length(),is_on_floor(),velocity.y,aiming,dt,landed)
 	if aiming: fire()
 	if position.y < -8: take_hit(200)
+
+func deploy_parachute() -> void:
+	parachute = true
+	chute_visual.visible = true
+	velocity = Vector3(velocity.x,mini(int(velocity.y),-1),velocity.z)
 
 func equip(index: int) -> void:
 	if index<0 or index>3 or not owned[index]: return
