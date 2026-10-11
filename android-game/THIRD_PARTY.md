@@ -6,6 +6,7 @@ Os recursos abaixo são redistribuídos sob CC0 1.0, exceto Car Concept, sob CC 
 |---|---|---|
 | Anatomia, pele, roupas, cabelo, olhos e sobrancelhas | MakeHuman Community; autores identificados nos arquivos `.mhmat` do pacote | [MakeHuman System Assets CC0](https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html) |
 | Car Concept | Eric Chadwick / Darmstadt Graphics Group GmbH, © 2024; base original Unity Fan | [Khronos glTF Sample Assets, CC BY 4.0](https://github.com/KhronosGroup/glTF-Sample-Assets/tree/edc7c9e67c639d230715049ee31f9a96a6babbbe/Models/CarConcept) |
+| 8 casas suburbanas distintas, glTF | Kenney; cópia de distribuição do catálogo Hidencod/tge-assets, revisão 08f0c913f6783cc81f9f6105a7cdda8562b1c192 | [Kenney City Kit Suburban, CC0](https://kenney.nl/assets/city-kit-suburban) · [arquivos-fonte](https://github.com/Hidencod/tge-assets) |
 | Fancy motorcycle | Teh_Bucket | [OpenGameArt, CC0](https://opengameart.org/content/fancy-motorcycle) |
 | Árvore texturizada | musdasch, Yughues e para | [OpenGameArt, CC0](https://opengameart.org/content/tree-24) |
 | Asfalto, concreto, calçamento, grama, metal corrugado e madeira | Artistas da Poly Haven; asset IDs no script de preparação | [Poly Haven, CC0](https://polyhaven.com/license) |
