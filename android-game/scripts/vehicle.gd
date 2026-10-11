@@ -17,6 +17,7 @@ var ai_turn = 0.0
 var engine_pitch = 0.0
 var wheels: Array[Node3D] = []
 var wheel_angle = 0.0
+var wheel_originals: Dictionary = {}
 
 func setup(owner_game,bike: bool,style: int,auto_drive: bool = false) -> void:
 	game = owner_game
@@ -35,7 +36,9 @@ func setup(owner_game,bike: bool,style: int,auto_drive: bool = false) -> void:
 	add_child(shape)
 	visual = StreetModels.bike(style) if bike else StreetModels.car(style)
 	add_child(visual)
-	for child in visual.find_children("W*","MeshInstance3D",true,false): wheels.append(child)
+	for child in visual.find_children("W*","MeshInstance3D",true,false):
+		wheels.append(child)
+		wheel_originals[child.get_instance_id()] = child.transform
 	if bike:
 		var rider = StreetModels.person(0)
 		rider.name = "Rider"
@@ -54,7 +57,7 @@ func _physics_process(dt: float) -> void:
 	if global_position.distance_squared_to(game.focus_position())>pow(340,2) and not driver:
 		return
 	if driver:
-		throttle = -game.controls.move.y
+		throttle = maxf(-game.controls.move.y,1.0 if game.controls.held("accelerate") else -1.0)
 		turn = game.controls.move.x
 		brake = game.controls.held("brake")
 	elif traffic:
@@ -111,7 +114,10 @@ func _physics_process(dt: float) -> void:
 				break
 	wheel_angle = fmod(wheel_angle-speed*dt/(0.31 if motorcycle else 0.40),TAU)
 	for wheel in wheels:
-		wheel.rotation = Vector3(wheel_angle,steering if String(wheel.name).begins_with("WFront") else 0.0,0)
+		var original: Transform3D = wheel_originals[wheel.get_instance_id()]
+		var steer_basis = Basis(Vector3.UP,steering if String(wheel.name).begins_with("WFront") else 0.0)
+		var spin_basis = Basis(Vector3.RIGHT,wheel_angle)
+		wheel.transform = Transform3D(original.basis*steer_basis*spin_basis,original.origin)
 	var acceleration_now = (speed-old_speed)/maxf(dt,0.001)
 	var roll = steering*speed*0.035 if not motorcycle else steering*speed*0.13
 	visual.rotation.z = lerpf(visual.rotation.z,clampf(roll,-0.45,0.45),minf(dt*7,1))
