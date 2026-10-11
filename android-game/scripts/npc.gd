@@ -89,11 +89,25 @@ func _physics_process(dt: float) -> void:
 		direction = (target-position).normalized()
 	direction.y = 0
 	var pace = 3.7 if aggressive or panic>0 else 1.25
-	velocity.x = direction.x*pace
-	velocity.z = direction.z*pace
+	# Smooth crowd movement, separation and obstacle recovery.
+	var separation = Vector3.ZERO
+	for other in game.citizens:
+		if other == self or not is_instance_valid(other) or other.dead: continue
+		var diff = global_position-other.global_position
+		diff.y = 0.0
+		var d2 = diff.length_squared()
+		if d2>0.01 and d2<4.0: separation += diff.normalized()*(2.0-sqrt(d2))
+	if not aggressive:
+		direction = (direction+separation*0.8).normalized()
+	velocity.x = move_toward(velocity.x,direction.x*pace,dt*7.0)
+	velocity.z = move_toward(velocity.z,direction.z*pace,dt*7.0)
 	velocity.y -= dt*22
 	if is_on_floor(): velocity.y = -0.3
 	move_and_slide()
+	if is_on_wall() and not aggressive:
+		decision = 0.0
+		velocity.x *= 0.4
+		velocity.z *= 0.4
 	if direction.length()>0.1:
 		visual.rotation.y = lerp_angle(visual.rotation.y,atan2(-direction.x,-direction.z),minf(dt*8,1))
 	phase += dt*pace*2.8
