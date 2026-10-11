@@ -92,7 +92,8 @@ func play(key: String,pitch: float = 1.0) -> void:
 func update_motor(speed: float,active: bool) -> void:
 	if active and enabled:
 		if not engine.playing: engine.play()
-		engine.pitch_scale = 0.85+absf(speed)*0.065
-		engine.volume_db = -25+minf(absf(speed)*0.10,4)
+		var target_pitch = 0.84+clampf(absf(speed)/35.0,0.0,1.0)*1.48
+		engine.pitch_scale = lerpf(engine.pitch_scale,target_pitch,0.12)
+		engine.volume_db = -27+minf(absf(speed)*0.20,8)
 	else:
 		engine.stop()
