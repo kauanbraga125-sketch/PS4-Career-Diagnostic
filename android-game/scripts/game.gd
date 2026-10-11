@@ -117,7 +117,7 @@ func setup_environment() -> void:
 	environment.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
 	environment.reflected_light_source = Environment.REFLECTION_SOURCE_SKY
 	environment.ambient_light_color = Color("c8d6d6")
-	environment.ambient_light_energy = 0.45
+	environment.ambient_light_energy = 0.34
 	environment.tonemap_mode = Environment.TONE_MAPPER_FILMIC
 	environment.fog_enabled = true
 	environment.fog_light_color = Color("b8d5d5")
@@ -128,7 +128,7 @@ func setup_environment() -> void:
 	sun = DirectionalLight3D.new()
 	sun.rotation_degrees = Vector3(-42,-34,0)
 	sun.light_color = Color("fff3db")
-	sun.light_energy = 1.12
+	sun.light_energy = 0.97
 	sun.shadow_enabled = false
 	add_child(sun)
 	add_child(StreetAtmosphere.new())
@@ -210,7 +210,7 @@ func set_quality(value: int) -> void:
 	get_viewport().msaa_3d = [Viewport.MSAA_DISABLED,Viewport.MSAA_2X,Viewport.MSAA_4X][quality]
 	sun.directional_shadow_max_distance = [50.0,75.0,120.0][quality]
 	if world: world.set_quality(quality)
-	environment.fog_density = [0.0035,0.0022,0.0015][quality]
+	environment.fog_density = [0.0028,0.0017,0.0010][quality]
 
 func focus_position() -> Vector3:
 	if not player: return START
