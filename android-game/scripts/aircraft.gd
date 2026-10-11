@@ -24,6 +24,9 @@ func setup_aircraft(owner_game,plane: bool) -> void:
 
 func _physics_process(dt: float) -> void:
 	if not game or not game.running: return
+	if not driver and (not game.world.is_loaded(global_position) or global_position.distance_squared_to(game.focus_position())>400.0*400.0):
+		velocity = Vector3.ZERO
+		return
 	if driver:
 		var gas = maxf(-game.controls.move.y,1.0 if game.controls.held("accelerate") else 0.0)
 		var steer = game.controls.move.x
