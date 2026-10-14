@@ -14,9 +14,9 @@ func setup_aircraft(owner_game,plane: bool) -> void:
 	floor_snap_length = 0.25
 	var shape = CollisionShape3D.new()
 	var box = BoxShape3D.new()
-	box.size = Vector3(3.0,2.0,7.0) if plane else Vector3(2.5,2.0,5.0)
+	box.size = Vector3(8.0,3.2,6.2) if plane else Vector3(2.9,2.7,6.2)
 	shape.shape = box
-	shape.position.y = 1.05
+	shape.position.y = box.size.y*.5+.12
 	add_child(shape)
 	visual = StreetModels.aircraft(airplane)
 	add_child(visual)

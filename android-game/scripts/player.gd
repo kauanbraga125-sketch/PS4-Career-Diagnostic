@@ -21,6 +21,7 @@ var gun_visual: Node3D
 var parachute = false
 var chute_visual: Node3D
 var aiming=false
+var exit_air_frames=0
 
 func setup(owner_game) -> void:
 	game = owner_game
@@ -55,6 +56,7 @@ func _physics_process(dt: float) -> void:
 		chute_visual.visible = false
 		global_position = vehicle.global_position
 		return
+	var grounded=is_on_floor() and exit_air_frames==0
 	var move = game.controls.move
 	var direction = Basis(Vector3.UP,game.camera_yaw)*Vector3(move.x,0,move.y)
 	aiming=weapon>=0 and (game.controls.held("aim") or game.controls.held("fire")) and not parachute
@@ -62,7 +64,7 @@ func _physics_process(dt: float) -> void:
 	var target = direction.limit_length()* (2.4 if aiming else (6.1 if sprinting else 3.1))
 	velocity.x = move_toward(velocity.x,target.x,22*dt)
 	velocity.z = move_toward(velocity.z,target.z,22*dt)
-	if game.controls.consume("parachute") and not is_on_floor() and position.y-CityWorld.elevation(position.x)>6:
+	if game.controls.consume("parachute") and not grounded and position.y-CityWorld.elevation(position.x)>6:
 		if parachute:
 			parachute=false
 			chute_visual.hide()
@@ -75,13 +77,14 @@ func _physics_process(dt: float) -> void:
 		chute_visual.rotation.y=game.camera_yaw
 	else:
 		velocity.y -= 23*dt
-	if is_on_floor():
+	if grounded:
 		velocity.y = -0.4
 		if game.controls.consume("jump"): velocity.y = 7.4
 	stamina = clampf(stamina+(-21 if sprinting else 15)*dt,0,100)
-	var was_grounded = is_on_floor()
+	var was_grounded=grounded
 	var impact_speed = -velocity.y
 	move_and_slide()
+	exit_air_frames=maxi(0,exit_air_frames-1)
 	var landed = not was_grounded and is_on_floor() and impact_speed>3
 	if is_on_floor() and parachute:
 		parachute = false

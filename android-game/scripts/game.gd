@@ -25,7 +25,7 @@ var running = false
 var quality = 2
 var draw_distance = 235.0
 var camera_yaw = -PI/2
-var camera_pitch = -0.24
+var camera_pitch = -0.12
 var camera_look_idle = 0.0
 var heat = 0.0
 var money = 0
@@ -194,7 +194,7 @@ func spawn_vehicles() -> void:
 		aircraft.setup_aircraft(self,item[2])
 		add_child(aircraft)
 		aircraft.position = CityWorld.ground(Vector3(item[0],0,item[1]),1.0)
-		aircraft.rotation.y = -PI/2
+		aircraft.rotation.y = PI/2 if item[2] else -PI/2
 		vehicles.append(aircraft)
 
 func spawn_pickups() -> void:
@@ -362,6 +362,7 @@ func interact() -> void:
 			v.set_driver(false)
 			player.global_position=v.global_position+v.global_basis.x*5+Vector3(0,1,0)
 			player.velocity=v.velocity
+			player.exit_air_frames=3
 			player.collision_layer = 2
 			player.visible = true
 			controls.clear()
@@ -590,54 +591,116 @@ func _notification(what: int) -> void:
 	if what==NOTIFICATION_WM_GO_BACK_REQUEST and is_instance_valid(hud): toggle_pause()
 	if what==NOTIFICATION_WM_CLOSE_REQUEST: save_game()
 
-func capture_preview() -> void:
-	await get_tree().create_timer(3).timeout
-	await RenderingServer.frame_post_draw
-	var path = OS.get_environment("PORTO_CAPTURE_PATH")
-	if path.is_empty(): path="user://porto-livre-preview.png"
-	get_viewport().get_texture().get_image().save_png(path)
-	print("CAPTURE_SAVED "+path)
-	# A second in-engine view checks imported materials, scale and handedness.
-	running = false
-	hud.hide()
-	var review = Node3D.new()
-	add_child(review)
-	review.position = Vector3(3000,0,3000)
-	var floor_mesh = StreetModels.part(review,Vector3(32,0.1,32),Vector3(0,-0.1,2),Color.WHITE)
-	floor_mesh.material_override = StreetModels.surface("concrete")
-	var actors: Array[StreetActor] = []
-	for i in range(4):
-		var actor = StreetModels.person(i)
-		review.add_child(actor)
-		actor.position = Vector3(-3+i*2,0,-1)
-		actors.append(actor)
-	var review_car = StreetModels.car()
-	review.add_child(review_car)
-	review_car.position = Vector3(-3,0,3)
-	var review_bike = StreetVehicle.new()
-	review_bike.setup(self,true,0)
-	review.add_child(review_bike)
-	review_bike.set_driver(true)
-	review_bike.position = Vector3(3,0,3)
-	var review_tree = StreetModels.imported("tree")
-	review.add_child(review_tree)
-	review_tree.position = Vector3(-6,0,6)
-	review_tree.scale = Vector3.ONE*0.55
-	camera.position = review.position+Vector3(2,2.8,-9)
-	camera.fov = 52
-	camera.look_at(review.position+Vector3(0,1.4,0))
-	get_viewport().scaling_3d_scale = 1.0
+func capture_frame(path: String) -> void:
 	await get_tree().process_frame
 	await RenderingServer.frame_post_draw
-	get_viewport().get_texture().get_image().save_png(path.get_basename()+"-models.png")
+	get_viewport().get_texture().get_image().save_png(path)
+	print("CAPTURE_SAVED "+path)
+
+func capture_preview() -> void:
+	await get_tree().create_timer(3).timeout
+	var path=OS.get_environment("PORTO_CAPTURE_PATH")
+	if path.is_empty(): path="user://porto-livre-preview.png"
+	var base=path.get_basename()
+	await capture_frame(path)
+	player.pickup(3)
+	controls.states["aim"]=true
+	await get_tree().create_timer(.7).timeout
+	await capture_frame(base+"-aim.png")
+	controls.clear()
+	time_of_day=22;weather=1
+	update_weather(0)
+	await get_tree().create_timer(.3).timeout
+	await capture_frame(base+"-night.png")
+	time_of_day=14;weather=0
+	update_weather(0)
+	running=false
+	var helicopter=vehicles[10] as StreetAircraft
+	helicopter.position=CityWorld.ground(Vector3(532,0,629),80)
+	helicopter.set_driver(true)
+	player.vehicle=helicopter
+	player.visible=false
+	world.refresh(helicopter.position,true)
+	camera_yaw=.65;camera_pitch=-.24
+	update_camera(1)
+	await capture_frame(base+"-flight.png")
+	player.vehicle=null
+	player.position=CityWorld.ground(Vector3(-535,0,417))
+	world.refresh(player.position,true)
+	hud.hide()
+	camera.position=Vector3(-485,78,540)
+	camera.look_at(Vector3(-600,30,400))
+	camera.fov=68
+	await capture_frame(base+"-terrain.png")
+	var review=Node3D.new()
+	add_child(review)
+	review.position=Vector3(3000,0,3000)
+	var floor_mesh=StreetModels.part(review,Vector3(40,.1,40),Vector3(0,-.1,2),Color.WHITE)
+	floor_mesh.material_override=StreetModels.surface("concrete")
+	var floor_body=StaticBody3D.new()
+	floor_body.collision_layer=1
+	review.add_child(floor_body)
+	var collider=CollisionShape3D.new()
+	var box=BoxShape3D.new()
+	box.size=Vector3(40,.5,40)
+	collider.shape=box
+	collider.position.y=-.3
+	floor_body.add_child(collider)
+	var actors: Array[StreetActor]=[]
+	for i in range(4):
+		var actor=StreetModels.person(i)
+		review.add_child(actor)
+		actor.position=Vector3(-3+i*2,0,-1)
+		actors.append(actor)
+	var car=StreetModels.car()
+	review.add_child(car)
+	car.position=Vector3(-3,0,3)
+	var bike=StreetVehicle.new()
+	bike.setup(self,true,0)
+	review.add_child(bike)
+	bike.set_driver(true)
+	bike.position=Vector3(3,0,3)
+	camera.position=review.position+Vector3(2,2.8,-9)
+	camera.fov=52
+	camera.look_at(review.position+Vector3(0,1.4,0))
+	get_viewport().scaling_3d_scale=1
+	await capture_frame(base+"-models.png")
 	for i in range(4):
 		actors[i].animator.play(actors[i].clips[["walk","run","jump","riding"][i]],0)
 		actors[i].animator.advance(0)
-		actors[i].animator.seek(0.25,true)
+		actors[i].animator.seek(.25,true)
 		actors[i].animator.pause()
-	await get_tree().process_frame
-	await RenderingServer.frame_post_draw
-	get_viewport().get_texture().get_image().save_png(path.get_basename()+"-movement.png")
+	await capture_frame(base+"-movement.png")
+	for actor in actors: actor.hide()
+	car.hide();bike.hide()
+	var air=StreetModels.aircraft(false)
+	review.add_child(air)
+	air.position=Vector3(-5,0,1)
+	var plane=StreetModels.aircraft(true)
+	review.add_child(plane)
+	plane.position=Vector3(6,0,1)
+	camera.position=review.position+Vector3(12,7,-16)
+	camera.look_at(review.position+Vector3(0,1.5,0))
+	await capture_frame(base+"-aircraft.png")
+	air.hide();plane.hide()
+	for i in range(4):
+		var gun=StreetModels.gun(i)
+		review.add_child(gun)
+		gun.position=Vector3(-2.5+i*1.7,1,0)
+		gun.scale=Vector3.ONE*2
+		gun.rotation.y=.45
+	camera.position=review.position+Vector3(2,2,-5)
+	camera.look_at(review.position+Vector3(0,1.2,0))
+	await capture_frame(base+"-weapons.png")
+	var fallen=StreetModels.person(0)
+	review.add_child(fallen)
+	fallen.position=Vector3(0,2,-3)
+	await get_tree().physics_frame
+	fallen.death_pose(Vector3(2,0,0))
+	await get_tree().create_timer(2.5).timeout
+	camera.position=review.position+Vector3(4,2,-9)
+	camera.look_at(review.position+Vector3(1,.6,-3))
+	await capture_frame(base+"-ragdoll.png")
 	get_tree().quit()
 
 func run_self_test() -> void:
