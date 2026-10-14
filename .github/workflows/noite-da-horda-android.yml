@@ -1,0 +1,128 @@
+name: Noite da Horda Android
+
+on:
+  push:
+    branches: [game/monster-rush-android]
+    paths: ['monster-game/**', '.github/workflows/noite-da-horda-android.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: noite-da-horda-${{ github.ref }}-${{ github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  android:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools'
+          log-accepted-android-sdk-licenses: 'false'
+      - name: Android packages and software display
+        run: |
+          sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq xvfb libgl1-mesa-dri
+      - name: Cache pinned Godot and Android templates
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.local/bin/godot
+            ~/.local/share/godot/export_templates/4.5.1.stable
+          key: porto-godot-4.5.1-android-v1
+      - name: Official Godot 4.5.1 distribution
+        run: |
+          mkdir -p "$HOME/.local/bin" "$HOME/.local/share/godot/export_templates/4.5.1.stable"
+          if [ ! -f "$HOME/.local/bin/godot" ]; then
+            curl -fL --retry 3 -o /tmp/godot.zip https://github.com/godotengine/godot-builds/releases/download/4.5.1-stable/Godot_v4.5.1-stable_linux.x86_64.zip
+            unzip -q /tmp/godot.zip -d /tmp/godot-editor
+            cp /tmp/godot-editor/Godot_v4.5.1-stable_linux.x86_64 "$HOME/.local/bin/godot"
+            chmod +x "$HOME/.local/bin/godot"
+          fi
+          if [ ! -f "$HOME/.local/share/godot/export_templates/4.5.1.stable/android_debug.apk" ]; then
+            curl -fL --retry 3 -o /tmp/templates.tpz https://github.com/godotengine/godot-builds/releases/download/4.5.1-stable/Godot_v4.5.1-stable_export_templates.tpz
+            unzip -j -q /tmp/templates.tpz templates/android_debug.apk templates/android_release.apk templates/version.txt -d "$HOME/.local/share/godot/export_templates/4.5.1.stable"
+          fi
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Import and test playable game
+        run: |
+          mkdir -p monster-game/build
+          touch monster-game/build/.gdignore
+          godot --headless --path monster-game --editor --import 2>&1 | tee monster-game/build/import.log
+          timeout 90 godot --headless --path monster-game -- --self-test 2>&1 | tee monster-game/build/test.log
+          grep -q HORDE_TEST_OK monster-game/build/test.log
+          if grep -E 'SCRIPT ERROR|HORDE_TEST_FAIL' monster-game/build/test.log; then exit 1; fi
+      - name: Render actual game screenshots
+        env:
+          HORDE_CAPTURE_PATH: ${{ github.workspace }}/monster-game/build/NoiteDaHorda-menu.png
+          LIBGL_ALWAYS_SOFTWARE: '1'
+        run: |
+          timeout 120 xvfb-run -a godot --path monster-game --rendering-method gl_compatibility --audio-driver Dummy -- --capture 2>&1 | tee monster-game/build/preview.log
+          for screen in menu shop monsters run perk; do test -s "monster-game/build/NoiteDaHorda-$screen.png"; done
+          if grep -E 'SCRIPT ERROR' monster-game/build/preview.log; then exit 1; fi
+      - name: Cache game signing key
+        uses: actions/cache@v4
+        with:
+          path: ~/.android/horde-debug.keystore
+          key: noite-da-horda-debug-key-v1
+      - name: Configure signed Android export
+        run: |
+          mkdir -p "$HOME/.android"
+          if [ ! -f "$HOME/.android/horde-debug.keystore" ]; then
+            keytool -genkeypair -keystore "$HOME/.android/horde-debug.keystore" -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname 'CN=Noite da Horda Development,O=Kauan,C=BR'
+          fi
+          python3 monster-game/tools/configure_export.py
+          echo "GODOT_ANDROID_KEYSTORE_DEBUG_PATH=$HOME/.android/horde-debug.keystore" >> "$GITHUB_ENV"
+          echo "GODOT_ANDROID_KEYSTORE_DEBUG_USER=androiddebugkey" >> "$GITHUB_ENV"
+          echo "GODOT_ANDROID_KEYSTORE_DEBUG_PASSWORD=android" >> "$GITHUB_ENV"
+      - name: Export APK and verify signature
+        run: |
+          godot --headless --path monster-game --export-debug Android build/NoiteDaHorda-v0.1.0.apk 2>&1 | tee monster-game/build/export.log
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose monster-game/build/NoiteDaHorda-v0.1.0.apk
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging monster-game/build/NoiteDaHorda-v0.1.0.apk > monster-game/build/apk-info.txt
+          sha256sum monster-game/build/NoiteDaHorda-v0.1.0.apk > monster-game/build/SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: NoiteDaHorda-Android-v0.1.0
+          path: |
+            monster-game/build/*.apk
+            monster-game/build/*.png
+            monster-game/build/*.txt
+            monster-game/README.md
+          if-no-files-found: error
+          retention-days: 30
+      - name: Publish tested alpha
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cat > monster-game/build/release-notes.md <<'NOTES'
+          Primeira base jogável do Noite da Horda: corrida 2D com zumbi/esqueleto coletáveis, bônus de mascarados e mosca mutante, loja com quatro melhorias permanentes, save com backup, música original e efeitos.
+
+          Android 7+, OpenGL ES 3.0, ARMv7/ARM64. APK de desenvolvimento assinado. Testes automatizados aprovados; desempenho em telefone físico ainda precisa ser medido. Toque para pular, segure para saltar mais alto. Salto duplo após comprar Pulo Ágil nível 2.
+
+          Quatro criaturas e um cenário inicial; novos personagens e regiões serão adicionados em versões futuras. Capturas reais do motor. Fontes e recursos descritos em monster-game/ASSETS.md.
+          NOTES
+          if ! gh release view noite-da-horda-v0.1.0 >/dev/null 2>&1; then
+            gh release create noite-da-horda-v0.1.0 --target "$GITHUB_SHA" --prerelease --title 'Noite da Horda alpha 0.1 — Android' --notes-file monster-game/build/release-notes.md
+          fi
+          gh release upload noite-da-horda-v0.1.0 monster-game/build/NoiteDaHorda-v0.1.0.apk monster-game/build/SHA256SUMS.txt monster-game/build/NoiteDaHorda-menu.png monster-game/build/NoiteDaHorda-shop.png monster-game/build/NoiteDaHorda-run.png monster-game/build/NoiteDaHorda-perk.png --clobber
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: NoiteDaHorda-build-logs
+          path: |
+            monster-game/build/*.log
+            monster-game/build/*.png
