@@ -17,6 +17,9 @@ jobs:
   assets:
     uses: ./.github/workflows/porto-realism-assets.yml
   android:
+    permissions:
+      contents: write
+      actions: read
     needs: assets
     runs-on: ubuntu-24.04
     timeout-minutes: 25
@@ -117,6 +120,21 @@ jobs:
             android-game/README.md
           if-no-files-found: error
           retention-days: 30
+      - name: Publish verified installation build
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cat > android-game/build/release-notes.md <<'NOTES'
+          Porto Livre alpha 0.4 para Android, com mira sobre o ombro, armas importadas, animações adaptadas, quedas físicas, ciclo dia/noite, aeronaves e paraquedas.
+
+          APK de desenvolvimento assinado. Android 7+ e OpenGL ES 3.0, ARMv7/ARM64. Física e IA experimentais; desempenho em celular físico ainda precisa de teste. As dez missões e o save das versões anteriores são preservados.
+
+          Capturas geradas dentro do jogo. Recursos e licenças em android-game/THIRD_PARTY.md. Projeto original; não contém assets de GTA.
+          NOTES
+          if ! gh release view porto-livre-v0.4.0 >/dev/null 2>&1; then
+            gh release create porto-livre-v0.4.0 --target "$GITHUB_SHA" --prerelease --title 'Porto Livre alpha 0.4 — Android' --notes-file android-game/build/release-notes.md
+          fi
+          gh release upload porto-livre-v0.4.0 android-game/build/PortoLivre-v0.4.0.apk android-game/build/SHA256SUMS.txt android-game/build/PortoLivre-preview.png android-game/build/PortoLivre-preview-aim.png android-game/build/PortoLivre-preview-night.png android-game/build/PortoLivre-preview-ragdoll.png --clobber
       - uses: actions/upload-artifact@v4
         if: always()
         with:

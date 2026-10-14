@@ -90,7 +90,7 @@ def prepare_style_assets():
     sky = unzip('skyboxes.zip','skyboxes')
     (OUT/'sky').mkdir(exist_ok=True)
     for name in ['day','morning','night']:
-        subprocess.run(['ffmpeg','-v','error','-y','-i',str(next(sky.rglob('skybox-'+name+'.png'))),'-vf','scale=2048:1024',str(OUT/'sky'/(name+'.png'))],check=True)
+        subprocess.run(['ffmpeg','-v','error','-y','-i',str(next(sky.rglob('skybox-'+name+'.png'))),'-vf','scale=2048:1024','-pix_fmt','rgb24',str(OUT/'sky'/(name+'.png'))],check=True)
     for archive in ['guns','helicopter']:
         unzip(archive+'.zip',archive)
     subprocess.run(['ffmpeg','-v','error','-y','-i',str(CACHE/'engine.wav'),'-af','loudnorm=I=-18:TP=-2:LRA=7','-ac','1','-ar','22050','-c:a','libvorbis','-q:a','4',str(OUT/'audio/engine.ogg')],check=True)
