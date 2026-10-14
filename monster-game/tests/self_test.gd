@@ -68,6 +68,13 @@ func run(game) -> void:
 	game.runner.add_entity("car",HordeRun.ANCHOR+4,HordeRun.FLOOR,0,155)
 	game.runner.advance(1.0/60);game.consume_run_events()
 	check(game.runner.members.size()==during,"Masked transformation smashes a car")
+	var pit_test=HordeRun.new()
+	pit_test.start({"horde":3,"jump":0,"magnet":0,"perk":0},42)
+	pit_test.entities.clear();pit_test.next_segment=99999
+	pit_test.add_entity("gap",HordeRun.ANCHOR+50,HordeRun.FLOOR,0,145)
+	pit_test.jump()
+	for i in range(160): pit_test.advance(1.0/60,i<12)
+	check(pit_test.members.size()==4 and not pit_test.dead,"Followers reproduce the leader's jump and cross a pit without unavoidable losses")
 	# Losing the last creature must finish once, while collected money remains.
 	game.data.levels=MonsterCatalog.defaults().levels
 	game.start_run();game.capture_freeze=true

@@ -90,9 +90,12 @@ func jump() -> void:
 	var accepted=false
 	for i in range(members.size()):
 		var member=members[i]
+		if member.jump_delay>=0: continue
 		var may_double=int(levels.get("jump",0))>=2 and member.air_jumps<2
 		if member.coyote>0 or may_double:
-			member.jump_delay=float(i)*.011
+			# Each follower jumps at the same world position as the leader.
+			# A nearly simultaneous jump makes trailing members land in a pit.
+			member.jump_delay=(ANCHOR-member_x(i))/speed
 			accepted=true
 	if accepted:
 		jumped=true
