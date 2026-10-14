@@ -24,7 +24,13 @@ def bake():
     bpy.context.view_layer.update()
     world={o:o.matrix_world.copy() for o in meshes()}
     for o,m in world.items():
-        o.parent=None;o.matrix_world=Matrix.Identity(4);o.data.transform(m)
+        o.parent=None
+        # matrix_world assignment does not clear Blender delta transforms.
+        # The biplane propeller retained a second 90-degree rotation in glTF.
+        o.delta_location=(0,0,0);o.delta_rotation_euler=(0,0,0)
+        o.delta_rotation_quaternion=(1,0,0,0);o.delta_scale=(1,1,1)
+        o.animation_data_clear()
+        o.matrix_world=Matrix.Identity(4);o.data.transform(m)
     bpy.context.view_layer.update()
     for o in list(bpy.context.scene.objects):
         if o.type!='MESH':bpy.data.objects.remove(o,do_unlink=True)

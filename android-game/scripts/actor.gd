@@ -110,6 +110,7 @@ func death_pose(impulse: Vector3=Vector3.ZERO) -> void:
 	if right_ik: right_ik.stop()
 	if left_ik: left_ik.stop()
 	if not simulator: simulator=StreetRagdoll.build(skeleton)
+	else: StreetRagdoll.synchronize(skeleton,simulator)
 	simulator.physical_bones_start_simulation()
 	for body in simulator.get_children():
 		if body is PhysicalBone3D:

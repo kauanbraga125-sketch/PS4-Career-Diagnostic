@@ -7,7 +7,7 @@ Jogo original de exploração urbana criado para Kauan, em Godot 4.5.1. Esta alp
 - Botões **MIRAR** e **ATIRAR** independentes. Mira em terceira pessoa sobre o ombro, transição de câmera/FOV, arraste do próprio botão para apontar no celular e bloqueio do tiro por cobertura próxima.
 - Quatro armas **Quaternius CC0 importadas em GLB**. Mãos posicionadas com IK e cano orientado ao ponto de mira; inventário e 12 locais de coleta continuam offline.
 - Caminhada, corrida, espera, salto, queda e aterrissagem da biblioteca **KayKit 1.1 CC0**, adaptadas ao esqueleto humano MakeHuman. Mistura entre clipes e velocidade ajustada ao deslocamento; não são alegadas captura de movimentos ou IK dos pés.
-- **Ragdoll físico com 12 corpos e juntas limitadas**, ativado em NPCs abatidos e na morte do jogador. Colisão com terreno e veículos, impulso inicial e recuperação do jogador após 3 segundos. Sistema experimental.
+- **Ragdoll físico com 12 corpos e juntas 6DOF limitadas**, ativado em NPCs abatidos e na morte do jogador. Colisão com terreno e veículos, impulso inicial e recuperação do jogador após 3 segundos. Sistema experimental.
 - Céus texturizados Kenney, ciclo de **24 minutos por dia**, amanhecer, noite, nuvens/tempo limpo ou coberto e postes iluminados perto do jogador. O perfil Alto usa um shader com amostragem de ruído 3D para as nuvens; Leve/Equilibrado preservam as panorâmicas com custo menor.
 - Prédios de fachada variada importados do **Kenney City Kit Commercial**, além das oito casas da 0.3. Geometria exterior agrupada em MultiMesh por modelo/bloco.
 - Avião biplano e helicóptero **importados de fontes CC0**, com voo assistido. O avião precisa ganhar velocidade para subir; o helicóptero pode pairar. Modelos de arcade, sem aerodinâmica profissional.
@@ -69,9 +69,10 @@ godot --headless --path android-game --editor --import
 python3 android-game/tools/configure_imports.py
 godot --headless --path android-game --editor --import
 godot --headless --path android-game -- --self-test
+godot --headless --path android-game --script res://tests/pose_audit.gd
 ```
 
-Testes injetam entradas e posições para verificar os sistemas; não substituem jogar a campanha completa nem testar toque e desempenho no Android físico.
+A auditoria física também simula impactos no chão e mortes repetidas nos quatro modelos de NPC, partindo de poses diferentes. Testes injetam entradas e posições para verificar os sistemas; não substituem jogar a campanha completa nem testar toque e desempenho no Android físico.
 
 ## Licenças
 

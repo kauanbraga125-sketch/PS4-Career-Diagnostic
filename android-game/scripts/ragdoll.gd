@@ -36,14 +36,30 @@ static func build(skeleton: Skeleton3D) -> PhysicalBoneSimulator3D:
 		shape.shape=capsule
 		shape.rotation.x=PI/2
 		body.add_child(shape)
-	# Synchronize all body transforms before any joint computes its parent frame.
+	synchronize(skeleton,simulator)
+	return simulator
+
+static func synchronize(skeleton: Skeleton3D,simulator: PhysicalBoneSimulator3D) -> void:
+	# Rebuild joint frames from the current animation on every death, including
+	# after respawn. Cached frames from the first pose would pull limbs apart.
 	skeleton.force_update_all_bone_transforms()
 	for body in simulator.get_children():
 		var id=body.get_bone_id()
 		body.global_transform=skeleton.global_transform*skeleton.get_bone_global_pose(id)*body.body_offset
 	for body in simulator.get_children():
 		if body.get("bone_name")!="Hips":
-			body.joint_type=PhysicalBone3D.JOINT_TYPE_CONE
-			body.set("joint_constraints/swing_span",35.0 if body.get("bone_name") in ["Spine","Spine1","LeftLeg","RightLeg"] else 65.0)
-			body.set("joint_constraints/twist_span",18.0)
-	return simulator
+			# Godot Physics cone joints injected energy on ground impact. Lock
+			# translation with 6DOF joints and bound rotation on all three axes.
+			body.joint_type=PhysicalBone3D.JOINT_TYPE_NONE
+			body.joint_type=PhysicalBone3D.JOINT_TYPE_6DOF
+			for axis in ["x","y","z"]:
+				var key="joint_constraints/"+axis+"/"
+				body.set(key+"linear_limit_enabled",true)
+				body.set(key+"linear_limit_lower",0.0)
+				body.set(key+"linear_limit_upper",0.0)
+				body.set(key+"angular_limit_enabled",true)
+				var limit=18.0 if axis=="z" else (35.0 if body.get("bone_name") in ["Spine","Spine1","LeftLeg","RightLeg"] else 65.0)
+				body.set(key+"angular_limit_lower",-limit)
+				body.set(key+"angular_limit_upper",limit)
+				body.set(key+"angular_damping",1.0)
+				body.set(key+"erp",.2)
