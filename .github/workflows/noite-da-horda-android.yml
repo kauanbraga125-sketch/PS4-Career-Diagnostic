@@ -35,7 +35,7 @@ jobs:
         run: |
           sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
           sudo apt-get update -qq
-          sudo apt-get install -y -qq xvfb libgl1-mesa-dri
+          sudo apt-get install -y -qq xvfb libgl1-mesa-dri ffmpeg
       - name: Cache pinned Godot and Android templates
         uses: actions/cache@v4
         with:
@@ -73,6 +73,16 @@ jobs:
           timeout 120 xvfb-run -a godot --path monster-game --rendering-method gl_compatibility --audio-driver Dummy -- --capture 2>&1 | tee monster-game/build/preview.log
           for screen in menu shop monsters run perk; do test -s "monster-game/build/NoiteDaHorda-$screen.png"; done
           if grep -E 'SCRIPT ERROR' monster-game/build/preview.log; then exit 1; fi
+      - name: Render and encode real animation preview
+        env:
+          HORDE_MOTION_PATH: ${{ github.workspace }}/monster-game/build/motion
+          LIBGL_ALWAYS_SOFTWARE: '1'
+        run: |
+          timeout 240 xvfb-run -a godot --path monster-game --rendering-method gl_compatibility --audio-driver Dummy -- --motion-preview 2>&1 | tee monster-game/build/motion.log
+          grep -q HORDE_MOTION_OK monster-game/build/motion.log
+          if grep -E 'SCRIPT ERROR' monster-game/build/motion.log; then exit 1; fi
+          ffmpeg -v error -y -framerate 30 -i monster-game/build/motion/frame-%04d.png -stream_loop -1 -i monster-game/assets/audio/midnight_run.ogg -t 12 -c:v libx264 -preset fast -crf 22 -pix_fmt yuv420p -c:a aac -b:a 128k -movflags +faststart monster-game/build/NoiteDaHorda-v0.2.0-movimento.mp4
+          test -s monster-game/build/NoiteDaHorda-v0.2.0-movimento.mp4
       - name: Cache game signing key
         uses: actions/cache@v4
         with:
@@ -90,15 +100,16 @@ jobs:
           echo "GODOT_ANDROID_KEYSTORE_DEBUG_PASSWORD=android" >> "$GITHUB_ENV"
       - name: Export APK and verify signature
         run: |
-          godot --headless --path monster-game --export-debug Android build/NoiteDaHorda-v0.1.0.apk 2>&1 | tee monster-game/build/export.log
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose monster-game/build/NoiteDaHorda-v0.1.0.apk
-          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging monster-game/build/NoiteDaHorda-v0.1.0.apk > monster-game/build/apk-info.txt
-          sha256sum monster-game/build/NoiteDaHorda-v0.1.0.apk > monster-game/build/SHA256SUMS.txt
+          godot --headless --path monster-game --export-debug Android build/NoiteDaHorda-v0.2.0.apk 2>&1 | tee monster-game/build/export.log
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose monster-game/build/NoiteDaHorda-v0.2.0.apk
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging monster-game/build/NoiteDaHorda-v0.2.0.apk > monster-game/build/apk-info.txt
+          sha256sum monster-game/build/NoiteDaHorda-v0.2.0.apk > monster-game/build/SHA256SUMS.txt
       - uses: actions/upload-artifact@v4
         with:
-          name: NoiteDaHorda-Android-v0.1.0
+          name: NoiteDaHorda-Android-v0.2.0
           path: |
             monster-game/build/*.apk
+            monster-game/build/*.mp4
             monster-game/build/*.png
             monster-game/build/*.txt
             monster-game/README.md
@@ -109,16 +120,18 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           cat > monster-game/build/release-notes.md <<'NOTES'
-          Primeira base jogável do Noite da Horda: corrida 2D com zumbi/esqueleto coletáveis, bônus de mascarados e mosca mutante, loja com quatro melhorias permanentes, save com backup, música original e efeitos.
+          Alpha 0.2: corrida articulada dos quatro monstros, com braços e pernas alternando, poeira nos passos/saltos/aterrissagens, moedas girando, bônus pulsantes, partículas e rastros de velocidade. Cenário com três camadas de parallax, lanternas, vegetação e morcegos animados.
 
-          Android 7+, OpenGL ES 3.0, ARMv7/ARM64. APK de desenvolvimento assinado. Testes automatizados aprovados; desempenho em telefone físico ainda precisa ser medido. Toque para pular, segure para saltar mais alto. Salto duplo após comprar Pulo Ágil nível 2.
+          Mosca: segure para subir e solte para descer. Carros exigem quatro criaturas no chão, tombam em animação e liberam um recruta. Poção de Frenesi acelera por cinco segundos e dobra as moedas coletadas. Visuais do líder compráveis, três missões ativas que se renovam e migração do save da alpha 0.1 preservando moedas, melhorias e recorde.
 
-          Quatro criaturas e um cenário inicial; novos personagens e regiões serão adicionados em versões futuras. Capturas reais do motor. Fontes e recursos descritos em monster-game/ASSETS.md.
+          Android 7+, OpenGL ES 3.0, ARMv7/ARM64. APK de desenvolvimento assinado. Testes automatizados de gameplay, voo, carros, loja, missões, efeitos e migração aprovados. Capturas e vídeo produzidos pelo jogo real, com entradas simuladas; o vídeo usa a música original. Desempenho em telefone físico ainda precisa ser medido.
+
+          Toque para pular; segure para saltar mais alto. Salto duplo após Pulo Ágil nível 2. Os quatro visuais compartilham a física normal; habilidades especiais são ativadas pelos bônus encontrados na pista. Funciona offline, sem anúncios ou pagamentos reais.
           NOTES
-          if ! gh release view noite-da-horda-v0.1.0 >/dev/null 2>&1; then
-            gh release create noite-da-horda-v0.1.0 --target "$GITHUB_SHA" --prerelease --title 'Noite da Horda alpha 0.1 — Android' --notes-file monster-game/build/release-notes.md
+          if ! gh release view noite-da-horda-v0.2.0 >/dev/null 2>&1; then
+            gh release create noite-da-horda-v0.2.0 --target "$GITHUB_SHA" --prerelease --title 'Noite da Horda alpha 0.2 — Android' --notes-file monster-game/build/release-notes.md
           fi
-          gh release upload noite-da-horda-v0.1.0 monster-game/build/NoiteDaHorda-v0.1.0.apk monster-game/build/SHA256SUMS.txt monster-game/build/NoiteDaHorda-menu.png monster-game/build/NoiteDaHorda-shop.png monster-game/build/NoiteDaHorda-run.png monster-game/build/NoiteDaHorda-perk.png --clobber
+          gh release upload noite-da-horda-v0.2.0 monster-game/build/NoiteDaHorda-v0.2.0.apk monster-game/build/SHA256SUMS.txt monster-game/build/NoiteDaHorda-menu.png monster-game/build/NoiteDaHorda-shop.png monster-game/build/NoiteDaHorda-run.png monster-game/build/NoiteDaHorda-perk.png monster-game/build/NoiteDaHorda-v0.2.0-movimento.mp4 --clobber
       - uses: actions/upload-artifact@v4
         if: always()
         with:
