@@ -1,4 +1,4 @@
-# Arte e áudio — alpha 0.2
+# Arte e áudio — alpha 0.4
 
 Arte bitmap criada para o projeto com o gerador de imagens integrado (modo built-in imagegen). Fontes e pixels preservados nos arquivos; recortes são regiões de AtlasTexture em tempo de execução.
 
@@ -45,6 +45,34 @@ Amostras **CC0** obtidas diretamente dos autores no OpenGameArt e adaptadas por 
 | High pitch scream sounds(2) | pauliuw | Grito distante da cidade | https://opengameart.org/content/high-pitch-scream-sounds2 |
 | Ghost breath | qubodup | Dissolução do mascarado | https://opengameart.org/content/ghost-breath |
 
-`voice_masked`: frase sintética original “ki ki ma ma”, produzida pelo filtro flite/voz kal do FFmpeg e transformada em sussurro com ruído/eco. Não é gravação retirada de filme. O som de ossos é uma amostra livre de chocalho, não áudio do Minecraft.
+Na alpha 0.3, `voice_masked` era uma frase sintética original “ki ki ma ma”, produzida pelo filtro flite/voz kal do FFmpeg e transformada em sussurro com ruído/eco. Não é gravação retirada de filme. O som de ossos é uma amostra livre de chocalho, não áudio do Minecraft.
 
 `voice_fly`, `death_fly`, `gunshot`, `explosion`, `tunnel` e `city_ambience`: síntese original de ruído, osciladores e envelopes. Áudio normalizado com pico máximo 0,70 e fades; Ogg Vorbis. Vozes têm intervalo e mixagem limitada para não tocar 24 monstros simultaneamente. Ambiência da cidade para no menu/pausa.
+
+
+## Alpha 0.4: túnel percorrível, civis, veículos, almas e ritual
+
+Gerador integrado em modo **built-in imagegen**. Prompts e referências completos em [art-prompts-v4.json](art-prompts-v4.json). PNGs originais preservados; recorte por AtlasTexture no motor. `tools/prepare_atlas_v4.py` mede limites alpha sem editar raster e salva `assets/art/atlas-v4.json`.
+
+| Arquivo em assets/art/ | Uso |
+|---|---|
+| tunnel-interior-v4.png | Interior lateral contínuo do túnel, 1536 × 1024, opaco |
+| tunnel-mouths-v4.png | Entrada e saída na encosta, 2172 × 724, RGBA |
+| rig-civilian-woman-v4.png | Civil de cardigan coral, nove peças, 1254 × 1254 |
+| rig-civilian-worker-v4.png | Civil operário com capacete, nove peças, 1254 × 1254 |
+| vehicles-v4.png | Moto, carro, ônibus, caminhão, tanque e avião, 1536 × 1024 |
+| ritual-v4.png | Alma, altar, baú de moedas e bomba aérea, 1536 × 1024 |
+| vfx-v4.png | Três chamas de pavio e três quadros de captura, 1536 × 1024 |
+
+Os veículos novos apontam à esquerda; a moto é espelhada em tempo de execução. O helicóptero continua usando a folha v3. Rigs v2 dos monstros recebem animações novas de captura/empurrar e corrida mais expressiva. Passageiros acenam com a parte superior dos rigs humanos. Rodas, chamas, rotores, poeira, almas em voo e barra do ritual são animados no motor.
+
+### Áudio da alpha 0.4
+
+**Ki Ki Ki Ma Ma Ma — alexander / Orange Free Sounds**, publicado em 11/01/2019. A página disponibiliza a amostra sob **Creative Commons Attribution 4.0**, inclusive para uso comercial. Usada como `voice_masked_v4.ogg`, substituindo o cue sintético anterior. Conversão para mono, normalização e fades; nenhuma alegação de gravação original do projeto.
+
+- Página: https://orangefreesounds.com/ki-ki-ki-ma-ma-ma/
+- Fonte: https://www.orangefreesounds.com/wp-content/uploads/2019/01/Ki-ki-ki-ma-ma-ma.mp3
+- Licença: https://creativecommons.org/licenses/by/4.0/
+- Crédito apresentado também no menu **Como jogar → Créditos**.
+
+`soul_capture.ogg`, `level_up.ogg` e `ritual_fill.ogg`: composições originais com osciladores e envelopes. Processamento por `tools/compose_progress_audio.py`; hashes, origem, atribuição e modificações em `assets/audio/SOURCES-v4.json`. As fontes CC0 da versão anterior permanecem creditadas acima; a amostra nova do mascarado usa CC BY 4.0.

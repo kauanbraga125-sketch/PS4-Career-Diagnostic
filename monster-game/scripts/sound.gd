@@ -17,6 +17,8 @@ func _ready() -> void:
 		var player=AudioStreamPlayer.new();player.volume_db=-12;add_child(player);players.append(player)
 	for name in ["coin","jump","land","recruit","hit","smash","perk","guard","buy","challenge","finish","voice_zombie","voice_zombie_alt","voice_skeleton","voice_masked","voice_fly","death_zombie","death_skeleton","death_masked","death_fly","city_scream","gunshot","explosion","tunnel"]:
 		clips[name]=load("res://assets/audio/"+name+".ogg")
+	clips.voice_masked=load("res://assets/audio/voice_masked_v4.ogg")
+	for name in ["soul_capture","level_up","ritual_fill"]: clips[name]=load("res://assets/audio/"+name+".ogg")
 	for name in ["moon_menu","midnight_run","city_ambience"]:
 		var stream=load("res://assets/audio/"+name+".ogg") as AudioStreamOggVorbis
 		stream.loop=true;clips[name]=stream

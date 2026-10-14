@@ -31,15 +31,24 @@ func pickup(pos: Vector2,icon: int,target: Vector2) -> void:
 	var p=add("pickup",pos,Vector2.ZERO,Color.WHITE,26,.48,0,false)
 	p.origin=pos;p.target=target;p.icon=icon
 
-func smash(pos: Vector2,object_kind: String) -> void:
+func smash(pos: Vector2,object_kind: String,start_angle: float=0) -> void:
 	dust(Vector2(pos.x,HordeRun.FLOOR),13,1.4)
 	spark(pos,Color("ffc66a"),22)
 	ring(pos,Color("ee917e"))
 	for i in range(8): add("chip",pos,Vector2(randf_range(-190,170),randf_range(-260,-100)),Color("99705f"),randf_range(3,8),.9,750)
 	if MonsterCatalog.VEHICLES.has(object_kind):
 		var p=add("vehicle",pos,Vector2(125,-340),Color.WHITE,float(MonsterCatalog.VEHICLES[object_kind].height),1.18,880)
-		p.object=object_kind;p.rotation=0
-	elif object_kind in ["bomb","helicopter"]: explosion(pos)
+		p.object=object_kind;p.rotation=0;p.start_angle=start_angle
+	elif object_kind in ["bomb","helicopter","air_bomb"]: explosion(pos)
+
+func capture(pos: Vector2,kind: int) -> void:
+	var p=add("capture",pos,Vector2.ZERO,Color.WHITE,110,.55)
+	p.monster=kind
+	spark(pos,[Color("9ce4c7"),Color("fff1d3"),Color("ee917e"),Color("c39cf3")][clampi(kind,0,3)],12)
+
+func soul(pos: Vector2,target: Vector2,life: float=.75) -> void:
+	var p=add("soul",pos,Vector2.ZERO,Color.WHITE,36,life,0,false)
+	p.origin=pos;p.target=target
 
 func explosion(pos: Vector2) -> void:
 	add("explosion",pos,Vector2.ZERO,Color.WHITE,140,.62)
@@ -130,9 +139,22 @@ func paint(canvas: Node2D,art: HordeArt,actor: HordeActor=null) -> void:
 				canvas.draw_set_transform(p.pos,p.rotation)
 				canvas.draw_rect(Rect2(-p.size*.5,-p.size*.5,p.size,p.size),color)
 			"vehicle":
-				canvas.draw_set_transform(p.pos,minf(PI,progress*PI*1.65))
+				canvas.draw_set_transform(p.pos,minf(PI,p.get("start_angle",0)+(PI-p.get("start_angle",0))*progress*1.65),Vector2(-1 if MonsterCatalog.VEHICLES[p.object].reverse else 1,1))
 				var texture=art.vehicle(p.object)
+				var size=Vector2(MonsterCatalog.VEHICLES[p.object].width,p.size)
+				canvas.draw_texture_rect(texture,Rect2(-size*.5,size),false,color)
+			"capture":
+				var texture=art.vfx[3+mini(2,int(progress*3))]
 				var size=texture.get_size()*(p.size/texture.get_height())
+				canvas.draw_set_transform(p.pos,progress*.3)
+				canvas.draw_texture_rect(texture,Rect2(-size*.5,size),false,color)
+			"soul":
+				var t=1-pow(1-progress,2)
+				var pos=p.origin.lerp(p.target,t)+Vector2(sin(progress*TAU)*18,-sin(progress*PI)*80)
+				canvas.draw_set_transform(pos,sin(progress*TAU)*.1)
+				canvas.draw_circle(Vector2.ZERO,23,Color(.3,1,.8,color.a*.08))
+				var texture=art.ritual[0]
+				var size=texture.get_size()*(p.size/texture.get_height())*(1-progress*.4)
 				canvas.draw_texture_rect(texture,Rect2(-size*.5,size),false,color)
 			"bone","mask","fly","wing","explosion":
 				var texture: Texture2D=art.props[5]

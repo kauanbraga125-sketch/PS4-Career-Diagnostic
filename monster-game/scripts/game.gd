@@ -14,6 +14,15 @@ var effects=HordeEffects.new()
 var last_stats: Dictionary={}
 var trail_tick=0.0
 var voice_tick=0.0
+var reward_rng=RandomNumberGenerator.new()
+var run_settled=false
+var run_report: Dictionary={}
+var result_time=0.0
+var result_level=1
+var ritual_view: Dictionary={}
+var ritual_time=4.0
+var ritual_particle_tick=0.0
+var ritual_reward_played=false
 var coin_pulse=0.0
 var sound: HordeSound
 var runner=HordeRun.new()
@@ -38,6 +47,7 @@ var pressed_button=""
 
 func _ready() -> void:
 	Engine.max_fps=60
+	reward_rng.randomize()
 	test_mode="--self-test" in OS.get_cmdline_user_args()
 	capture_mode="--capture" in OS.get_cmdline_user_args() or "--motion-preview" in OS.get_cmdline_user_args()
 	if not test_mode and not capture_mode: data=read_save()
@@ -45,6 +55,9 @@ func _ready() -> void:
 	add_child(sound)
 	sound.set_enabled(bool(data.audio))
 	sound.set_music("moon_menu")
+	if not test_mode and not capture_mode and int(data.active_souls)>0:
+		HordeProgress.settle(data,int(data.active_souls),reward_rng);save_game()
+	if not test_mode and not capture_mode: begin_ritual()
 	if test_mode: call_deferred("run_tests")
 	elif "--motion-preview" in OS.get_cmdline_user_args(): call_deferred("motion_preview")
 	elif capture_mode: call_deferred("capture_preview")
@@ -60,6 +73,7 @@ func _process(dt: float) -> void:
 	coin_pulse=maxf(0,coin_pulse-dt*4)
 	position=Vector2(sin(ui_time*83),cos(ui_time*71))*shake*.45 if screen=="run" else Vector2.ZERO
 	if screen=="run" and not capture_freeze: update_run_visuals(dt)
+	if screen in ["home","results"]: update_rewards(dt)
 	if end_delay>=0:
 		end_delay-=dt
 		if end_delay<0: change_screen("results")
@@ -76,6 +90,8 @@ func _physics_process(dt: float) -> void:
 		save_game()
 
 func change_screen(next: String) -> void:
+	if next=="home": begin_ritual()
+	if next=="results": result_time=0;result_level=int(run_report.get("old_level",data.player_level))
 	screen=next
 	buttons.clear()
 	pressed_button=""
@@ -86,6 +102,7 @@ func change_screen(next: String) -> void:
 	queue_redraw()
 
 func start_run() -> void:
+	run_settled=false;run_report={};data.active_souls=0
 	runner.start(data.levels,0,int(data.skin),data.areas)
 	effects.clear()
 	scenery.reset();voice_tick=1.8
@@ -111,6 +128,16 @@ func consume_run_events() -> void:
 				if not runner.members.is_empty(): sound.play_monster(int(runner.members[-1].kind))
 				effects.spark(point,MINT,18)
 				effects.ring(point,MINT)
+			"capture":
+				sound.play_monster(int(e.kind));effects.capture(point,int(e.kind))
+			"soul":
+				sound.play("soul_capture",-13);effects.capture(point,int(e.kind))
+				effects.soul(point,Vector2(411,73));data.active_souls=runner.souls
+				save_game()
+			"contact": sound.play("land",-18);effects.dust(point,4,.7)
+			"weak_vehicle": show_toast("FALTOU FORÇA: "+str(e.count)+" / "+str(e.need),1.8)
+			"tunnel_enter": sound.play("tunnel",-18)
+			"tunnel_exit": sound.play("tunnel",-18)
 			"jump":
 				sound.play("jump")
 				if point.y>=HordeRun.FLOOR-4: effects.dust(point,10,1.2)
@@ -126,7 +153,7 @@ func consume_run_events() -> void:
 				effects.spark(point,color,35);effects.ring(point,color)
 				effects.pickup(point,0 if e.kind==3 else 11,point+Vector2(25,-20))
 				sound.play_monster(int(e.kind))
-				show_toast("MOSCA: SEGURE PARA DESCER, SOLTE PARA SUBIR" if e.kind==3 else "MASCARADOS! DESTRUA OS OBSTÁCULOS",2.4)
+				show_toast("MOSCA: SEGURE PARA DESCER, SOLTE PARA SUBIR" if e.kind==3 else "MASCARADOS! PROTEÇÃO CONTRA IMPACTOS",2.4)
 			"perk_end":
 				effects.spark(point,Color("c39cf3"),16)
 				show_toast("Transformação terminou",1.5)
@@ -141,8 +168,8 @@ func consume_run_events() -> void:
 			"smash":
 				sound.play("smash");shake=6
 				var object_kind=str(e.get("object","crate"))
-				effects.smash(point,object_kind)
-				if MonsterCatalog.VEHICLES.has(object_kind): show_toast("VEÍCULO VIRADO! +"+str(MonsterCatalog.VEHICLES[object_kind].rescues)+" CRIATURAS",1.7)
+				effects.smash(point,object_kind,float(e.get("tilt",0)))
+				if MonsterCatalog.VEHICLES.has(object_kind): show_toast("VEÍCULO VIRADO! +"+str(MonsterCatalog.VEHICLES[object_kind].rescues)+" CIVIS LIBERTADOS",1.7)
 			"hit":
 				sound.play_monster(int(e.kind),true);shake=7
 				effects.death(int(e.kind),point)
@@ -156,9 +183,11 @@ func consume_run_events() -> void:
 			"finish": finish_run()
 
 func finish_run() -> void:
-	if end_delay>=0 or screen not in ["run","pause"]: return
+	if run_settled or end_delay>=0 or screen not in ["run","pause"]: return
 	data.best=maxi(int(data.best),runner.distance())
 	data.runs+=1
+	run_settled=true
+	run_report=HordeProgress.settle(data,runner.souls,reward_rng)
 	end_delay=1.0
 	jump_held=false
 	sound.play("finish")
@@ -178,11 +207,11 @@ func check_challenges() -> void:
 		data.mission_progress[challenge.id]=mini(progress,int(challenge.target))
 		if progress>=int(challenge.target):
 			data.claimed.append(challenge.key)
-			data.wallet+=int(challenge.reward)
+			HordeProgress.queue_mission(data,challenge)
 			data.missions_completed+=1
 			run_challenges.append(challenge.title)
 			sound.play("challenge")
-			show_toast("MISSÃO CONCLUÍDA  +"+str(challenge.reward)+" MOEDAS",2.5)
+			show_toast("MISSÃO CONCLUÍDA  +"+str(challenge.ritual)+" PARA O RITUAL",2.5)
 			save_game()
 		else: all_complete=false
 	last_stats=values.duplicate()
@@ -219,6 +248,10 @@ func perform_action(action: String) -> void:
 		"worlds": change_screen("worlds")
 		"missions": change_screen("missions")
 		"help": change_screen("help")
+		"credits": change_screen("credits")
+		"retry":
+			if screen in ["run","pause"] and not runner.dead: runner.finish();consume_run_events()
+			end_delay=-1;start_run()
 		"home":
 			if screen in ["run","pause"] and not runner.dead:
 				runner.finish();consume_run_events();end_delay=-1
@@ -378,6 +411,7 @@ func _draw() -> void:
 		"worlds": draw_worlds()
 		"missions": draw_missions()
 		"help": draw_help()
+		"credits": draw_credits()
 		"run": draw_run_hud()
 		"pause": draw_pause()
 		"results": draw_results()
@@ -390,22 +424,27 @@ func _draw() -> void:
 func draw_home() -> void:
 	currency()
 	button(Rect2(794,34,176,56),"SOM: ON" if data.audio else "SOM: OFF","audio",Color("51375f"),-2,19)
-	text("NOITE",Vector2(83,137),105,CREAM,true,false,11)
-	text("DA HORDA",Vector2(82,242),94,GOLD,true,false,11)
-	text("Um zumbi. Muitos pesadelos.",Vector2(89,286),26,MINT,false,false,3)
-	text("RECRUTE  •  TRANSFORME  •  EVOLUA",Vector2(93,328),17,CREAM,true,false,2)
-	actor.paint(self,1,Vector2(190,620),160,ui_time*2.5,"run",ui_time)
-	actor.paint(self,int(data.skin),Vector2(368,625),210,ui_time*2.5+.3,"run",ui_time)
-	actor.paint(self,2,Vector2(591,622),173,ui_time*2.5+.7,"run",ui_time)
+	text("NOITE",Vector2(82,118),72,CREAM,true,false,8)
+	text("DA HORDA",Vector2(82,188),64,GOLD,true,false,8)
+	text("Capture civis. Reúna almas. Desperte o ritual.",Vector2(88,224),22,MINT,false,false,2)
+	panel(Rect2(78,250,650,78),Color(.12,.07,.20,.93),Color("9c83b6"),18)
+	text("JOGADOR NÍVEL "+str(data.player_level),Vector2(99,284),20,GOLD,true)
+	text(str(data.level_souls)+" / "+str(HordeProgress.level_target(int(data.player_level)))+" ALMAS",Vector2(491,284),17,MINT,true)
+	progress_bar(Rect2(100,301,603,10),float(data.level_souls)/HordeProgress.level_target(int(data.player_level)),MINT)
+	draw_ritual_panel()
+	actor.paint(self,1,Vector2(183,630),121,ui_time*2.8,"run",ui_time)
+	actor.paint(self,int(data.skin),Vector2(370,637),158,ui_time*2.8+.3,"run",ui_time)
+	actor.paint(self,2,Vector2(583,633),130,ui_time*2.8+.7,"run",ui_time)
 	button(Rect2(862,218,343,80),"JOGAR","play",Color("d9974c"),-2,38)
 	button(Rect2(862,316,343,60),"MELHORIAS","shop",Color("8054a7"),0,25)
 	button(Rect2(862,389,343,60),"MONSTROS","monsters",Color("487385"),11,25)
 	button(Rect2(862,462,343,60),"CENÁRIOS","worlds",Color("596d83"),10,25)
 	button(Rect2(862,535,343,60),"MISSÕES","missions",Color("6a5789"),1,25)
 	button(Rect2(862,608,343,55),"COMO JOGAR","help",Color("4d7468"),4,22)
-	panel(Rect2(78,652,650,44),Color(.10,.06,.17,.83),Color("6e5466"),18)
-	text("RECORDE  "+str(data.best)+" m",Vector2(102,682),19,GOLD,true)
-	text("ALPHA 0.3",Vector2(610,682),14,Color("bbaac8"),true)
+	panel(Rect2(78,656,650,40),Color(.10,.06,.17,.88),Color("6e5466"),15)
+	text("RECORDE: "+str(data.best_souls)+" ALMAS  •  "+str(data.best)+" m",Vector2(98,682),18,GOLD,true)
+	text("ALPHA 0.4",Vector2(610,682),14,Color("bbaac8"),true)
+	effects.paint(self,art,actor)
 
 func draw_shop() -> void:
 	text("MELHORIAS",Vector2(66,105),45,GOLD,true,false,5)
@@ -455,8 +494,8 @@ func draw_monsters() -> void:
 
 func draw_help() -> void:
 	text("COMO JOGAR",Vector2(68,105),44,GOLD,true,false,5)
-	var headings=["1. PULE E RECRUTE","2. VIRE VEÍCULOS","3. USE OS PODERES"]
-	var descriptions=["Toque para pular, segure para ir mais alto. Evite buracos, bombas e tiros! Quem cai é perdido. A última criatura perdida encerra a fuga.","Criaturas no chão: moto 2, carro 4, ônibus 8, caminhão 10, tanque 12 e avião 16. Vire para ganhar moedas e recrutas; com menos força, pule!","Mosca sobe sozinha. Segure para descer e coletar; solte para subir. Mascarado quebra obstáculos, mas cai nos buracos. Poção acelera e dobra moedas."]
+	var headings=["1. CAPTURE CIVIS","2. VIRE VEÍCULOS","3. USE OS PODERES"]
+	var descriptions=["Capture civis após a animação de cada monstro. Cada civil rende uma alma. Toque para pular e evite buracos, bombas e tiros.","Criaturas no chão: moto 2, carro 4, ônibus 8, caminhão 10, tanque 12 e avião 16. Cada criatura precisa encostar! A contagem aumenta até virar e libertar passageiros. Com menos força, salte para evitar o impacto.","Mosca sobe sozinha. Segure para descer e coletar; solte para subir. Mascarado quebra pequenas ameaças e protege de impactos, mas cai nos buracos. Poção acelera e dobra moedas."]
 	for i in range(3):
 		var x=68+i*392
 		panel(Rect2(x,187,364,414),Color(.18,.11,.26,.94),Color("76527d"),22,3)
@@ -465,10 +504,12 @@ func draw_help() -> void:
 		text(headings[i],Vector2(x+182,376),22,GOLD,true,true,2)
 		wrapped(descriptions[i],Vector2(x+27,411),310,17,CREAM,7)
 	button(Rect2(68,633,240,66),"VOLTAR","back",Color("513c67"),-2,23)
-	text("Espaço pula/mergulha; Esc pausa. Salto duplo: Pulo Ágil nível 2.",Vector2(350,672),17,MINT)
+	button(Rect2(349,633,230,66),"CRÉDITOS","credits",Color("4d7468"),-2,22)
+	text("Espaço pula/mergulha; Esc pausa.",Vector2(620,674),18,MINT)
 
 func draw_run() -> void:
 	ground(runner.world_px)
+	scenery.paint_front(self,runner)
 	effects.draw_trails(self,actor,runner.elapsed)
 	# Draw holes before objects so foreground enemies cannot disappear behind them.
 	for e in runner.entities:
@@ -479,16 +520,14 @@ func draw_run() -> void:
 		if e.x>HordeRun.ANCHOR: text("PULO!",Vector2(e.x+e.width*.5,HordeRun.FLOOR-28),19,CORAL,true,true,3)
 	for e in runner.entities:
 		if e.taken or e.x< -200 or e.x>1500: continue
+		if e.kind in ["civilian","soldier"] and e.state=="capture": continue
 		var bob=sin(ui_time*4+e.bob)*5
 		if MonsterCatalog.VEHICLES.has(e.kind):
 			draw_vehicle(e)
 			continue
 		match e.kind:
 			"coin": floating_item(1,Vector2(e.x,e.y+bob),33)
-			"recruit":
-				draw_circle(Vector2(e.x,e.y-43),47,Color(.55,1,.73,.065+.025*sin(ui_time*3)))
-				creature(e.variant,0,Vector2(e.x,e.y),104,true)
-				text("+1",Vector2(e.x,e.y-116),19,MINT,true,true,2)
+			"civilian": draw_civilian(e)
 			"crystal","mask","shield","boost":
 				var icon=0 if e.kind=="crystal" else (11 if e.kind=="mask" else (2 if e.kind=="shield" else 5))
 				var centre=Vector2(e.x,e.y+bob)
@@ -502,24 +541,27 @@ func draw_run() -> void:
 				text("FRENESI" if e.kind=="boost" else "BÔNUS",centre+Vector2(0,-57),13,color,true,true,2)
 			"crate": item_sprite(6,Vector2(e.x,e.y-36),72)
 			"spikes": item_sprite(8,Vector2(e.x,e.y-24),48)
-			"bomb":
-				var point=Vector2(e.x,e.y-31)
-				scenery.sprite(self,art.props[0],point,64,Color.WHITE,sin(ui_time*7+e.bob)*.07)
-				scenery.flame(self,point+Vector2(9,-29),ui_time+e.bob,7)
-				draw_arc(point,42,0,TAU,24,Color(1,.48,.30,.16+.10*sin(ui_time*9)),2,true)
+			"bomb","air_bomb":
+				var aerial=e.kind=="air_bomb"
+				var point=Vector2(e.x,e.y if aerial else e.y-39)
+				scenery.sprite(self,art.ritual[3] if aerial else art.props[0],point,86 if aerial else 78,Color.WHITE,sin(ui_time*7+e.bob)*.07)
+				draw_fuse(point+Vector2(10,-36 if aerial else -37),ui_time+e.bob)
+				if aerial: text("PULE" if e.y>HordeRun.FLOOR-130 else "POR BAIXO",point+Vector2(0,-72),15,CORAL,true,true,2)
 			"soldier":
-				actor.paint(self,5,Vector2(e.x,e.y),108,0,"aim",ui_time,0,Color.WHITE,true)
-				var muzzle=Vector2(e.x-54,e.y-64)
-				if e.flash>0: scenery.sprite(self,art.props[5],muzzle,28)
-				if e.x>HordeRun.ANCHOR+230:
-					text("TIRO!" if e.timer<.65 else "EXÉRCITO",Vector2(e.x,e.y-130),15,CORAL,true,true,2)
-					if e.timer<.65: draw_line(muzzle,muzzle+Vector2(-120,0),Color(1,.40,.26,.18),2,true)
+				if e.state=="capture": draw_civilian(e)
+				else:
+					actor.paint(self,5,Vector2(e.x,e.y),108,0,"aim",ui_time,0,Color.WHITE,true)
+					var muzzle=Vector2(e.x-54,e.y-64)
+					if e.flash>0: scenery.sprite(self,art.props[5],muzzle,28)
+					if e.x>HordeRun.ANCHOR+230:
+						text("TIRO!" if e.timer<.65 else "EXÉRCITO",Vector2(e.x,e.y-130),15,CORAL,true,true,2)
+						if e.timer<.65: draw_line(muzzle,muzzle+Vector2(-120,0),Color(1,.40,.26,.18),2,true)
 			"bullet":
 				draw_line(Vector2(e.x+31,e.y),Vector2(e.x,e.y),Color(1,.62,.22,.45),4,true)
 				draw_circle(Vector2(e.x,e.y),4,GOLD)
 			"helicopter":
-				scenery.helicopter(self,Vector2(e.x,e.y+sin(ui_time*3+e.bob)*5),92,ui_time,sin(ui_time*2)*.06)
-				text("SALTE!",Vector2(e.x,e.y-76),16,CORAL,true,true,2)
+				scenery.helicopter(self,Vector2(e.x,e.y),185,ui_time,sin(ui_time*2)*.06)
+				text("PULE!" if e.y>HordeRun.FLOOR-180 else "POR BAIXO",Vector2(e.x,e.y-125),16,CORAL,true,true,2)
 	for i in range(runner.members.size()-1,-1,-1):
 		var member=runner.members[i]
 		var kind=int(member.get("death_kind",member.kind)) if member.falling else (runner.perk_kind if runner.perk_left>0 else int(member.kind))
@@ -527,7 +569,7 @@ func draw_run() -> void:
 		var foot=Vector2(runner.member_x(i),member.y-int(i/8)*12)
 		if state=="fly": foot.y+=sin(runner.elapsed*7+i)*3
 		var height=112.0*(1+sin(member.arrival/.35*PI)*.10)
-		var phase=runner.world_px/84.0+i*.17
+		var phase=(.62-float(member.attack_left))/.62 if state=="capture" else runner.world_px/84.0+i*.17
 		if not member.falling:
 			var shadow_size=clampf(1-(HordeRun.FLOOR-member.y)/420,.25,1)
 			draw_set_transform(Vector2(foot.x,HordeRun.FLOOR+4),0,Vector2(23*shadow_size,4*shadow_size))
@@ -536,75 +578,121 @@ func draw_run() -> void:
 			if runner.shields>0: draw_arc(foot-Vector2(0,56),62,0,TAU,32,Color(.5,.9,1,.4),3,true)
 		var blink=Color(1,1,1,.45) if runner.hit_grace>0 and int(ui_time*14)%2==0 else Color.WHITE
 		actor.paint(self,kind,foot,height,phase,state,runner.elapsed+i*.071,float(member.land_left),blink)
+	for e in runner.entities:
+		if not e.taken and e.kind in ["civilian","soldier"] and e.state=="capture": draw_civilian(e)
 	effects.paint(self,art,actor)
-	scenery.paint_front(self,runner)
 
 func draw_run_hud() -> void:
-	panel(Rect2(28,24,214,88),Color(.12,.07,.19,.91),Color("776077"),20)
-	text("FUGA",Vector2(49,54),15,MINT,true)
-	text(str(runner.distance())+" m",Vector2(48,94),29,CREAM,true,false,2)
-	panel(Rect2(259,24,197,88),Color(.12,.07,.19,.91),Color("776077"),20)
-	text("HORDA",Vector2(280,54),15,MINT,true)
-	text(str(runner.active_count())+" CRIATURAS",Vector2(280,94),20,CREAM,true)
-	panel(Rect2(473,24,189,88),Color(.12,.07,.19,.91),Color("776077"),20)
-	item_sprite(1,Vector2(511,68),42)
-	text(str(runner.coins),Vector2(545,83),28,GOLD,true,false,2)
+	var positions=[28,215,380,545]
+	var widths=[170,150,150,145]
+	var labels=["DISTÂNCIA","HORDA","ALMAS","MOEDAS"]
+	var values=[str(runner.distance())+" m",str(runner.active_count()),str(runner.souls),str(runner.coins)]
+	for i in range(4):
+		panel(Rect2(positions[i],24,widths[i],88),Color(.12,.07,.19,.93),Color("776077"),18)
+		text(labels[i],Vector2(positions[i]+17,53),14,MINT,true)
+		text(values[i],Vector2(positions[i]+17,94),28,GOLD if i in [2,3] else CREAM,true,false,2)
 	if runner.perk_left>0 or runner.boost_left>0:
-		panel(Rect2(679,24,345,88),Color(.20,.10,.29,.94),Color("be99df"),20)
-		floating_item((0 if runner.perk_kind==3 else 11) if runner.perk_left>0 else 5,Vector2(714,68),46)
-		text(("MOSCA MUTANTE" if runner.perk_kind==3 else "MASCARADOS") if runner.perk_left>0 else "FRENESI",Vector2(749,57),19,MINT,true)
-		text(str(ceili(runner.perk_left if runner.perk_left>0 else runner.boost_left))+" segundos",Vector2(749,88),20,CREAM)
+		panel(Rect2(707,24,370,88),Color(.20,.10,.29,.94),Color("be99df"),20)
+		floating_item((0 if runner.perk_kind==3 else 11) if runner.perk_left>0 else 5,Vector2(742,68),46)
+		text(("MOSCA MUTANTE" if runner.perk_kind==3 else "MASCARADOS") if runner.perk_left>0 else "FRENESI",Vector2(779,57),18,MINT,true)
+		text(str(ceili(runner.perk_left if runner.perk_left>0 else runner.boost_left))+" segundos",Vector2(779,88),19,CREAM)
 		var duration=(7.0 if runner.perk_kind==3 else 9.0)+int(data.levels.perk)*2 if runner.perk_left>0 else 5.0
-		draw_rect(Rect2(749,99,248*(runner.perk_left if runner.perk_left>0 else runner.boost_left)/duration,4),MINT)
+		draw_rect(Rect2(779,99,266*(runner.perk_left if runner.perk_left>0 else runner.boost_left)/duration,4),MINT)
 	button(Rect2(1160,28,83,73),"II","pause",Color("513565"),-2,27)
 	text(MonsterCatalog.AREAS[runner.area()].name.to_upper()+"  •  TÚNEL "+str(runner.tunnel_number()),Vector2(32,148),16,MonsterCatalog.AREAS[runner.area()].color,true,false,2)
-	if runner.inside_tunnel(): text("ATRAVESSANDO O TÚNEL",Vector2(640,211),23,GOLD,true,true,3)
-	elif runner.recovery_left>0: text("REAGRUPE!",Vector2(33,178),14,MINT,true,false,2)
-	elif runner.pressure>.6: text("A HORDA CHAMOU ATENÇÃO!",Vector2(33,178),14,CORAL,true,false,2)
+	var tunnel=runner.current_tunnel()
+	if runner.inside_tunnel():
+		text("TÚNEL "+str(tunnel.number)+"  •  À FRENTE: "+MonsterCatalog.AREAS[int(tunnel.to)].name.to_upper(),Vector2(640,196),21,GOLD,true,true,3)
+	elif runner.recovery_left>0: text("REAGRUPE! MAIS CIVIS À FRENTE",Vector2(33,178),14,MINT,true,false,2)
+	elif not tunnel.is_empty(): text("PRÓXIMO TÚNEL EM "+str(maxi(0,int((float(tunnel.entry)-runner.world_px)/30)))+" m",Vector2(33,178),14,CREAM,true,false,2)
 	button(Rect2(1053,578,190,107),"MERGULHAR" if runner.perk_kind==3 and runner.perk_left>0 else "PULAR","jump",Color("8753aa"),-2,26)
 	if runner.perk_kind==3 and runner.perk_left>0:
 		text("SEGURE PARA DESCER • SOLTE PARA SUBIR",Vector2(687,671),15,MINT,true,true,2)
-	elif runner.world_px<1800:
-		panel(Rect2(390,635,557,53),Color(.12,.07,.19,.9),Color("736377"),20)
-		text("TOQUE PARA PULAR  •  SEGURE PARA IR MAIS ALTO",Vector2(668,669),17,CREAM,true,true)
-	elif int(data.levels.jump)>=2:
-		text("SALTO DUPLO LIBERADO",Vector2(683,675),16,MINT,true,true,2)
+	elif runner.world_px<2200:
+		panel(Rect2(375,635,587,53),Color(.12,.07,.19,.9),Color("736377"),20)
+		text("CAPTURE CIVIS  •  TOQUE PARA PULAR",Vector2(668,669),18,CREAM,true,true)
+	elif int(data.levels.jump)>=2: text("SALTO DUPLO LIBERADO",Vector2(683,675),16,MINT,true,true,2)
 
 func draw_pause() -> void:
-	draw_rect(Rect2(0,0,1280,720),Color(.04,.015,.08,.68))
-	panel(Rect2(401,147,478,429),Color("31203e"),Color("ac8bb9"),26,4)
-	text("PAUSA",Vector2(640,236),45,GOLD,true,true,4)
-	button(Rect2(458,286,364,75),"CONTINUAR","resume",Color("9370b6"),-2,27)
-	button(Rect2(458,385,364,67),"SOM: ON" if data.audio else "SOM: OFF","audio",Color("53736e"),-2,25)
-	button(Rect2(458,477,364,65),"ENCERRAR CORRIDA","home",Color("765269"),-2,22)
+	draw_rect(Rect2(0,0,1280,720),Color(.04,.015,.08,.78))
+	text("PAUSA",Vector2(73,103),48,GOLD,true,false,5)
+	text("MISSÕES DA FUGA  •  CAPÍTULO "+str(int(data.mission_tier)+1),Vector2(77,145),20,MINT,true)
+	var missions=MonsterCatalog.active_missions(int(data.mission_tier))
+	for i in range(3):
+		var mission=missions[i]
+		var progress=int(data.mission_progress.get(mission.id,0))
+		var done=mission.key in data.claimed
+		panel(Rect2(73,181+i*138,744,122),Color(.18,.11,.26,.97),MINT if done else Color("79558b"),19,2)
+		scenery.sprite(self,art.ritual[0],Vector2(126,235+i*138),52,Color.WHITE if done else Color(.75,.70,.84,1))
+		text(mission.title,Vector2(178,219+i*138),22,GOLD,true,false,2)
+		text("CONCLUÍDA" if done else str(maxi(0,int(mission.target)-progress))+" RESTANTES",Vector2(179,252+i*138),19,MINT if done else CREAM,true)
+		progress_bar(Rect2(179,270+i*138,400,9),float(progress)/float(mission.target),MINT)
+		text("+"+str(mission.ritual)+" RITUAL",Vector2(620,271+i*138),16,MINT,true)
+	button(Rect2(864,187,343,83),"CONTINUAR","resume",Color("9370b6"),-2,28)
+	button(Rect2(864,292,343,75),"RECOMEÇAR","retry",Color("6a7a81"),-2,24)
+	button(Rect2(864,389,343,75),"MENU","home",Color("765269"),-2,27)
+	button(Rect2(864,493,343,65),"SOM: ON" if data.audio else "SOM: OFF","audio",Color("53736e"),-2,22)
+	text("As recompensas das missões vão ao ritual após encerrar a fuga.",Vector2(78,655),18,CREAM)
+	text("NÍVEL "+str(data.player_level)+"  •  "+str(runner.souls)+" ALMAS NESTA PARTIDA",Vector2(78,688),16,MINT,true)
 
 func draw_results() -> void:
-	draw_rect(Rect2(0,0,1280,720),Color(.035,.012,.07,.78))
-	panel(Rect2(224,137,832,450),Color(.18,.10,.25,.97),Color("b79ac0"),28,4)
-	scenery.sprite(self,art.props[4],Vector2(640,126+sin(ui_time*2.8)*3),132)
-	text("FIM DA HORDA",Vector2(640,245),45,GOLD,true,true,5)
-	text("Sua horda descansa. As melhorias ficam.",Vector2(640,282),20,CREAM,false,true)
-	text(str(runner.distance())+" m",Vector2(640,354),55,CREAM,true,true,4)
-	text("RECORDE  "+str(data.best)+" m",Vector2(640,393),18,MINT,true,true)
-	var values=["+"+str(runner.coins),str(runner.recruits),str(runner.cars),str(runner.tunnel_number())]
-	var labels=["MOEDAS","RECRUTAS","VEÍCULOS","TÚNEIS"]
-	for i in range(4):
-		var x=261+i*194
-		panel(Rect2(x,416,178,91),Color("291b36"),Color("5f456f"),16,1,false)
-		text(values[i],Vector2(x+89,455),26,GOLD,true,true,2)
-		text(labels[i],Vector2(x+89,485),14,MINT,true,true)
-	text("CARTEIRA: "+str(data.wallet)+" moedas  •  Suas compras continuam com você",Vector2(640,547),19,Color("d4c2e1"),false,true)
-	button(Rect2(224,613,228,73),"MENU","home",Color("5d426f"),-2,25)
-	button(Rect2(474,613,285,73),"MELHORIAS","shop",Color("845eaa"),-2,25)
-	button(Rect2(781,613,275,73),"DE NOVO","play",Color("c78a4b"),-2,27)
+	draw_rect(Rect2(0,0,1280,720),Color(.035,.012,.07,.80))
+	text("FIM DA HORDA",Vector2(70,100),46,GOLD,true,false,5)
+	text("As almas coletadas continuam com você.",Vector2(74,138),21,MINT)
+	panel(Rect2(67,166,760,414),Color(.18,.10,.25,.97),Color("b79ac0"),24,3)
+	var animated=mini(runner.souls,int(result_time*16))
+	var view=HordeProgress.board(int(run_report.get("old_level",data.player_level)),int(run_report.get("old_progress",data.level_souls)),animated)
+	text("RESERVA DE ALMAS",Vector2(91,204),21,GOLD,true)
+	text("NÍVEL "+str(view.level)+"  •  "+str(view.progress)+" / "+str(view.target),Vector2(650,206),20,MINT,true,true)
+	draw_soul_grid(Rect2(93,230,700,258),int(view.progress),int(view.target))
+	progress_bar(Rect2(95,506,702,13),float(view.progress)/float(view.target),MINT)
+	var completed=animated>=runner.souls
+	text("+"+str(runner.souls)+" ALMAS DESTA FUGA",Vector2(95,555),20,CREAM,true)
+	if completed and int(run_report.get("levels",0))>0:
+		text("+"+str(run_report.levels)+" NÍVEL!",Vector2(680,555),20,GOLD,true,true,2)
+	panel(Rect2(852,166,359,414),Color(.18,.10,.25,.97),Color("b79ac0"),24,3)
+	scenery.sprite(self,art.ritual[0],Vector2(898,215+sin(ui_time*3)*3),48)
+	text(str(runner.souls)+" ALMAS",Vector2(938,230),29,GOLD,true,false,2)
+	text("RECORDE: "+str(data.best_souls)+" ALMAS",Vector2(878,269),17,MINT,true)
+	text(str(runner.distance())+" m",Vector2(878,321),35,CREAM,true,false,2)
+	text("RECORDE: "+str(data.best)+" m",Vector2(878,352),17,MINT,true)
+	text("+"+str(runner.coins)+" moedas  •  "+str(runner.cars)+" veículos",Vector2(878,393),17,CREAM)
+	var points=0
+	for item in data.ritual_pending: points+=int(item.points)
+	text(str(points)+" PONTOS PARA O RITUAL",Vector2(878,432),17,MINT,true)
+	if int(run_report.get("levels",0))>0 and completed:
+		scenery.sprite(self,art.ritual[2],Vector2(917,504),78,Color.WHITE,sin(ui_time*8)*.05)
+		text("BÔNUS DA SORTE",Vector2(969,481),16,GOLD,true)
+		text("+"+str(run_report.coins)+" MOEDAS",Vector2(969,513),22,GOLD,true,false,2)
+	else: wrapped("Encha a reserva para subir de nível e ganhar moedas da sorte!",Vector2(880,484),304,18,CREAM,3)
+	text("CARTEIRA: "+str(data.wallet)+" MOEDAS",Vector2(92,613),19,GOLD,true)
+	button(Rect2(67,640,228,62),"MENU","home",Color("5d426f"),-2,23)
+	button(Rect2(318,640,285,62),"MELHORIAS","shop",Color("845eaa"),-2,23)
+	button(Rect2(625,640,286,62),"DE NOVO","play",Color("c78a4b"),-2,25)
+	text("NÍVEL DO JOGADOR "+str(data.player_level),Vector2(942,680),18,MINT,true)
+	effects.paint(self,art,actor)
 
 func validate_save(value) -> Dictionary:
-	if not value is Dictionary or int(value.get("version",0)) not in [1,2,3]: return MonsterCatalog.defaults()
+	if not value is Dictionary or int(value.get("version",0)) not in [1,2,3,4]: return MonsterCatalog.defaults()
 	var result=MonsterCatalog.defaults()
 	result.wallet=clampi(int(value.get("wallet",120)),0,9999999)
 	result.best=clampi(int(value.get("best",0)),0,9999999)
 	result.runs=maxi(0,int(value.get("runs",0)))
 	result.audio=bool(value.get("audio",true))
+	result.player_level=clampi(int(value.get("player_level",1)),1,500)
+	result.level_souls=clampi(int(value.get("level_souls",0)),0,HordeProgress.level_target(int(result.player_level))-1)
+	for key in ["total_souls","best_souls","active_souls"]: result[key]=clampi(int(value.get(key,0)),0,9999999)
+	result.ritual_progress=clampi(int(value.get("ritual_progress",0)),0,99)
+	result.ritual_ready=bool(value.get("ritual_ready",false))
+	var pending=value.get("ritual_pending",[])
+	var pending_keys={}
+	if pending is Array:
+		for item in pending.slice(0,300):
+			if not item is Dictionary: continue
+			var key=str(item.get("key",""))
+			if key.is_empty() or key.length()>60 or pending_keys.has(key): continue
+			pending_keys[key]=true
+			result.ritual_pending.append({"key":key,"title":str(item.get("title","Missão")).left(120),"points":clampi(int(item.get("points",0)),1,40)})
 	var areas=value.get("areas",[])
 	if areas is Array:
 		for area in areas:
@@ -639,7 +727,7 @@ func read_save(path: String=SAVE_PATH) -> Dictionary:
 	for candidate in [path,path+".bak"]:
 		if not FileAccess.file_exists(candidate): continue
 		var parsed=JSON.parse_string(FileAccess.get_file_as_string(candidate))
-		if parsed is Dictionary and int(parsed.get("version",0)) in [1,2,3]: return validate_save(parsed)
+		if parsed is Dictionary and int(parsed.get("version",0)) in [1,2,3,4]: return validate_save(parsed)
 	return MonsterCatalog.defaults()
 
 func save_game(path: String=SAVE_PATH) -> bool:
@@ -674,8 +762,32 @@ func capture_frame(path: String) -> void:
 	get_viewport().get_texture().get_image().save_png(path)
 	if not path.contains("/frame-"): print("HORDE_CAPTURE "+path)
 
+func preview_course(world: float=0,count: int=4,kind: int=0) -> void:
+	data.levels.horde=0;data.skin=kind
+	start_run();capture_freeze=true
+	runner.entities.clear();runner.events.clear();runner.next_segment=99999
+	runner.world_px=world;runner.speed=350;runner.rng.seed=4014
+	while runner.active_count()<count: runner.add_member(runner.active_count()%2,false)
+	runner.update_tunnels();runner.events.clear()
+	scenery.update(.1,runner)
+
+func preview_ticks(count: int,held: bool=false) -> void:
+	for i in range(count):
+		runner.advance(1.0/60,held);consume_run_events();update_run_visuals(1.0/60)
+		check_challenges();ui_time+=1.0/60
+	toast_left=0;flash=0;shake=0
+
+func preview_collect_souls(count: int) -> void:
+	for i in range(count):
+		var person=runner.add_entity("civilian",HordeRun.ANCHOR,HordeRun.FLOOR,i%3)
+		person.vx=0;person.pose="run";person.group=999
+		preview_ticks(45)
+	for i in range(40): runner.add_entity("coin",HordeRun.ANCHOR,HordeRun.FLOOR-48)
+	preview_ticks(2)
+
 func capture_preview() -> void:
-	await get_tree().create_timer(.5).timeout
+	capture_freeze=true
+	await get_tree().create_timer(.4).timeout
 	var path=OS.get_environment("HORDE_CAPTURE_PATH")
 	if path.is_empty(): path="user://NoiteDaHorda-menu.png"
 	var base=path.get_basename().trim_suffix("-menu")
@@ -683,51 +795,61 @@ func capture_preview() -> void:
 	perform_action("shop");await capture_frame(base+"-shop.png")
 	perform_action("monsters");await capture_frame(base+"-monsters.png")
 	perform_action("worlds");await capture_frame(base+"-worlds.png")
-	start_run();capture_freeze=true
-	runner.entities.clear();runner.next_segment=99999
-	runner.add_member(1);runner.add_member(0)
-	runner.add_entity("crate",830)
-	runner.add_entity("car",1190)
-	for i in range(6): runner.add_entity("coin",600+i*74,HordeRun.FLOOR-130)
-	runner.add_entity("crystal",1030,HordeRun.FLOOR-92)
-	runner.world_px=1100;runner.jump()
-	for i in range(11): runner.advance(1.0/60,true)
-	consume_run_events();update_run_visuals(.18)
+	preview_course(1100,4)
+	for i in range(3): runner.add_entity("civilian",620+i*110,HordeRun.FLOOR,i)
+	runner.add_entity("bomb",970);runner.add_entity("air_bomb",1140,HordeRun.FLOOR-190)
+	for i in range(6):runner.add_entity("coin",540+i*76,HordeRun.FLOOR-155)
+	runner.jump();preview_ticks(11,true)
 	await capture_frame(base+"-run.png")
-	runner.grant_perk(3);consume_run_events()
-	for i in range(70): runner.advance(1.0/60,false);update_run_visuals(1.0/60)
-	consume_run_events();toast_left=0
+	perform_action("pause");await capture_frame(base+"-pause.png");perform_action("resume")
+	for kind in range(4):
+		preview_course(0,1,kind)
+		var npc=runner.add_entity("civilian",HordeRun.ANCHOR+7,HordeRun.FLOOR,kind%3);npc.vx=0;npc.pose="run"
+		preview_ticks(14)
+		await capture_frame(base+"-capture-"+["zombie","skeleton","masked","fly"][kind]+".png")
+	preview_course(2000,4)
+	var car=runner.add_entity("car",HordeRun.ANCHOR+float(MonsterCatalog.VEHICLES.car.width)*.5+12)
+	while car.contacts.size()<2 and not car.taken:preview_ticks(1)
+	await capture_frame(base+"-vehicle-count.png")
+	preview_ticks(45)
+	await capture_frame(base+"-passengers.png")
+	preview_course(1100,4)
+	runner.grant_perk(3);preview_ticks(65)
+	runner.add_entity("gap",520,HordeRun.FLOOR,0,310);runner.add_entity("bomb",950)
 	await capture_frame(base+"-perk.png")
-	runner.world_px=5510;runner.entities.clear();effects.clear();scenery.update(.1,runner)
-	await capture_frame(base+"-tunnel.png")
-	runner.world_px=7220;runner.perk_left=0;runner.perk_kind=-1
-	runner.entities.clear()
-	for member in runner.members: member.y=HordeRun.FLOOR;member.vy=0
-	for i in range(4): runner.add_member(i%2)
-	runner.add_entity("bus",1110);runner.add_entity("bomb",715)
-	runner.add_entity("soldier",910);runner.add_entity("helicopter",580,HordeRun.FLOOR-67)
-	for i in range(5): runner.add_entity("coin",590+i*82,HordeRun.FLOOR-175)
-	scenery.update(.1,runner);scenery.crash_age=1.45;toast_left=0
+	preview_course(17850,8);await capture_frame(base+"-tunnel-entry.png")
+	preview_course(19050,8);await capture_frame(base+"-tunnel.png")
+	preview_course(19920,8);await capture_frame(base+"-tunnel-exit.png")
+	preview_course(22300,8)
+	runner.add_entity("bus",970);runner.add_entity("bomb",600)
+	runner.add_entity("soldier",760);runner.add_entity("helicopter",770,HordeRun.FLOOR-280)
+	runner.add_entity("air_bomb",1130,HordeRun.FLOOR-180)
+	scenery.crash_age=1.45
 	await capture_frame(base+"-city.png")
-	runner.entities.clear();runner.world_px=15220;runner.route.assign([0,1,2,3])
-	scenery.update(.1,runner)
-	runner.add_entity("tank",760);runner.add_entity("truck",1080)
+	preview_course(22000,12);runner.route.assign([0,1,2,3]);runner.completed_tunnels=2;runner.entered_tunnels=2
+	scenery.update(.1,runner);runner.add_entity("tank",710);runner.add_entity("truck",1100)
 	await capture_frame(base+"-industrial.png")
-	runner.world_px=21220;runner.entities.clear();scenery.update(.1,runner)
-	runner.add_entity("plane",1030);runner.add_entity("moto",670)
+	preview_course(22000,16);runner.route.assign([0,1,2,3]);runner.completed_tunnels=3;runner.entered_tunnels=3
+	scenery.update(.1,runner);runner.add_entity("plane",895);runner.add_entity("moto",470)
 	await capture_frame(base+"-airport.png")
-	# Game-over screenshot comes from a real fatal pit, not a decorative mockup.
-	runner.entities.clear();runner.perk_left=0;runner.perk_kind=-1
-	runner.add_entity("gap",HordeRun.ANCHOR-270,HordeRun.FLOOR,0,650)
-	for i in range(90): runner.advance(1.0/60)
-	consume_run_events();update_run_visuals(.2);toast_left=0;end_delay=-1
-	change_screen("results")
+	# Real physics/capture events feed the result board, mission ritual and pit death.
+	data=MonsterCatalog.defaults();data.ritual_progress=70
+	preview_course(22300,4);preview_collect_souls(24)
+	runner.entities.clear();runner.add_entity("gap",HordeRun.ANCHOR-290,HordeRun.FLOOR,0,850)
+	preview_ticks(90);end_delay=-1;change_screen("results")
+	for i in range(135):update_rewards(1.0/60);ui_time+=1.0/60
 	await capture_frame(base+"-gameover.png")
-	print("HORDE_CAPTURE_OK: eleven real game screens")
+	perform_action("home")
+	for i in range(108):update_rewards(1.0/60);ui_time+=1.0/60
+	await capture_frame(base+"-ritual.png")
+	perform_action("credits");await capture_frame(base+"-credits.png")
+	print("HORDE_CAPTURE_OK: 22 real game screens including individual capture, occupied vehicles, traversable tunnel, pause, souls and ritual")
 	get_tree().quit()
 
 func animation_state(member: Dictionary) -> String:
 	if member.falling: return "fall"
+	if member.attack_left>0: return "capture"
+	if member.push_left>0 and member.y>=HordeRun.FLOOR-12: return "push"
 	if runner.perk_kind==3 and runner.perk_left>0: return "fly"
 	if member.y<HordeRun.FLOOR-4: return "rise" if member.vy<0 else "fall"
 	return "run"
@@ -792,71 +914,78 @@ func draw_missions() -> void:
 		text("CONCLUÍDA" if done else str(progress)+" / "+str(item.target),Vector2(x+181,429),27,MINT if done else CREAM,true,true)
 		panel(Rect2(x+34,455,294,13),Color("21152f"),Color("21152f"),6,0,false)
 		panel(Rect2(x+34,455,maxf(8,294*float(progress)/float(item.target)),13),MINT,Color("629d83"),6,0,false)
-		text("RECOMPENSA: "+str(item.reward)+" MOEDAS",Vector2(x+181,521),18,GOLD,true,true)
+		text("RITUAL: +"+str(item.ritual)+" PONTOS",Vector2(x+181,521),18,GOLD,true,true)
 	button(Rect2(68,632,240,66),"VOLTAR","back",Color("513c67"),-2,23)
-	text("O progresso fica salvo entre as corridas.",Vector2(350,671),20,MINT)
+	text("Complete missões, encerre a fuga e alimente o ritual no menu.",Vector2(350,671),20,MINT)
 
 func motion_preview() -> void:
+	capture_freeze=true
 	await get_tree().create_timer(.3).timeout
 	var folder=OS.get_environment("HORDE_MOTION_PATH")
-	if folder.is_empty(): folder="user://motion"
+	if folder.is_empty():folder="user://motion"
 	DirAccess.make_dir_recursive_absolute(folder)
 	var first_frame=maxi(0,int(OS.get_environment("HORDE_MOTION_START")))
-	data=MonsterCatalog.defaults();data.levels.horde=3
-	start_run();capture_freeze=true
-	runner.entities.clear();runner.next_segment=99999
-	for i in range(8): runner.add_entity("coin",700+i*85,HordeRun.FLOOR-80)
-	for frame in range(480):
+	data=MonsterCatalog.defaults();data.ritual_progress=70
+	preview_course(2000,4)
+	for i in range(3):runner.add_entity("civilian",460+i*80,HordeRun.FLOOR,i)
+	runner.add_entity("car",800)
+	for frame in range(720):
 		ui_time=float(frame)/30.0
-		if frame==15: runner.jump()
-		if frame==55: runner.add_entity("car",HordeRun.ANCHOR+320)
-		if frame==80: runner.world_px=5100
-		if frame==90: runner.grant_perk(3)
-		if frame==230: runner.perk_left=.01
-		if frame==250:
-			runner.entities.clear()
-			while runner.active_count()<16: runner.add_member(runner.active_count()%2,false)
-			runner.add_entity("plane",HordeRun.ANCHOR+420)
-		if frame==300:
-			var soldier=runner.add_entity("soldier",HordeRun.ANCHOR+620);soldier.timer=.18
-			runner.add_entity("helicopter",980,HordeRun.FLOOR-65)
-			runner.add_entity("bomb",1140)
-		if frame==328: runner.jump()
-		if frame==360:
-			# A second staged scenario proves real mixed-horde pit death and retry UI.
-			start_run();capture_freeze=true;runner.entities.clear();runner.next_segment=99999
-			runner.world_px=7220
-			for i in range(runner.members.size()): runner.members[i].kind=i
-			runner.add_entity("gap",HordeRun.ANCHOR+220,HordeRun.FLOOR,0,420)
-			show_toast("QUEDAS ELIMINAM CADA CRIATURA",1.3)
-		var held=(frame>=15 and frame<24) or (frame>=155 and frame<210) or (frame>=328 and frame<338)
+		if frame==80:
+			runner.entities.clear();runner.world_px=17800;runner.speed=400
+			while runner.active_count()<8:runner.add_member(runner.active_count()%2,false)
+		if frame==310:
+			runner.entities.clear();runner.world_px=22300;runner.update_tunnels()
+			while runner.active_count()<16:runner.add_member(runner.active_count()%2,false)
+			runner.add_entity("plane",890);runner.add_entity("civilian",440,HordeRun.FLOOR,2)
+		if frame==418:
+			runner.entities.clear();runner.grant_perk(3)
+			runner.add_entity("gap",470,HordeRun.FLOOR,0,280)
+			runner.add_entity("helicopter",970,HordeRun.FLOOR-280)
+			runner.add_entity("bomb",1160);runner.add_entity("air_bomb",1300,HordeRun.FLOOR-175)
+		if frame==490:
+			# New prepared course: actual captures, actual souls, then fatal pit.
+			data=MonsterCatalog.defaults();data.ritual_progress=70
+			preview_course(22300,4);preview_collect_souls(24)
+			runner.entities.clear();runner.add_entity("gap",HordeRun.ANCHOR+10,HordeRun.FLOOR,0,850)
+		if frame==650:perform_action("home")
+		var held=frame>=450 and frame<478
 		if screen=="run":
-			runner.advance(1.0/60.0,held);runner.advance(1.0/60.0,held)
-			consume_run_events();update_run_visuals(1.0/30.0)
+			runner.advance(1.0/60,held);runner.advance(1.0/60,held)
+			consume_run_events();check_challenges();update_run_visuals(1.0/30)
 			if end_delay>=0:
 				end_delay-=1.0/30
-				if end_delay<0: change_screen("results")
-		toast_left=maxf(0,toast_left-1.0/30.0)
-		flash=maxf(0,flash-1.0/30.0*1.7);shake=maxf(0,shake-1.0/30.0*20)
-		if frame>=first_frame: await capture_frame(folder+"/frame-%04d.png"%frame)
-	print("HORDE_MOTION_OK: 480 real rendered frames; staged course snapshots and simulated touch; final pit game over")
+				if end_delay<0:change_screen("results")
+		elif screen in ["results","home"]:update_rewards(1.0/30)
+		toast_left=maxf(0,toast_left-1.0/30)
+		flash=maxf(0,flash-1.0/30*1.7);shake=maxf(0,shake-1.0/30*20)
+		if frame>=first_frame:await capture_frame(folder+"/frame-%04d.png"%frame)
+	print("HORDE_MOTION_OK: 720 real rendered frames; prepared courses and simulated touch; individual captures, contact flips, tunnel traversal, flight, pit game over, soul board and ritual")
 	get_tree().quit()
 
 func draw_vehicle(entity: Dictionary) -> void:
 	var spec=MonsterCatalog.VEHICLES[entity.kind]
-	var point=Vector2(entity.x,entity.y-float(spec.height)*.5)
-	scenery.sprite(self,art.vehicle(entity.kind),point,float(spec.height),Color.WHITE,sin(ui_time*3+entity.bob)*.009)
+	var height=float(spec.height);var width=float(spec.width)
+	var angle=float(entity.tilt)+sin(ui_time*3+entity.bob)*.006
+	var point=Vector2(entity.x,entity.y-height*.5-sin(angle)*height*.15)
+	draw_set_transform(point,angle,Vector2(-1 if spec.reverse else 1,1))
+	draw_texture_rect(art.vehicle(entity.kind),Rect2(-width*.5,-height*.5,width,height),false)
+	draw_set_transform(Vector2.ZERO)
+	for i in range(spec.windows.size()):
+		var offset=Vector2(spec.windows[i].x*width,spec.windows[i].y*height)
+		var npc=int(entity.passengers[i%entity.passengers.size()]) if not entity.passengers.is_empty() else 0
+		actor.passenger(self,int(MonsterCatalog.CIVILIANS[npc].rig),point+offset.rotated(angle),float(spec.get("passenger_height",40)),ui_time+i*.3,angle)
 	if entity.kind=="plane":
-		for x in [-40,30]:
-			draw_line(point+Vector2(x,-12-sin(ui_time*60)*23),point+Vector2(x,-12+sin(ui_time*60)*23),Color(.9,.94,1,.72),3,true)
-	if entity.kind=="tank":
-		for i in range(4):
-			var x=fposmod(ui_time*28+i*27,108)-54
-			draw_line(point+Vector2(x,43),point+Vector2(x+8,43),Color(.84,.86,.62,.5),2,true)
-	var capable=runner.grounded_strength()>=int(spec.need) or (runner.perk_kind==2 and runner.perk_left>0)
-	var color=MINT if capable else CORAL
-	panel(Rect2(entity.x-57,entity.y-float(spec.height)-47,114,34),Color(.13,.08,.19,.94),color,12,2,false)
-	text("VIRAR: "+str(spec.need),Vector2(entity.x,entity.y-float(spec.height)-23),15,color,true,true,1)
+		for x in [-width*.14,width*.22]:
+			var start=point+Vector2(x,-10-sin(ui_time*60)*height*.11).rotated(angle)
+			var end=point+Vector2(x,-10+sin(ui_time*60)*height*.11).rotated(angle)
+			draw_line(start,end,Color(.9,.94,1,.72),3,true)
+	var count=entity.contacts.size()
+	var color=MINT if count>=int(spec.need) else (GOLD if count>0 else CORAL)
+	var label=str(count)+" / "+str(spec.need) if count>0 else "VIRAR: "+str(spec.need)
+	panel(Rect2(entity.x-70,entity.y-height-51,140,37),Color(.13,.08,.19,.96),color,12,2,false)
+	text(label,Vector2(entity.x,entity.y-height-25),19,color,true,true,1)
+	if count>0: progress_bar(Rect2(entity.x-63,entity.y-height-10,126,6),float(count)/float(spec.need),color)
 
 func buy_area(index: int) -> bool:
 	if index<0 or index>=MonsterCatalog.AREAS.size(): return false
@@ -886,3 +1015,96 @@ func draw_worlds() -> void:
 		button(Rect2(x+16,551,246,52),"NA SUA ROTA" if owned else str(area.price)+" MOEDAS","area_"+str(i),Color("557d70") if owned else Color("8054a7"),-2,19)
 	button(Rect2(68,650,218,49),"VOLTAR","back",Color("513c67"),-2,20)
 	text("A rota começa no cemitério. Novas regiões entram após a cidade.",Vector2(319,682),17,MINT)
+
+func progress_bar(rect: Rect2,value: float,color: Color) -> void:
+	panel(rect,Color("21152f"),Color("463154"),int(rect.size.y*.5),1,false)
+	if value>0: panel(Rect2(rect.position,Vector2(maxf(5,rect.size.x*clampf(value,0,1)),rect.size.y)),color,color.lightened(.12),int(rect.size.y*.5),0,false)
+
+func draw_fuse(point: Vector2,time: float) -> void:
+	draw_circle(point-Vector2(0,11),26,Color(1,.5,.13,.10+.025*sin(time*12)))
+	var texture=art.vfx[posmod(int(time*11),3)]
+	var size=texture.get_size()*(26.0/texture.get_height())
+	draw_texture_rect(texture,Rect2(point-Vector2(size.x*.5,size.y),size),false)
+	for i in range(3):
+		var age=fposmod(time*1.7+i*.33,1)
+		draw_circle(point+Vector2(sin(time*7+i)*11*age,-age*33),1.7*(1-age),Color(1,.81,.30,.8*(1-age)))
+
+func draw_civilian(entity: Dictionary) -> void:
+	var spec=MonsterCatalog.CIVILIANS[clampi(int(entity.variant),0,2)]
+	var rig=5 if entity.kind=="soldier" else int(spec.rig)
+	var state="panic_run" if entity.pose=="panic" else "run"
+	var height=float(spec.height)
+	var foot=Vector2(entity.x,entity.y)
+	var tint=Color.WHITE
+	if entity.state=="capture":
+		var progress=1-float(entity.capture_left)/.62
+		state="panic";foot.x-=progress*16;foot.y-=sin(progress*PI)*12
+		height*=1-maxf(0,progress-.60)*1.5;tint.a=1-maxf(0,progress-.72)*2.5
+		if progress>.35:
+			var texture=art.vfx[3+mini(2,int(progress*3))]
+			var size=texture.get_size()*(80.0/texture.get_height())
+			draw_texture_rect(texture,Rect2(foot-Vector2(size.x*.5,73),size),false,Color(1,1,1,progress*.8))
+	elif entity.pose=="hop" and entity.y<HordeRun.FLOOR-10: state="rise"
+	actor.paint(self,rig,foot,height,entity.age*3.1+entity.bob,state,ui_time,0,tint,entity.vx<0)
+	if entity.state=="normal" and entity.x>HordeRun.ANCHOR+100: text("ALMA",Vector2(entity.x,entity.y-height-19),13,MINT,true,true,2)
+
+func begin_ritual() -> void:
+	if not data.ritual_ready: return
+	ritual_view=HordeProgress.ritual(data,reward_rng);ritual_time=0;ritual_particle_tick=0;ritual_reward_played=false
+	save_game()
+	if int(ritual_view.points)>0:
+		effects.clear();sound.play("ritual_fill",-13)
+
+func update_rewards(dt: float) -> void:
+	effects.update(dt,0)
+	if screen=="home":
+		ritual_time+=dt;ritual_particle_tick+=dt
+		if not ritual_view.is_empty() and ritual_time<2.6 and int(ritual_view.points)>0 and ritual_particle_tick>.10:
+			ritual_particle_tick=0
+			effects.soul(Vector2(370+sin(ritual_time*8)*170,560),Vector2(174,409),.85)
+		if not ritual_view.is_empty() and ritual_time>1.75 and int(ritual_view.bonuses)>0 and not ritual_reward_played:
+			ritual_reward_played=true;sound.play("level_up",-13);effects.spark(Vector2(173,409),GOLD,30)
+	else:
+		result_time+=dt
+		var animated=mini(runner.souls,int(result_time*16))
+		var view=HordeProgress.board(int(run_report.get("old_level",data.player_level)),int(run_report.get("old_progress",data.level_souls)),animated)
+		if int(view.level)>result_level:
+			result_level=int(view.level);sound.play("level_up",-12);effects.spark(Vector2(420,300),MINT,32)
+
+func draw_ritual_panel() -> void:
+	panel(Rect2(78,349,650,146),Color(.12,.07,.20,.96),Color("8da690"),22,2)
+	scenery.sprite(self,art.ritual[1],Vector2(173,431),114,Color.WHITE,sin(ui_time*2)*.014)
+	for i in range(3):
+		var angle=ui_time*1.6+i*TAU/3
+		scenery.sprite(self,art.ritual[0],Vector2(173+cos(angle)*43,390+sin(angle)*16),23,Color(1,1,1,.8))
+	text("RITUAL DA MADRUGADA",Vector2(272,385),20,MINT,true)
+	var amount=float(data.ritual_progress)
+	if not ritual_view.is_empty() and ritual_time<2.5:
+		var value=float(ritual_view.old_progress)+float(ritual_view.points)*clampf(ritual_time/2.1,0,1)
+		amount=fposmod(value,100)
+	progress_bar(Rect2(272,410,427,15),amount/100,MINT)
+	text(str(int(amount))+" / 100",Vector2(272,451),18,CREAM,true)
+	if not ritual_view.is_empty() and int(ritual_view.coins)>0 and ritual_time>1.7:
+		text("BÔNUS: +"+str(ritual_view.coins)+" MOEDAS",Vector2(416,451),18,GOLD,true,false,2)
+	else: text("Complete missões para ganhar um bônus!",Vector2(272,478),16,CREAM)
+
+func draw_soul_grid(rect: Rect2,progress: int,target: int) -> void:
+	var cells=mini(120,target)
+	var cols=5 if cells<=25 else (6 if cells<=42 else (10 if cells<=60 else 12))
+	var rows=ceili(float(cells)/cols)
+	var cell=Vector2((rect.size.x-(cols-1)*6)/cols,(rect.size.y-(rows-1)*6)/rows)
+	var filled=float(progress)/maxi(1,target)*cells
+	for i in range(cells):
+		var point=rect.position+Vector2(i%cols,int(i/cols))*(cell+Vector2(6,6))
+		var active=float(i)<filled
+		panel(Rect2(point,cell),Color("31444c") if active else Color("251a32"),Color("7ac5b3") if active else Color("4b355e"),8,1,false)
+		var centre=point+cell*.5+Vector2(0,sin(ui_time*3+i)*(.8 if active else 0))
+		var size=minf(cell.y*.76,cell.x*.73)
+		scenery.sprite(self,art.ritual[0],centre,size,Color.WHITE if active else Color(.17,.13,.24,.8))
+
+func draw_credits() -> void:
+	text("CRÉDITOS E FONTES",Vector2(69,107),42,GOLD,true,false,5)
+	panel(Rect2(69,158,1142,452),Color(.16,.10,.23,.96),Color("785682"),24,2)
+	var lines=["Arte e animações: Noite da Horda. Imagens geradas com o gerador integrado; animações criadas no motor.","Músicas, efeitos de almas e ritual: composições originais do projeto.","Ki Ki Ki Ma Ma Ma: alexander / Orange Free Sounds — CC BY 4.0. Conversão e normalização do volume.","Fonte do sussurro: orangefreesounds.com/ki-ki-ki-ma-ma-ma/  •  Licença: creativecommons.org/licenses/by/4.0/", "Zumbis, ossos, grito e respiração: artisticdude, congusbongus/blukotek, pauliuw e qubodup — CC0, OpenGameArt.","Fontes: Bungee (SIL OFL) e DejaVu Sans. Motor Godot — MIT.","Fontes, licenças e prompts completos: repositório PS4-Career-Diagnostic, pasta monster-game/ASSETS.md."]
+	for i in range(lines.size()): wrapped(lines[i],Vector2(94,197+i*57),1092,18,CREAM,2)
+	button(Rect2(69,641,240,61),"VOLTAR","back",Color("513c67"),-2,23)

@@ -5,6 +5,7 @@ extends RefCounted
 # baseline while the body moves; every stride really alternates both legs.
 var art: HordeArt
 var facing=1.0
+var basis_angle=0.0
 
 func _init(source: HordeArt) -> void:
 	art=source
@@ -24,7 +25,7 @@ static func knee(hip: Vector2,ankle: Vector2) -> Vector2:
 	return hip+direction*along+Vector2(direction.y,-direction.x)*bend
 
 func part(canvas: Node2D,kind: int,index: int,position: Vector2,size: Vector2,angle: float,tint: Color,root: Vector2,scale: float,pivot: Vector2=Vector2(.5,.5)) -> void:
-	canvas.draw_set_transform(root+Vector2(position.x*facing,position.y)*scale,angle*facing,Vector2(facing,1)*scale)
+	canvas.draw_set_transform(root+Vector2(position.x*facing,position.y).rotated(basis_angle)*scale,angle*facing+basis_angle,Vector2(facing,1)*scale)
 	canvas.draw_texture_rect(art.rigs[kind][index],Rect2(-size*pivot,size),false,tint)
 
 func bone(canvas: Node2D,kind: int,index: int,from: Vector2,to: Vector2,width: float,tint: Color,root: Vector2,scale: float) -> void:
@@ -52,11 +53,12 @@ func paint(canvas: Node2D,kind: int,foot: Vector2,height: float,phase: float,sta
 	kind=clampi(kind,0,art.rigs.size()-1)
 	facing=-1.0 if reverse else 1.0
 	var scale=height/112.0
-	var run=state=="run"
+	basis_angle=0.0
+	var run=state in ["run","panic_run"]
 	var wave=sin(phase*TAU)
-	var bob=absf(sin(phase*TAU))*2.5 if run else sin(time*2.8)*1.2
+	var bob=absf(sin(phase*TAU))*4.2 if run else sin(time*2.8)*1.2
 	var compression=sin(clampf(landing/.20,0,1)*PI)*6
-	var hip=Vector2(-2,-37+bob+compression)
+	var hip=Vector2(-2+sin(phase*TAU)*1.3 if run else -2,-37+bob+compression)
 	var near_foot=stride_foot(phase) if run else Vector2(13,-4)
 	var far_foot=stride_foot(phase+.5) if run else Vector2(-12,-4)
 	if state in ["rise","fly"]:
@@ -68,21 +70,41 @@ func paint(canvas: Node2D,kind: int,foot: Vector2,height: float,phase: float,sta
 	if kind==1:
 		part(canvas,kind,8,hip+Vector2(-5,-27),Vector2(31,34),-.55+sin(time*7)*.11,shade,foot,scale,Vector2(.75,.1))
 	elif kind==3:
-		var flap=sin(time*35.0)
+		var flap=sin(time*(48.0 if state=="capture" else 35.0))
 		for wing in range(2):
 			part(canvas,kind,8,hip+Vector2(-7,-23),Vector2(25,40-absf(flap)*14),-.95-wing*.55+flap*.3,tint*Color(1,1,1,.85),foot,scale,Vector2(.5,1))
-	elif kind==4:
+	elif kind in [4,6,7]:
 		part(canvas,kind,8,hip+Vector2(-11,-25),Vector2(23,28),-.2+sin(time*8)*.07,tint,foot,scale,Vector2(.5,.1))
-	var arm_swing=-.30+wave*.85 if run else -.25+sin(time*3)*.10
+	var arm_swing=-.30+wave*(.95 if kind in [0,1] else .72) if run else -.25+sin(time*3)*.14
+	var capturing=state=="capture"
+	var attack=sin(phase*PI) if capturing else 0.0
+	if state in ["panic","panic_run"]: arm_swing=-2.1+sin(time*13)*.42
+	if capturing:
+		hip.x+=attack*(8 if kind==0 else 4);hip.y-=attack*(10 if kind==1 else 2)
+		arm_swing=[-1.65,-2.55,-1.3,-1.9][clampi(kind,0,3)]+sin(time*26)*.2
+	if state=="push": arm_swing=-1.4;hip.x+=6
 	if state in ["rise","fly"]: arm_swing=-1.35
 	elif state=="fall": arm_swing=-.85
 	arm(canvas,kind,hip+Vector2(-7,-24),-arm_swing-.3,shade,foot,scale)
 	leg(canvas,kind,hip+Vector2(-4,0),far_foot,shade,foot,scale)
 	leg(canvas,kind,hip+Vector2(3,0),near_foot,tint,foot,scale,-.20 if state=="rise" else 0)
-	var lean=.12 if run else .02
+	var lean=.15+wave*.025 if run else .02
+	if capturing: lean=[.52,-.16,.34,.28][clampi(kind,0,3)]*attack
+	if state=="push": lean=.36
 	if state=="rise": lean=.22
 	part(canvas,kind,1,hip+Vector2(3,-16),Vector2(29,36),lean,tint,foot,scale)
-	arm(canvas,kind,hip+Vector2(10,-24),arm_swing,tint,foot,scale,kind in [2,5],state=="aim")
-	part(canvas,kind,0,hip+Vector2(9,-32),Vector2(52,50),lean*.3+sin(time*5)*.014,tint,foot,scale,Vector2(.5,1))
+	arm(canvas,kind,hip+Vector2(10,-24),arm_swing,tint,foot,scale,kind in [2,5] and state!="panic",state in ["aim","push"])
+	part(canvas,kind,0,hip+Vector2(9+attack*6,-32-attack*(9 if kind==1 else 0)),Vector2(52*(1+attack*.08),50*(1+sin(time*12)*.012)),lean*.3+sin(time*5)*.025,tint,foot,scale,Vector2(.5,1))
 	canvas.draw_set_transform(Vector2.ZERO)
 	facing=1.0
+
+func passenger(canvas: Node2D,kind: int,centre: Vector2,height: float,time: float,angle: float=0) -> void:
+	kind=clampi(kind,0,art.rigs.size()-1);facing=-1;basis_angle=angle
+	var scale=height/80
+	var tint=Color(.92,.95,1,1)
+	var hip=Vector2(0,16+sin(time*10)*1.5)
+	part(canvas,kind,1,hip,Vector2(28,28),sin(time*8)*.04,tint,centre,scale)
+	arm(canvas,kind,hip+Vector2(-8,-8),-2.4+sin(time*15)*.35,tint,centre,scale)
+	arm(canvas,kind,hip+Vector2(9,-8),-2.0+cos(time*17)*.35,tint,centre,scale)
+	part(canvas,kind,0,hip+Vector2(3,-15),Vector2(44,42),sin(time*12)*.045,tint,centre,scale,Vector2(.5,1))
+	canvas.draw_set_transform(Vector2.ZERO);facing=1;basis_angle=0

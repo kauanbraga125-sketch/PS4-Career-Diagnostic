@@ -16,6 +16,11 @@ var world_layers: Array=[]
 var world_thumbnails: Array[AtlasTexture]=[]
 var vehicles: Array[AtlasTexture]=[]
 var props: Array[AtlasTexture]=[]
+var helicopter: Texture2D
+var tunnel: Texture2D=preload("res://assets/art/tunnel-interior-v4.png")
+var tunnel_mouths: Array[AtlasTexture]=[]
+var ritual: Array[AtlasTexture]=[]
+var vfx: Array[AtlasTexture]=[]
 
 func _init() -> void:
 	var data=JSON.parse_string(FileAccess.get_file_as_string("res://assets/art/layout.json"))
@@ -53,6 +58,18 @@ func _init() -> void:
 	for region in extra.vehicles: vehicles.append(atlas(vehicle_sheet,region))
 	var prop_sheet=preload("res://assets/art/props-v3.png")
 	for region in extra.props: props.append(atlas(prop_sheet,region))
+	helicopter=vehicles[5]
+	var newest=JSON.parse_string(FileAccess.get_file_as_string("res://assets/art/atlas-v4.json"))
+	for rig in newest.rigs:
+		var sheet=load("res://assets/art/"+str(rig.file)) as Texture2D
+		var parts: Array[AtlasTexture]=[]
+		for region in rig.parts: parts.append(atlas(sheet,region))
+		rigs.append(parts)
+	vehicles.clear()
+	for region in newest.vehicles: vehicles.append(atlas(preload("res://assets/art/vehicles-v4.png"),region))
+	for region in newest.mouths: tunnel_mouths.append(atlas(preload("res://assets/art/tunnel-mouths-v4.png"),region))
+	for region in newest.ritual: ritual.append(atlas(preload("res://assets/art/ritual-v4.png"),region))
+	for region in newest.vfx: vfx.append(atlas(preload("res://assets/art/vfx-v4.png"),region))
 
 func vehicle(kind: String) -> Texture2D:
 	var index=int(MonsterCatalog.VEHICLES.get(kind,{"icon":-1}).icon)
