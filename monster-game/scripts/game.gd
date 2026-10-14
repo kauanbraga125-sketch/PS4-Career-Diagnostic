@@ -9,9 +9,11 @@ const CORAL=Color("ee917e")
 
 var art=HordeArt.new()
 var actor=HordeActor.new(art)
+var scenery=HordeScene.new(art,actor)
 var effects=HordeEffects.new()
 var last_stats: Dictionary={}
 var trail_tick=0.0
+var voice_tick=0.0
 var coin_pulse=0.0
 var sound: HordeSound
 var runner=HordeRun.new()
@@ -80,11 +82,13 @@ func change_screen(next: String) -> void:
 	jump_touches.clear()
 	jump_held=false
 	sound.set_music("midnight_run" if next in ["run","pause"] else "moon_menu")
+	sound.set_area(runner.area(),next=="run" and not runner.dead)
 	queue_redraw()
 
 func start_run() -> void:
-	runner.start(data.levels,0,int(data.skin))
+	runner.start(data.levels,0,int(data.skin),data.areas)
 	effects.clear()
+	scenery.reset();voice_tick=1.8
 	run_challenges.clear()
 	last_stats={}
 	trail_tick=0
@@ -104,6 +108,7 @@ func consume_run_events() -> void:
 				effects.pickup(point,1,Vector2(511,68))
 			"recruit":
 				sound.play("recruit")
+				if not runner.members.is_empty(): sound.play_monster(int(runner.members[-1].kind))
 				effects.spark(point,MINT,18)
 				effects.ring(point,MINT)
 			"jump":
@@ -120,7 +125,8 @@ func consume_run_events() -> void:
 				var color=Color("c39cf3") if e.kind==3 else CORAL
 				effects.spark(point,color,35);effects.ring(point,color)
 				effects.pickup(point,0 if e.kind==3 else 11,point+Vector2(25,-20))
-				show_toast("MOSCA: SEGURE PARA SUBIR, SOLTE PARA DESCER" if e.kind==3 else "MASCARADOS! DESTRUA OS OBSTÁCULOS",2.4)
+				sound.play_monster(int(e.kind))
+				show_toast("MOSCA: SEGURE PARA DESCER, SOLTE PARA SUBIR" if e.kind==3 else "MASCARADOS! DESTRUA OS OBSTÁCULOS",2.4)
 			"perk_end":
 				effects.spark(point,Color("c39cf3"),16)
 				show_toast("Transformação terminou",1.5)
@@ -134,21 +140,29 @@ func consume_run_events() -> void:
 				effects.spark(point,Color("8de5f0"),20);effects.ring(point,Color("8de5f0"))
 			"smash":
 				sound.play("smash");shake=6
-				var car=e.get("object","")=="car"
-				effects.smash(point,car)
-				if car: show_toast("CARRO VIRADO! +1 CRIATURA",1.7)
+				var object_kind=str(e.get("object","crate"))
+				effects.smash(point,object_kind)
+				if MonsterCatalog.VEHICLES.has(object_kind): show_toast("VEÍCULO VIRADO! +"+str(MonsterCatalog.VEHICLES[object_kind].rescues)+" CRIATURAS",1.7)
 			"hit":
-				sound.play("hit");shake=7
-				effects.spark(point,CORAL,20)
+				sound.play_monster(int(e.kind),true);shake=7
+				effects.death(int(e.kind),point)
+			"shot": sound.play("gunshot",-17)
+			"explosion": sound.play("explosion",-14);effects.explosion(point);shake=8
+			"tunnel": sound.play("tunnel",-18)
+			"area":
+				sound.set_area(int(e.area),true)
+				show_toast(MonsterCatalog.AREAS[int(e.area)].name.to_upper(),2.0)
+			"recovery": show_toast("REAGRUPE A HORDA! MAIS RECRUTAS À FRENTE",2.2)
 			"finish": finish_run()
 
 func finish_run() -> void:
 	if end_delay>=0 or screen not in ["run","pause"]: return
 	data.best=maxi(int(data.best),runner.distance())
 	data.runs+=1
-	end_delay=.65
+	end_delay=1.0
 	jump_held=false
 	sound.play("finish")
+	sound.set_area(0,false)
 	save_game()
 
 func check_challenges() -> void:
@@ -197,10 +211,12 @@ func buy_upgrade(index: int) -> bool:
 func perform_action(action: String) -> void:
 	if action.begins_with("buy_"): buy_upgrade(int(action.trim_prefix("buy_"))); return
 	if action.begins_with("skin_"): buy_skin(int(action.trim_prefix("skin_"))); return
+	if action.begins_with("area_"): buy_area(int(action.trim_prefix("area_"))); return
 	match action:
 		"play": start_run()
 		"shop": previous_page="results" if screen=="results" else "home"; change_screen("shop")
 		"monsters": change_screen("monsters")
+		"worlds": change_screen("worlds")
 		"missions": change_screen("missions")
 		"help": change_screen("help")
 		"home":
@@ -318,25 +334,7 @@ func currency() -> void:
 
 func backdrop() -> void:
 	if screen in ["run","pause","results"]:
-		draw_rect(Rect2(0,0,1280,720),Color("342049"))
-		draw_texture_rect(art.sky,Rect2(0,0,1280,448),false)
-		for i in range(24):
-			var y=370+i*9
-			draw_rect(Rect2(0,y,1280,10),Color(.24,.14,.31,float(i)/24*.26))
-		for layer in range(3):
-			var ratio=[.055,.19,.48][layer]
-			var height=[224.0,274.0,254.0][layer]
-			var texture=art.layers[layer]
-			var width=texture.get_width()*height/texture.get_height()
-			var bottom=HordeRun.FLOOR-([80.0,5.0,-5.0][layer])
-			var offset=fposmod(runner.world_px*ratio,width)
-			for tile in range(-1,3):
-				draw_texture_rect(texture,Rect2(tile*width-offset,bottom-height,width+1,height),false)
-		for i in range(2):
-			var x=fposmod(i*770-runner.world_px*.52,1540)-140
-			var pos=Vector2(x,HordeRun.FLOOR-76)
-			draw_circle(pos+Vector2(0,-35),42,Color(1,.65,.23,.05+.018*sin(ui_time*7+i)))
-			floating_item(10,pos,135,Color(.9,.92,1,1),true)
+		scenery.paint(self,runner,ui_time)
 	else:
 		draw_texture_rect(art.background,Rect2(-12+sin(ui_time*.11)*6,-4,1304,728),false)
 	for i in range(18):
@@ -377,6 +375,7 @@ func _draw() -> void:
 		"home": draw_home()
 		"shop": draw_shop()
 		"monsters": draw_monsters()
+		"worlds": draw_worlds()
 		"missions": draw_missions()
 		"help": draw_help()
 		"run": draw_run_hud()
@@ -398,14 +397,15 @@ func draw_home() -> void:
 	actor.paint(self,1,Vector2(190,620),160,ui_time*2.5,"run",ui_time)
 	actor.paint(self,int(data.skin),Vector2(368,625),210,ui_time*2.5+.3,"run",ui_time)
 	actor.paint(self,2,Vector2(591,622),173,ui_time*2.5+.7,"run",ui_time)
-	button(Rect2(862,233,343,88),"JOGAR","play",Color("d9974c"),-2,38)
-	button(Rect2(862,341,343,65),"MELHORIAS","shop",Color("8054a7"),0,25)
-	button(Rect2(862,422,343,65),"MONSTROS","monsters",Color("487385"),11,25)
-	button(Rect2(862,503,343,65),"MISSÕES","missions",Color("6a5789"),1,25)
-	button(Rect2(862,584,343,60),"COMO JOGAR","help",Color("4d7468"),4,22)
+	button(Rect2(862,218,343,80),"JOGAR","play",Color("d9974c"),-2,38)
+	button(Rect2(862,316,343,60),"MELHORIAS","shop",Color("8054a7"),0,25)
+	button(Rect2(862,389,343,60),"MONSTROS","monsters",Color("487385"),11,25)
+	button(Rect2(862,462,343,60),"CENÁRIOS","worlds",Color("596d83"),10,25)
+	button(Rect2(862,535,343,60),"MISSÕES","missions",Color("6a5789"),1,25)
+	button(Rect2(862,608,343,55),"COMO JOGAR","help",Color("4d7468"),4,22)
 	panel(Rect2(78,652,650,44),Color(.10,.06,.17,.83),Color("6e5466"),18)
 	text("RECORDE  "+str(data.best)+" m",Vector2(102,682),19,GOLD,true)
-	text("ALPHA 0.2",Vector2(610,682),14,Color("bbaac8"),true)
+	text("ALPHA 0.3",Vector2(610,682),14,Color("bbaac8"),true)
 
 func draw_shop() -> void:
 	text("MELHORIAS",Vector2(66,105),45,GOLD,true,false,5)
@@ -455,24 +455,34 @@ func draw_monsters() -> void:
 
 func draw_help() -> void:
 	text("COMO JOGAR",Vector2(68,105),44,GOLD,true,false,5)
-	var headings=["1. PULE E RECRUTE","2. VIRE CARROS","3. USE OS PODERES"]
-	var descriptions=["Toque para pular, segure para ir mais alto. Recrute criaturas na pista. Pulo Ágil nível 2 libera salto duplo.","Com quatro criaturas no chão, a horda vira o carro e liberta um recruta. Com menos membros, salte por cima. Observe o número sobre o veículo.","Mosca: segure para subir, solte para descer. Mascarado: destrua obstáculos. Poção: frenesi, rastro de velocidade e moedas em dobro."]
+	var headings=["1. PULE E RECRUTE","2. VIRE VEÍCULOS","3. USE OS PODERES"]
+	var descriptions=["Toque para pular, segure para ir mais alto. Evite buracos, bombas e tiros! Quem cai é perdido. A última criatura perdida encerra a fuga.","Criaturas no chão: moto 2, carro 4, ônibus 8, caminhão 10, tanque 12 e avião 16. Vire para ganhar moedas e recrutas; com menos força, pule!","Mosca sobe sozinha. Segure para descer e coletar; solte para subir. Mascarado quebra obstáculos, mas cai nos buracos. Poção acelera e dobra moedas."]
 	for i in range(3):
 		var x=68+i*392
 		panel(Rect2(x,187,364,414),Color(.18,.11,.26,.94),Color("76527d"),22,3)
 		if i==1: floating_item(7,Vector2(x+182,278),83)
 		else: floating_item(4 if i==0 else 0,Vector2(x+182,272),103)
 		text(headings[i],Vector2(x+182,376),22,GOLD,true,true,2)
-		wrapped(descriptions[i],Vector2(x+27,419),310,18,CREAM,6)
+		wrapped(descriptions[i],Vector2(x+27,411),310,17,CREAM,7)
 	button(Rect2(68,633,240,66),"VOLTAR","back",Color("513c67"),-2,23)
-	text("Espaço pula/voa; Esc pausa. Tudo funciona offline.",Vector2(350,672),18,MINT)
+	text("Espaço pula/mergulha; Esc pausa. Salto duplo: Pulo Ágil nível 2.",Vector2(350,672),17,MINT)
 
 func draw_run() -> void:
 	ground(runner.world_px)
 	effects.draw_trails(self,actor,runner.elapsed)
+	# Draw holes before objects so foreground enemies cannot disappear behind them.
 	for e in runner.entities:
-		if e.taken or e.x< -180 or e.x>1480: continue
-		var bob=sin(ui_time*4+e.x*.008)*5
+		if e.kind!="gap" or e.x< -400 or e.x>1400: continue
+		draw_rect(Rect2(e.x,HordeRun.FLOOR,e.width,146),Color("080616"))
+		for edge in [e.x,e.x+e.width]:
+			draw_line(Vector2(edge,HordeRun.FLOOR+4),Vector2(edge,HordeRun.FLOOR+137),Color("68466e"),4,true)
+		if e.x>HordeRun.ANCHOR: text("PULO!",Vector2(e.x+e.width*.5,HordeRun.FLOOR-28),19,CORAL,true,true,3)
+	for e in runner.entities:
+		if e.taken or e.x< -200 or e.x>1500: continue
+		var bob=sin(ui_time*4+e.bob)*5
+		if MonsterCatalog.VEHICLES.has(e.kind):
+			draw_vehicle(e)
+			continue
 		match e.kind:
 			"coin": floating_item(1,Vector2(e.x,e.y+bob),33)
 			"recruit":
@@ -491,35 +501,43 @@ func draw_run() -> void:
 				floating_item(icon,centre,70*(1+sin(ui_time*3)*.04))
 				text("FRENESI" if e.kind=="boost" else "BÔNUS",centre+Vector2(0,-57),13,color,true,true,2)
 			"crate": item_sprite(6,Vector2(e.x,e.y-36),72)
-			"car":
-				item_sprite(7,Vector2(e.x,e.y-48),96)
-				var capable=runner.grounded_strength()>=4 or (runner.perk_kind==2 and runner.perk_left>0)
-				var color=MINT if capable else CORAL
-				panel(Rect2(e.x-50,e.y-138,100,33),Color(.13,.08,.19,.9),color,12,2,false)
-				text("VIRAR: 4",Vector2(e.x,e.y-115),15,color,true,true,1)
 			"spikes": item_sprite(8,Vector2(e.x,e.y-24),48)
-			"gap":
-				draw_rect(Rect2(e.x,HordeRun.FLOOR,e.width,146),Color("080616"))
-				draw_line(Vector2(e.x,HordeRun.FLOOR+4),Vector2(e.x,HordeRun.FLOOR+137),Color("68466e"),4,true)
-				draw_line(Vector2(e.x+e.width,HordeRun.FLOOR+4),Vector2(e.x+e.width,HordeRun.FLOOR+137),Color("68466e"),4,true)
-				if e.x>HordeRun.ANCHOR: text("PULO!",Vector2(e.x+e.width*.5,HordeRun.FLOOR-28),19,CORAL,true,true,3)
+			"bomb":
+				var point=Vector2(e.x,e.y-31)
+				scenery.sprite(self,art.props[0],point,64,Color.WHITE,sin(ui_time*7+e.bob)*.07)
+				scenery.flame(self,point+Vector2(9,-29),ui_time+e.bob,7)
+				draw_arc(point,42,0,TAU,24,Color(1,.48,.30,.16+.10*sin(ui_time*9)),2,true)
+			"soldier":
+				actor.paint(self,5,Vector2(e.x,e.y),108,0,"aim",ui_time,0,Color.WHITE,true)
+				var muzzle=Vector2(e.x-54,e.y-64)
+				if e.flash>0: scenery.sprite(self,art.props[5],muzzle,28)
+				if e.x>HordeRun.ANCHOR+230:
+					text("TIRO!" if e.timer<.65 else "EXÉRCITO",Vector2(e.x,e.y-130),15,CORAL,true,true,2)
+					if e.timer<.65: draw_line(muzzle,muzzle+Vector2(-120,0),Color(1,.40,.26,.18),2,true)
+			"bullet":
+				draw_line(Vector2(e.x+31,e.y),Vector2(e.x,e.y),Color(1,.62,.22,.45),4,true)
+				draw_circle(Vector2(e.x,e.y),4,GOLD)
+			"helicopter":
+				scenery.helicopter(self,Vector2(e.x,e.y+sin(ui_time*3+e.bob)*5),92,ui_time,sin(ui_time*2)*.06)
+				text("SALTE!",Vector2(e.x,e.y-76),16,CORAL,true,true,2)
 	for i in range(runner.members.size()-1,-1,-1):
 		var member=runner.members[i]
-		var kind=runner.perk_kind if runner.perk_left>0 else int(member.kind)
+		var kind=int(member.get("death_kind",member.kind)) if member.falling else (runner.perk_kind if runner.perk_left>0 else int(member.kind))
 		var state=animation_state(member)
-		var foot=Vector2(runner.member_x(i),member.y)
-		if i>=6: foot.y-=14
+		var foot=Vector2(runner.member_x(i),member.y-int(i/8)*12)
 		if state=="fly": foot.y+=sin(runner.elapsed*7+i)*3
 		var height=112.0*(1+sin(member.arrival/.35*PI)*.10)
 		var phase=runner.world_px/84.0+i*.17
-		var shadow_size=clampf(1-(HordeRun.FLOOR-member.y)/420,.25,1)
-		draw_set_transform(Vector2(foot.x,HordeRun.FLOOR+4),0,Vector2(23*shadow_size,4*shadow_size))
-		draw_circle(Vector2.ZERO,1,Color(.02,.01,.05,.28*shadow_size))
-		draw_set_transform(Vector2.ZERO)
-		if runner.shields>0: draw_arc(foot-Vector2(0,56),62,0,TAU,32,Color(.5,.9,1,.4),3,true)
+		if not member.falling:
+			var shadow_size=clampf(1-(HordeRun.FLOOR-member.y)/420,.25,1)
+			draw_set_transform(Vector2(foot.x,HordeRun.FLOOR+4),0,Vector2(23*shadow_size,4*shadow_size))
+			draw_circle(Vector2.ZERO,1,Color(.02,.01,.05,.28*shadow_size))
+			draw_set_transform(Vector2.ZERO)
+			if runner.shields>0: draw_arc(foot-Vector2(0,56),62,0,TAU,32,Color(.5,.9,1,.4),3,true)
 		var blink=Color(1,1,1,.45) if runner.hit_grace>0 and int(ui_time*14)%2==0 else Color.WHITE
 		actor.paint(self,kind,foot,height,phase,state,runner.elapsed+i*.071,float(member.land_left),blink)
-	effects.paint(self,art)
+	effects.paint(self,art,actor)
+	scenery.paint_front(self,runner)
 
 func draw_run_hud() -> void:
 	panel(Rect2(28,24,214,88),Color(.12,.07,.19,.91),Color("776077"),20)
@@ -527,7 +545,7 @@ func draw_run_hud() -> void:
 	text(str(runner.distance())+" m",Vector2(48,94),29,CREAM,true,false,2)
 	panel(Rect2(259,24,197,88),Color(.12,.07,.19,.91),Color("776077"),20)
 	text("HORDA",Vector2(280,54),15,MINT,true)
-	text(str(runner.members.size())+" CRIATURAS",Vector2(280,94),20,CREAM,true)
+	text(str(runner.active_count())+" CRIATURAS",Vector2(280,94),20,CREAM,true)
 	panel(Rect2(473,24,189,88),Color(.12,.07,.19,.91),Color("776077"),20)
 	item_sprite(1,Vector2(511,68),42)
 	text(str(runner.coins),Vector2(545,83),28,GOLD,true,false,2)
@@ -539,10 +557,13 @@ func draw_run_hud() -> void:
 		var duration=(7.0 if runner.perk_kind==3 else 9.0)+int(data.levels.perk)*2 if runner.perk_left>0 else 5.0
 		draw_rect(Rect2(749,99,248*(runner.perk_left if runner.perk_left>0 else runner.boost_left)/duration,4),MINT)
 	button(Rect2(1160,28,83,73),"II","pause",Color("513565"),-2,27)
-	text("NÉVOA DO CEMITÉRIO",Vector2(32,148),17,Color("bc9bcf"),true,false,2)
-	button(Rect2(1073,578,170,107),"SUBIR" if runner.perk_kind==3 and runner.perk_left>0 else "PULAR","jump",Color("8753aa"),-2,26)
+	text(MonsterCatalog.AREAS[runner.area()].name.to_upper()+"  •  TÚNEL "+str(runner.tunnel_number()),Vector2(32,148),16,MonsterCatalog.AREAS[runner.area()].color,true,false,2)
+	if runner.inside_tunnel(): text("ATRAVESSANDO O TÚNEL",Vector2(640,211),23,GOLD,true,true,3)
+	elif runner.recovery_left>0: text("REAGRUPE!",Vector2(33,178),14,MINT,true,false,2)
+	elif runner.pressure>.6: text("A HORDA CHAMOU ATENÇÃO!",Vector2(33,178),14,CORAL,true,false,2)
+	button(Rect2(1053,578,190,107),"MERGULHAR" if runner.perk_kind==3 and runner.perk_left>0 else "PULAR","jump",Color("8753aa"),-2,26)
 	if runner.perk_kind==3 and runner.perk_left>0:
-		text("SEGURE PARA SUBIR • SOLTE PARA DESCER",Vector2(687,671),15,MINT,true,true,2)
+		text("SEGURE PARA DESCER • SOLTE PARA SUBIR",Vector2(687,671),15,MINT,true,true,2)
 	elif runner.world_px<1800:
 		panel(Rect2(390,635,557,53),Color(.12,.07,.19,.9),Color("736377"),20)
 		text("TOQUE PARA PULAR  •  SEGURE PARA IR MAIS ALTO",Vector2(668,669),17,CREAM,true,true)
@@ -558,27 +579,36 @@ func draw_pause() -> void:
 	button(Rect2(458,477,364,65),"ENCERRAR CORRIDA","home",Color("765269"),-2,22)
 
 func draw_results() -> void:
-	draw_rect(Rect2(0,0,1280,720),Color(.035,.012,.07,.70))
-	panel(Rect2(238,94,804,487),Color(.18,.10,.25,.97),Color("b79ac0"),26,4)
-	text("FIM DA FUGA",Vector2(640,178),48,GOLD,true,true,5)
-	text("Sua horda descansa. As melhorias ficam.",Vector2(640,224),23,CREAM,false,true)
-	text(str(runner.distance())+" m",Vector2(640,309),57,CREAM,true,true,4)
-	text("RECORDE  "+str(data.best)+" m",Vector2(640,350),20,MINT,true,true)
-	item_sprite(1,Vector2(469,410),48)
-	text("+"+str(runner.coins)+" MOEDAS",Vector2(514,423),28,GOLD,true)
-	text(str(runner.recruits)+" criaturas recrutadas",Vector2(640,474),21,CREAM,false,true)
-	text("CARTEIRA  "+str(data.wallet)+" moedas",Vector2(640,517),19,Color("c9b4d8"),false,true)
-	button(Rect2(238,615,228,73),"MENU","home",Color("5d426f"),-2,25)
-	button(Rect2(488,615,285,73),"MELHORIAS","shop",Color("845eaa"),-2,25)
-	button(Rect2(795,615,247,73),"DE NOVO","play",Color("c78a4b"),-2,27)
+	draw_rect(Rect2(0,0,1280,720),Color(.035,.012,.07,.78))
+	panel(Rect2(224,137,832,450),Color(.18,.10,.25,.97),Color("b79ac0"),28,4)
+	scenery.sprite(self,art.props[4],Vector2(640,126+sin(ui_time*2.8)*3),132)
+	text("FIM DA HORDA",Vector2(640,245),45,GOLD,true,true,5)
+	text("Sua horda descansa. As melhorias ficam.",Vector2(640,282),20,CREAM,false,true)
+	text(str(runner.distance())+" m",Vector2(640,354),55,CREAM,true,true,4)
+	text("RECORDE  "+str(data.best)+" m",Vector2(640,393),18,MINT,true,true)
+	var values=["+"+str(runner.coins),str(runner.recruits),str(runner.cars),str(runner.tunnel_number())]
+	var labels=["MOEDAS","RECRUTAS","VEÍCULOS","TÚNEIS"]
+	for i in range(4):
+		var x=261+i*194
+		panel(Rect2(x,416,178,91),Color("291b36"),Color("5f456f"),16,1,false)
+		text(values[i],Vector2(x+89,455),26,GOLD,true,true,2)
+		text(labels[i],Vector2(x+89,485),14,MINT,true,true)
+	text("CARTEIRA: "+str(data.wallet)+" moedas  •  Suas compras continuam com você",Vector2(640,547),19,Color("d4c2e1"),false,true)
+	button(Rect2(224,613,228,73),"MENU","home",Color("5d426f"),-2,25)
+	button(Rect2(474,613,285,73),"MELHORIAS","shop",Color("845eaa"),-2,25)
+	button(Rect2(781,613,275,73),"DE NOVO","play",Color("c78a4b"),-2,27)
 
 func validate_save(value) -> Dictionary:
-	if not value is Dictionary or int(value.get("version",0)) not in [1,2]: return MonsterCatalog.defaults()
+	if not value is Dictionary or int(value.get("version",0)) not in [1,2,3]: return MonsterCatalog.defaults()
 	var result=MonsterCatalog.defaults()
 	result.wallet=clampi(int(value.get("wallet",120)),0,9999999)
 	result.best=clampi(int(value.get("best",0)),0,9999999)
 	result.runs=maxi(0,int(value.get("runs",0)))
 	result.audio=bool(value.get("audio",true))
+	var areas=value.get("areas",[])
+	if areas is Array:
+		for area in areas:
+			if int(area) in [2,3] and int(area) not in result.areas: result.areas.append(int(area))
 	var raw_levels=value.get("levels",{})
 	if raw_levels is Dictionary:
 		for item in MonsterCatalog.UPGRADES: result.levels[item.id]=clampi(int(raw_levels.get(item.id,0)),0,int(item.max))
@@ -602,13 +632,14 @@ func validate_save(value) -> Dictionary:
 		for challenge in MonsterCatalog.active_missions(result.mission_tier):
 			if claimed is Array and challenge.key in claimed: result.claimed.append(challenge.key)
 			if progress is Dictionary: result.mission_progress[challenge.id]=clampi(int(progress.get(challenge.id,0)),0,int(challenge.target))
+			if challenge.key in result.claimed: result.mission_progress[challenge.id]=int(challenge.target)
 	return result
 
 func read_save(path: String=SAVE_PATH) -> Dictionary:
 	for candidate in [path,path+".bak"]:
 		if not FileAccess.file_exists(candidate): continue
 		var parsed=JSON.parse_string(FileAccess.get_file_as_string(candidate))
-		if parsed is Dictionary and int(parsed.get("version",0)) in [1,2]: return validate_save(parsed)
+		if parsed is Dictionary and int(parsed.get("version",0)) in [1,2,3]: return validate_save(parsed)
 	return MonsterCatalog.defaults()
 
 func save_game(path: String=SAVE_PATH) -> bool:
@@ -649,41 +680,77 @@ func capture_preview() -> void:
 	if path.is_empty(): path="user://NoiteDaHorda-menu.png"
 	var base=path.get_basename().trim_suffix("-menu")
 	await capture_frame(base+"-menu.png")
-	perform_action("shop")
-	await capture_frame(base+"-shop.png")
-	perform_action("monsters")
-	await capture_frame(base+"-monsters.png")
+	perform_action("shop");await capture_frame(base+"-shop.png")
+	perform_action("monsters");await capture_frame(base+"-monsters.png")
+	perform_action("worlds");await capture_frame(base+"-worlds.png")
 	start_run();capture_freeze=true
-	runner.entities.clear()
+	runner.entities.clear();runner.next_segment=99999
 	runner.add_member(1);runner.add_member(0)
 	runner.add_entity("crate",830)
-	runner.add_entity("car",1190,HordeRun.FLOOR,0,155)
+	runner.add_entity("car",1190)
 	for i in range(6): runner.add_entity("coin",600+i*74,HordeRun.FLOOR-130)
 	runner.add_entity("crystal",1030,HordeRun.FLOOR-92)
-	runner.world_px=1100
-	runner.jump()
+	runner.world_px=1100;runner.jump()
 	for i in range(11): runner.advance(1.0/60,true)
-	consume_run_events()
+	consume_run_events();update_run_visuals(.18)
 	await capture_frame(base+"-run.png")
 	runner.grant_perk(3);consume_run_events()
-	for i in range(60): runner.advance(1.0/60,false)
+	for i in range(70): runner.advance(1.0/60,false);update_run_visuals(1.0/60)
 	consume_run_events();toast_left=0
 	await capture_frame(base+"-perk.png")
+	runner.world_px=5510;runner.entities.clear();effects.clear();scenery.update(.1,runner)
+	await capture_frame(base+"-tunnel.png")
+	runner.world_px=7220;runner.perk_left=0;runner.perk_kind=-1
+	runner.entities.clear()
+	for member in runner.members: member.y=HordeRun.FLOOR;member.vy=0
+	for i in range(4): runner.add_member(i%2)
+	runner.add_entity("bus",1110);runner.add_entity("bomb",715)
+	runner.add_entity("soldier",910);runner.add_entity("helicopter",580,HordeRun.FLOOR-67)
+	for i in range(5): runner.add_entity("coin",590+i*82,HordeRun.FLOOR-175)
+	scenery.update(.1,runner);scenery.crash_age=1.45;toast_left=0
+	await capture_frame(base+"-city.png")
+	runner.entities.clear();runner.world_px=15220;runner.route.assign([0,1,2,3])
+	scenery.update(.1,runner)
+	runner.add_entity("tank",760);runner.add_entity("truck",1080)
+	await capture_frame(base+"-industrial.png")
+	runner.world_px=21220;runner.entities.clear();scenery.update(.1,runner)
+	runner.add_entity("plane",1030);runner.add_entity("moto",670)
+	await capture_frame(base+"-airport.png")
+	# Game-over screenshot comes from a real fatal pit, not a decorative mockup.
+	runner.entities.clear();runner.perk_left=0;runner.perk_kind=-1
+	runner.add_entity("gap",HordeRun.ANCHOR-270,HordeRun.FLOOR,0,650)
+	for i in range(90): runner.advance(1.0/60)
+	consume_run_events();update_run_visuals(.2);toast_left=0;end_delay=-1
+	change_screen("results")
+	await capture_frame(base+"-gameover.png")
+	print("HORDE_CAPTURE_OK: eleven real game screens")
 	get_tree().quit()
+
 func animation_state(member: Dictionary) -> String:
+	if member.falling: return "fall"
 	if runner.perk_kind==3 and runner.perk_left>0: return "fly"
 	if member.y<HordeRun.FLOOR-4: return "rise" if member.vy<0 else "fall"
 	return "run"
 
 func update_run_visuals(dt: float) -> void:
-	effects.update(dt,runner.speed)
+	effects.update(dt,0 if runner.dead else runner.speed)
+	if not runner.dead:
+		scenery.update(dt,runner)
+		for event in scenery.events:
+			sound.play("city_scream" if event=="background_scream" else "explosion",-23)
+		scenery.events.clear()
+		voice_tick-=dt
+		if voice_tick<=0 and runner.active_count()>0:
+			var lead=runner.leader_index()
+			sound.play_monster(runner.perk_kind if runner.perk_left>0 else int(runner.members[lead].kind))
+			voice_tick=4.5
 	trail_tick+=dt
-	if not runner.members.is_empty() and trail_tick>=.09:
+	if not runner.members.is_empty() and not runner.dead and trail_tick>=.09:
 		trail_tick=0
 		var index=runner.members.size()-1
 		var m=runner.members[index]
-		if runner.boost_left>0 or runner.speed>=380:
-			var foot=Vector2(runner.member_x(index),m.y-(14 if index>=6 else 0))
+		if not m.falling and (runner.boost_left>0 or runner.speed>=380):
+			var foot=Vector2(runner.member_x(index),m.y-int(index/8)*12)
 			effects.ghost(runner.perk_kind if runner.perk_left>0 else int(m.kind),foot,runner.world_px/84+index*.17,animation_state(m),m.land_left)
 			for i in range(2):
 				effects.add("speed",foot+Vector2(-22,randf_range(-75,-15)),Vector2(-100,0),MINT,randf_range(20,43),.22)
@@ -734,26 +801,88 @@ func motion_preview() -> void:
 	var folder=OS.get_environment("HORDE_MOTION_PATH")
 	if folder.is_empty(): folder="user://motion"
 	DirAccess.make_dir_recursive_absolute(folder)
+	var first_frame=maxi(0,int(OS.get_environment("HORDE_MOTION_START")))
 	data=MonsterCatalog.defaults();data.levels.horde=3
 	start_run();capture_freeze=true
 	runner.entities.clear();runner.next_segment=99999
 	for i in range(8): runner.add_entity("coin",700+i*85,HordeRun.FLOOR-80)
-	for frame in range(360):
+	for frame in range(480):
 		ui_time=float(frame)/30.0
-		if frame==30: runner.jump()
-		if frame==65: runner.add_entity("car",HordeRun.ANCHOR+420,HordeRun.FLOOR,0,155)
-		if frame==120: runner.grant_perk(3)
-		if frame==240:
-			runner.perk_left=.01
-			runner.add_entity("boost",HordeRun.ANCHOR+4,runner.members[0].y-48)
-		if frame==296: runner.grant_perk(2)
-		if frame==315: runner.add_entity("crate",HordeRun.ANCHOR+160)
-		var held=(frame>=30 and frame<41) or (frame>=150 and frame<195)
-		runner.advance(1.0/60.0,held);runner.advance(1.0/60.0,held)
-		consume_run_events();update_run_visuals(1.0/30.0)
+		if frame==15: runner.jump()
+		if frame==55: runner.add_entity("car",HordeRun.ANCHOR+320)
+		if frame==80: runner.world_px=5100
+		if frame==90: runner.grant_perk(3)
+		if frame==230: runner.perk_left=.01
+		if frame==250:
+			runner.entities.clear()
+			while runner.active_count()<16: runner.add_member(runner.active_count()%2,false)
+			runner.add_entity("plane",HordeRun.ANCHOR+420)
+		if frame==300:
+			var soldier=runner.add_entity("soldier",HordeRun.ANCHOR+620);soldier.timer=.18
+			runner.add_entity("helicopter",980,HordeRun.FLOOR-65)
+			runner.add_entity("bomb",1140)
+		if frame==328: runner.jump()
+		if frame==360:
+			# A second staged scenario proves real mixed-horde pit death and retry UI.
+			start_run();capture_freeze=true;runner.entities.clear();runner.next_segment=99999
+			runner.world_px=7220
+			for i in range(runner.members.size()): runner.members[i].kind=i
+			runner.add_entity("gap",HordeRun.ANCHOR+220,HordeRun.FLOOR,0,420)
+			show_toast("QUEDAS ELIMINAM CADA CRIATURA",1.3)
+		var held=(frame>=15 and frame<24) or (frame>=155 and frame<210) or (frame>=328 and frame<338)
+		if screen=="run":
+			runner.advance(1.0/60.0,held);runner.advance(1.0/60.0,held)
+			consume_run_events();update_run_visuals(1.0/30.0)
+			if end_delay>=0:
+				end_delay-=1.0/30
+				if end_delay<0: change_screen("results")
 		toast_left=maxf(0,toast_left-1.0/30.0)
-		flash=maxf(0,flash-1.0/30.0*1.7)
-		shake=maxf(0,shake-1.0/30.0*20)
-		await capture_frame(folder+"/frame-%04d.png"%frame)
-	print("HORDE_MOTION_OK: 360 real rendered frames")
+		flash=maxf(0,flash-1.0/30.0*1.7);shake=maxf(0,shake-1.0/30.0*20)
+		if frame>=first_frame: await capture_frame(folder+"/frame-%04d.png"%frame)
+	print("HORDE_MOTION_OK: 480 real rendered frames; staged course snapshots and simulated touch; final pit game over")
 	get_tree().quit()
+
+func draw_vehicle(entity: Dictionary) -> void:
+	var spec=MonsterCatalog.VEHICLES[entity.kind]
+	var point=Vector2(entity.x,entity.y-float(spec.height)*.5)
+	scenery.sprite(self,art.vehicle(entity.kind),point,float(spec.height),Color.WHITE,sin(ui_time*3+entity.bob)*.009)
+	if entity.kind=="plane":
+		for x in [-40,30]:
+			draw_line(point+Vector2(x,-12-sin(ui_time*60)*23),point+Vector2(x,-12+sin(ui_time*60)*23),Color(.9,.94,1,.72),3,true)
+	if entity.kind=="tank":
+		for i in range(4):
+			var x=fposmod(ui_time*28+i*27,108)-54
+			draw_line(point+Vector2(x,43),point+Vector2(x+8,43),Color(.84,.86,.62,.5),2,true)
+	var capable=runner.grounded_strength()>=int(spec.need) or (runner.perk_kind==2 and runner.perk_left>0)
+	var color=MINT if capable else CORAL
+	panel(Rect2(entity.x-57,entity.y-float(spec.height)-47,114,34),Color(.13,.08,.19,.94),color,12,2,false)
+	text("VIRAR: "+str(spec.need),Vector2(entity.x,entity.y-float(spec.height)-23),15,color,true,true,1)
+
+func buy_area(index: int) -> bool:
+	if index<0 or index>=MonsterCatalog.AREAS.size(): return false
+	if index in data.areas:
+		show_toast("Este cenário já está na sua rota.",1.7);return true
+	var cost=int(MonsterCatalog.AREAS[index].price)
+	if int(data.wallet)<cost:
+		show_toast("Faltam "+str(cost-int(data.wallet))+" moedas para este cenário.");return false
+	data.wallet-=cost;data.areas.append(index);sound.play("buy")
+	show_toast(MonsterCatalog.AREAS[index].name+" entra na próxima fuga!",2.3)
+	save_game();return true
+
+func draw_worlds() -> void:
+	text("CENÁRIOS DA FUGA",Vector2(67,101),42,GOLD,true,false,5)
+	text("Cada túnel leva à próxima região. Dois cenários já vêm liberados!",Vector2(70,144),20,CREAM)
+	currency()
+	var notes=["Névoa, lanternas e criaturas à espera.","Fogo, civis fugindo e helicópteros caindo.","Fábricas, fumaça e máquinas de guerra.","Pista iluminada, hangares e aviões."]
+	for i in range(4):
+		var x=64+i*291
+		var area=MonsterCatalog.AREAS[i]
+		var owned=i in data.areas
+		panel(Rect2(x,186,278,430),Color(.18,.11,.25,.94),area.color if owned else Color("76527d"),22,3)
+		draw_rect(Rect2(x+12,202,254,191),Color("38264c"))
+		draw_texture_rect(art.world_thumbnails[i],Rect2(x+12,205,254,188),false,Color.WHITE if owned else Color(.55,.49,.63,1))
+		text(area.name.to_upper(),Vector2(x+139,434),18,area.color,true,true,2)
+		wrapped(notes[i],Vector2(x+24,474),230,17,Color("ded0e7"),3)
+		button(Rect2(x+16,551,246,52),"NA SUA ROTA" if owned else str(area.price)+" MOEDAS","area_"+str(i),Color("557d70") if owned else Color("8054a7"),-2,19)
+	button(Rect2(68,650,218,49),"VOLTAR","back",Color("513c67"),-2,20)
+	text("A rota começa no cemitério. Novas regiões entram após a cidade.",Vector2(319,682),17,MINT)

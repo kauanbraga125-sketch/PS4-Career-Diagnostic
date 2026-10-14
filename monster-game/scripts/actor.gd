@@ -4,6 +4,7 @@ extends RefCounted
 # Cutout art plus two-bone leg poses. A grounded support foot stays on the
 # baseline while the body moves; every stride really alternates both legs.
 var art: HordeArt
+var facing=1.0
 
 func _init(source: HordeArt) -> void:
 	art=source
@@ -23,7 +24,7 @@ static func knee(hip: Vector2,ankle: Vector2) -> Vector2:
 	return hip+direction*along+Vector2(direction.y,-direction.x)*bend
 
 func part(canvas: Node2D,kind: int,index: int,position: Vector2,size: Vector2,angle: float,tint: Color,root: Vector2,scale: float,pivot: Vector2=Vector2(.5,.5)) -> void:
-	canvas.draw_set_transform(root+position*scale,angle,Vector2.ONE*scale)
+	canvas.draw_set_transform(root+Vector2(position.x*facing,position.y)*scale,angle*facing,Vector2(facing,1)*scale)
 	canvas.draw_texture_rect(art.rigs[kind][index],Rect2(-size*pivot,size),false,tint)
 
 func bone(canvas: Node2D,kind: int,index: int,from: Vector2,to: Vector2,width: float,tint: Color,root: Vector2,scale: float) -> void:
@@ -36,16 +37,20 @@ func leg(canvas: Node2D,kind: int,hip: Vector2,ankle: Vector2,tint: Color,root: 
 	bone(canvas,kind,6,joint,ankle,10 if kind!=1 else 7,tint,root,scale)
 	part(canvas,kind,7,ankle+Vector2(5,1),Vector2(20,10),angle,tint,root,scale,Vector2(.35,.6))
 
-func arm(canvas: Node2D,kind: int,shoulder: Vector2,swing: float,tint: Color,root: Vector2,scale: float,weapon: bool=false) -> void:
+func arm(canvas: Node2D,kind: int,shoulder: Vector2,swing: float,tint: Color,root: Vector2,scale: float,weapon: bool=false,aim: bool=false) -> void:
 	var elbow=shoulder+Vector2(0,17).rotated(swing)
 	var hand=elbow+Vector2(0,16).rotated(swing-1.3)
+	if aim: elbow=shoulder+Vector2(16,-1);hand=shoulder+Vector2(30,0)
 	bone(canvas,kind,2,shoulder,elbow,11 if kind!=1 else 7,tint,root,scale)
 	bone(canvas,kind,3,elbow,hand,10 if kind!=1 else 6,tint,root,scale)
-	if weapon: part(canvas,kind,8,hand+Vector2(4,-9),Vector2(11,36),.55+swing*.2,tint,root,scale,Vector2(.5,.88))
+	if weapon:
+		if kind==5: part(canvas,kind,8,hand+Vector2(-2,-3),Vector2(44,15),0,tint,root,scale,Vector2(.25,.5))
+		else: part(canvas,kind,8,hand+Vector2(4,-9),Vector2(11,36),.55+swing*.2,tint,root,scale,Vector2(.5,.88))
 	part(canvas,kind,4,hand,Vector2(12,13),swing-.7,tint,root,scale,Vector2(.5,.2))
 
-func paint(canvas: Node2D,kind: int,foot: Vector2,height: float,phase: float,state: String="run",time: float=0,landing: float=0,tint: Color=Color.WHITE) -> void:
-	kind=clampi(kind,0,3)
+func paint(canvas: Node2D,kind: int,foot: Vector2,height: float,phase: float,state: String="run",time: float=0,landing: float=0,tint: Color=Color.WHITE,reverse: bool=false) -> void:
+	kind=clampi(kind,0,art.rigs.size()-1)
+	facing=-1.0 if reverse else 1.0
 	var scale=height/112.0
 	var run=state=="run"
 	var wave=sin(phase*TAU)
@@ -66,6 +71,8 @@ func paint(canvas: Node2D,kind: int,foot: Vector2,height: float,phase: float,sta
 		var flap=sin(time*35.0)
 		for wing in range(2):
 			part(canvas,kind,8,hip+Vector2(-7,-23),Vector2(25,40-absf(flap)*14),-.95-wing*.55+flap*.3,tint*Color(1,1,1,.85),foot,scale,Vector2(.5,1))
+	elif kind==4:
+		part(canvas,kind,8,hip+Vector2(-11,-25),Vector2(23,28),-.2+sin(time*8)*.07,tint,foot,scale,Vector2(.5,.1))
 	var arm_swing=-.30+wave*.85 if run else -.25+sin(time*3)*.10
 	if state in ["rise","fly"]: arm_swing=-1.35
 	elif state=="fall": arm_swing=-.85
@@ -75,6 +82,7 @@ func paint(canvas: Node2D,kind: int,foot: Vector2,height: float,phase: float,sta
 	var lean=.12 if run else .02
 	if state=="rise": lean=.22
 	part(canvas,kind,1,hip+Vector2(3,-16),Vector2(29,36),lean,tint,foot,scale)
-	arm(canvas,kind,hip+Vector2(10,-24),arm_swing,tint,foot,scale,kind==2)
+	arm(canvas,kind,hip+Vector2(10,-24),arm_swing,tint,foot,scale,kind in [2,5],state=="aim")
 	part(canvas,kind,0,hip+Vector2(9,-32),Vector2(52,50),lean*.3+sin(time*5)*.014,tint,foot,scale,Vector2(.5,1))
 	canvas.draw_set_transform(Vector2.ZERO)
+	facing=1.0

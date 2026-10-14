@@ -5,9 +5,10 @@ const LIMIT=240
 var particles: Array[Dictionary]=[]
 var trails: Array[Dictionary]=[]
 var flashes: Array[Dictionary]=[]
+var deaths: Array[Dictionary]=[]
 
 func clear() -> void:
-	particles.clear();trails.clear();flashes.clear()
+	particles.clear();trails.clear();flashes.clear();deaths.clear()
 
 func add(kind: String,pos: Vector2,velocity: Vector2,color: Color,size: float,life: float,gravity: float=0,drift: bool=true) -> Dictionary:
 	if particles.size()>=LIMIT: particles.pop_front()
@@ -30,14 +31,36 @@ func pickup(pos: Vector2,icon: int,target: Vector2) -> void:
 	var p=add("pickup",pos,Vector2.ZERO,Color.WHITE,26,.48,0,false)
 	p.origin=pos;p.target=target;p.icon=icon
 
-func smash(pos: Vector2,car: bool) -> void:
+func smash(pos: Vector2,object_kind: String) -> void:
 	dust(Vector2(pos.x,HordeRun.FLOOR),13,1.4)
 	spark(pos,Color("ffc66a"),22)
 	ring(pos,Color("ee917e"))
 	for i in range(8): add("chip",pos,Vector2(randf_range(-190,170),randf_range(-260,-100)),Color("99705f"),randf_range(3,8),.9,750)
-	if car:
-		var p=add("car",pos,Vector2(125,-340),Color.WHITE,91,1.12,880)
-		p.rotation=0
+	if MonsterCatalog.VEHICLES.has(object_kind):
+		var p=add("vehicle",pos,Vector2(125,-340),Color.WHITE,float(MonsterCatalog.VEHICLES[object_kind].height),1.18,880)
+		p.object=object_kind;p.rotation=0
+	elif object_kind in ["bomb","helicopter"]: explosion(pos)
+
+func explosion(pos: Vector2) -> void:
+	add("explosion",pos,Vector2.ZERO,Color.WHITE,140,.62)
+	spark(pos,Color("ffc66a"),25);dust(pos,10,1.4)
+
+func death(kind: int,pos: Vector2) -> void:
+	if deaths.size()>=24: deaths.pop_front()
+	deaths.append({"kind":kind,"pos":Vector2(pos.x,HordeRun.FLOOR),"life":.85,"duration":.85})
+	if kind==1:
+		for index in [0,1,2,3,4,5,6,7,5,6,7]:
+			var p=add("bone",pos+Vector2(randf_range(-12,12),randf_range(-45,18)),Vector2(randf_range(-140,140),randf_range(-250,-70)),Color.WHITE,35 if index==0 else 20,.80,850)
+			p.part=index
+	elif kind==2:
+		var p=add("mask",pos-Vector2(0,28),Vector2(80,-180),Color.WHITE,43,.80,700)
+		for i in range(14): add("dust",pos+Vector2(0,-30),Vector2(randf_range(-60,60),randf_range(-80,-20)),Color("ae8bca"),randf_range(8,16),.55)
+	elif kind==3:
+		add("fly",pos-Vector2(0,20),Vector2(60,-70),Color.WHITE,48,.80,450)
+		for i in range(4):
+			var wing=add("wing",pos,Vector2(randf_range(-100,100),randf_range(-130,-50)),Color(.85,.75,1,.9),30,.75,320)
+			wing.spin=12
+	else: dust(Vector2(pos.x,HordeRun.FLOOR),12,1.2)
 
 func ghost(kind: int,foot: Vector2,phase: float,state: String,landing: float) -> void:
 	if trails.size()>=8: trails.pop_front()
@@ -51,18 +74,36 @@ func update(dt: float,speed: float) -> void:
 		if p.drift: p.pos.x-=speed*dt
 		p.velocity.y+=p.gravity*dt
 		p.rotation+=p.spin*dt
-		if p.kind=="car" and p.pos.y>HordeRun.FLOOR-40:
-			p.pos.y=HordeRun.FLOOR-40;p.velocity.y=0
+		if p.kind=="vehicle" and p.pos.y>HordeRun.FLOOR-p.size*.45:
+			p.pos.y=HordeRun.FLOOR-p.size*.45;p.velocity.y=0
 		if p.life<=0: particles.remove_at(i)
 	for i in range(trails.size()-1,-1,-1):
 		trails[i].life-=dt;trails[i].foot.x-=speed*dt*.85
 		if trails[i].life<=0: trails.remove_at(i)
+	for i in range(deaths.size()-1,-1,-1):
+		deaths[i].life-=dt;deaths[i].pos.x-=speed*dt
+		if deaths[i].life<=0: deaths.remove_at(i)
 
 func draw_trails(canvas: Node2D,actor: HordeActor,time: float) -> void:
 	for p in trails:
 		actor.paint(canvas,p.kind,p.foot,112,p.phase,p.state,time,p.landing,Color(.65,1,.9,.18*p.life/.32))
 
-func paint(canvas: Node2D,art: HordeArt) -> void:
+func paint(canvas: Node2D,art: HordeArt,actor: HordeActor=null) -> void:
+	for d in deaths:
+		if d.kind!=0: continue
+		var t=1-d.life/d.duration
+		var point=d.pos+Vector2(0,maxf(0,t-.63)*140)
+		var alpha=minf(1,d.life/.18)
+		if actor!=null and t<.5: actor.paint(canvas,0,point-Vector2(0,20-t*80),90*(1-t*.7),t,"fall",t,0,Color(1,1,1,alpha))
+		var size=art.props[1].get_size()*(112/art.props[1].get_height())
+		canvas.draw_set_transform(point-Vector2(0,48),-.3,Vector2(1,1))
+		canvas.draw_texture_rect(art.props[1],Rect2(-size*.5,size),false,Color(1,1,1,alpha))
+		if t>.25:
+			var closing=clampf((t-.25)/.25,0,1)
+			var lid_size=art.props[2].get_size()*(108/art.props[2].get_height())
+			canvas.draw_set_transform(point+Vector2((1-closing)*55,-50),-.3-(1-closing)*.8)
+			canvas.draw_texture_rect(art.props[2],Rect2(-lid_size*.5,lid_size),false,Color(1,1,1,alpha))
+		canvas.draw_set_transform(Vector2.ZERO)
 	for p in particles:
 		var progress=1.0-p.life/p.duration
 		var color=p.color
@@ -88,10 +129,21 @@ func paint(canvas: Node2D,art: HordeArt) -> void:
 			"chip":
 				canvas.draw_set_transform(p.pos,p.rotation)
 				canvas.draw_rect(Rect2(-p.size*.5,-p.size*.5,p.size,p.size),color)
-			"car":
+			"vehicle":
 				canvas.draw_set_transform(p.pos,minf(PI,progress*PI*1.65))
-				var texture=art.items[7]
+				var texture=art.vehicle(p.object)
 				var size=texture.get_size()*(p.size/texture.get_height())
+				canvas.draw_texture_rect(texture,Rect2(-size*.5,size),false,color)
+			"bone","mask","fly","wing","explosion":
+				var texture: Texture2D=art.props[5]
+				match p.kind:
+					"bone": texture=art.rigs[1][p.part]
+					"mask": texture=art.rigs[2][0]
+					"fly": texture=art.rigs[3][0]
+					"wing": texture=art.rigs[3][8]
+				var size=texture.get_size()*(p.size/texture.get_height())
+				if p.kind=="explosion": size*=.7+progress*.7
+				canvas.draw_set_transform(p.pos,0 if p.kind=="explosion" else p.rotation)
 				canvas.draw_texture_rect(texture,Rect2(-size*.5,size),false,color)
 			"pickup":
 				var t=1-pow(1-progress,3)

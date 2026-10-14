@@ -12,6 +12,10 @@ var baselines: Array[float]=[]
 var rigs: Array=[]
 var layers: Array[AtlasTexture]=[]
 var sky: AtlasTexture
+var world_layers: Array=[]
+var world_thumbnails: Array[AtlasTexture]=[]
+var vehicles: Array[AtlasTexture]=[]
+var props: Array[AtlasTexture]=[]
 
 func _init() -> void:
 	var data=JSON.parse_string(FileAccess.get_file_as_string("res://assets/art/layout.json"))
@@ -30,6 +34,29 @@ func _init() -> void:
 	var scenery=preload("res://assets/art/parallax-v2.png")
 	for region in rig_data.layers: layers.append(atlas(scenery,region))
 	sky=atlas(background,[285,0,1251,465])
+	world_layers.append(layers)
+	var extra=JSON.parse_string(FileAccess.get_file_as_string("res://assets/art/world-layout.json"))
+	for rig in extra.rigs:
+		var sheet=load("res://assets/art/"+str(rig.file)) as Texture2D
+		var parts: Array[AtlasTexture]=[]
+		for region in rig.parts: parts.append(atlas(sheet,region))
+		rigs.append(parts)
+	for world in extra.worlds:
+		var sheet=load("res://assets/art/"+str(world.file)) as Texture2D
+		var world_parts: Array[AtlasTexture]=[]
+		for region in world.layers: world_parts.append(atlas(sheet,region))
+		world_layers.append(world_parts)
+	for group in world_layers:
+		var region=group[1].region
+		world_thumbnails.append(atlas(group[1].atlas,[region.position.x+500,region.position.y,510,region.size.y]))
+	var vehicle_sheet=preload("res://assets/art/vehicles-v3.png")
+	for region in extra.vehicles: vehicles.append(atlas(vehicle_sheet,region))
+	var prop_sheet=preload("res://assets/art/props-v3.png")
+	for region in extra.props: props.append(atlas(prop_sheet,region))
+
+func vehicle(kind: String) -> Texture2D:
+	var index=int(MonsterCatalog.VEHICLES.get(kind,{"icon":-1}).icon)
+	return items[7] if index<0 else vehicles[index]
 
 static func atlas(sheet: Texture2D,region: Array) -> AtlasTexture:
 	var texture=AtlasTexture.new()

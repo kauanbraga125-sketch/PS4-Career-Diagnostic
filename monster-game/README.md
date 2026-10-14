@@ -1,51 +1,61 @@
-# Noite da Horda — Android alpha 0.2
+# Noite da Horda — Android alpha 0.3
 
-Corrida 2D de monstros para Kauan. Esta atualização concentra-se em movimento, efeitos, decisões durante a corrida e progressão. O projeto fica separado do Porto Livre e dos arquivos FIFA/PS4.
+Corrida 2D de monstros para Kauan. Godot 4.5.1; funciona offline, em paisagem. Projeto separado de Porto Livre e dos arquivos FIFA/PS4.
 
-## Movimento e efeitos
+## Esta versão
 
-- Os quatro monstros usam novas peças bitmap articuladas: pernas alternadas, joelhos conectados, balanço dos braços, corpo e cabeça, poses de subida/queda, compressão ao aterrissar e asas batendo. O pé de apoio permanece na linha do chão.
-- Poeira animada nos passos, na saída do salto, na aterrissagem e nos impactos; brilhos, ondas de transformação, fragmentos, moedas voando até o contador e sombras que diminuem com a altura.
-- Moedas giram; cristais, máscaras, escudos e poções flutuam, oscilam e têm luzes orbitando. Os bônus reagem à coleta.
-- Frenesi e velocidade elevada deixam cópias que desaparecem e linhas de vento atrás da horda. Efeitos limitados a 240 partículas e oito cópias.
-- Três camadas pintadas de parallax: colinas/castelo distante, vila/ponte e árvores/cemitério próximo. Chão em movimento, lanternas oscilando, brilho das luzes, grama, vaga-lumes e morcegos animados.
+- Cemitério e Cidade em Caos liberados desde o início. Cada região mede 6.000 pixels de percurso (200 m do contador); um túnel com arco pintado, paredes e lanternas conduz à seguinte. A rota se repete continuamente.
+- Zona Industrial: 700 moedas; Aeroporto: 1.200. As compras entram na próxima corrida, após as regiões iniciais. Cada cenário tem três camadas pintadas de parallax. Cidade com seis civis articulados fugindo, fogo, gritos e helicópteros caindo ao fundo; indústria com fumaça e aeroporto com luzes pulsantes.
+- Quedas definitivas. Um membro abaixo do chão continua caindo mesmo se a borda passar ou houver um bônus/recruta perto. Perder todos leva à tela Fim da Horda. Um novo líder vem do grupo sobrevivente e fecha o espaço gradualmente. Não há respawn automático durante a corrida.
+- Animações curtas de perda: zumbi retorna ao caixão, tampa fecha e se enterra; esqueleto desmonta em peças; mascarado perde a máscara em fumaça; mosca gira e solta fragmentos das asas.
+- Mosca no estilo balão: sobe automaticamente a uma altura segura. Segure para mergulhar até o chão e coletar; solte para subir. Ao mergulhar, pode sofrer dano. Ao terminar o bônus, recupera sua forma anterior e os pulos normais.
+- Bombas com pavio animado, helicópteros de ataque com rotor e soldados mirando/disparando projéteis. Saltos evitam tiros. Cada ameaça consumível causa uma perda; escudo absorve uma, máscara destrói obstáculos. Escudo e máscara não impedem queda em buracos.
+- Velocidade e largura dos buracos crescem com o percurso. Uma horda grande aumenta a pressão e reduz recrutas; a partir do quinto túnel a pressão cresce mais. Três perdas recentes ou grupo pequeno ativam sete segundos de recuperação, suavizam velocidade/dificuldade e geram mais recrutas. Objetos já presentes continuam no percurso sem mudar de posição.
 
-## Jogar
+## Veículos
 
-Android em paisagem. Toque na pista ou em PULAR; segure para saltar mais alto. Pulo Ágil nível 2 libera salto duplo. II pausa; SOM liga/desliga áudio. No computador, espaço e Esc.
+A quantidade conta criaturas vivas no chão. A máscara também consegue destruí-los. Todos tombam com animação, liberam criaturas e dão moedas; o indicador muda de cor conforme a força atual.
 
-- Zumbis e esqueletos encontrados na pista juntam-se à horda, até doze membros.
-- Carro: quatro membros no chão conseguem virá-lo. O indicador muda de cor conforme a força disponível; o veículo tomba e libera um recruta e oito moedas. Com menos membros, pule por cima.
-- Cristal: transforma o grupo em moscas. O botão vira SUBIR; segure para subir e solte para descer. Asas animadas, altura limitada à área de jogo e breve recuperação sobre buracos quando o bônus termina.
-- Máscara: transforma o grupo em mascarados que quebram obstáculos.
-- Poção: Frenesi de cinco segundos, velocidade 18% maior e moedas coletadas em dobro. Não concede invencibilidade.
-- Salto dos seguidores usa posições do percurso, acompanhando o líder mesmo quando a velocidade muda. Percurso com nove tipos de trechos e recrutamento, obstáculos e moedas indicando trajetórias.
+| Veículo | Criaturas | Moedas | Resgates |
+|---|---:|---:|---:|
+| Moto | 2 | 5 | 1 |
+| Carro | 4 | 8 | 1 |
+| Ônibus | 8 | 18 | 3 |
+| Caminhão | 10 | 22 | 3 |
+| Tanque | 12 | 28 | 4 |
+| Avião | 16 | 40 | 5 |
 
-## Compras e missões
+A horda comporta 24 membros. Recrutamento além do limite rende duas moedas. São desafios da pista; veículos não são dirigíveis.
 
-Carteira inicial: 120 moedas. Quatro melhorias permanentes, até três níveis: Primeira Horda (50 moedas × próximo nível), Pulo Ágil (65), Ímã de Moedas (70) e Metamorfose (80).
+## Controles e progressão
 
-Só o visual de zumbi começa desbloqueado. Visuais do líder: esqueleto 240, mascarado 650 e mosca 950 moedas. Comprar equipa o visual; selecionar um comprado é grátis. Os visuais compartilham a física comum. Poderes especiais dependem dos bônus encontrados na pista, que podem ser experimentados antes da compra.
+Toque na pista ou em PULAR. Segure para saltar mais alto. Pulo Ágil nível 2 libera salto duplo. Durante o bônus Mosca, o botão vira MERGULHAR. II pausa, SOM liga/desliga; no computador, espaço e Esc. Android pausa automaticamente ao ir para o fundo.
 
-Três missões ativas por capítulo. Doze modelos de objetivos, incluindo virar carros, saltos seguros, formar horda, distância, moedas, transformações e frenesi. Ao completar o trio, novos objetivos aparecem. Quantidades aumentam após os quatro primeiros capítulos; progresso e recompensas são salvos.
+Quatro melhorias permanentes, até três níveis: Primeira Horda (50 moedas × próximo nível), Pulo Ágil (65), Ímã de Moedas (70), Metamorfose (80). Carteira inicial: 120 moedas.
 
-Moedas ficam com você ao perder. Save local com escrita atômica e backup. Atualizações da alpha 0.1 preservam carteira, melhorias, recorde e recompensas já recebidas. Sem anúncios, pagamentos reais ou conexão obrigatória.
+Só o visual de zumbi começa desbloqueado. Esqueleto 240, Mascarado 650 e Mosca 950 moedas. Os visuais compartilham a física normal; os bônus da pista dão poderes temporários mesmo sem comprar a skin.
 
-## Recursos e limites atuais
+Três missões por capítulo, doze modelos renováveis: recrutamento, moedas, distância, veículos, saltos, bônus, tamanho de horda, voo e frenesi. Quantidades crescem após os quatro primeiros capítulos. Recompensas pagas uma vez. Moedas e compras ficam após perder.
 
-Quatro monstros, um tema de cemitério e duas músicas originais com onze efeitos sonoros offline. Outros personagens e regiões do conceito ainda não foram adicionados. Arte e prompts documentados em [ASSETS.md](ASSETS.md), [art-prompts.json](art-prompts.json) e [art-prompts-v2.json](art-prompts-v2.json).
+Save local com escrita atômica e backup. Migração das alphas 0.1/0.2 preserva carteira, recorde, melhorias, skins e recompensas; acrescenta os dois cenários grátis. Sem anúncios, pagamentos reais ou conexão obrigatória.
 
-Godot 4.5.1, Compatibility, Android 7+, OpenGL ES 3.0, ARMv7/ARM64. Meta de 60 FPS; desempenho em telefone físico ainda não foi medido. Pacote `com.kauan.noitedahorda`, versionCode 2. APK de desenvolvimento assinado com chave mantida no cache do workflow.
+## Arte, som e Android
 
-## Verificação
+Quatro rigs de monstros e dois de NPCs, nove peças cada, com pernas alternadas, joelhos conectados, braços, corpo, cabeça, asas e compressão ao aterrissar. Poeira, ondas de transformação, brilhos, moedas girando/voando e rastros de velocidade. Limites: 240 partículas, oito rastros e 24 mortes transitórias.
+
+Duas músicas originais e efeitos offline, incluindo vozes e mortes de cada monstro, sons de tiros, explosões e cidade. Amostras gratuitas CC0 e cue original do mascarado, com fontes em [ASSETS.md](ASSETS.md). Sem áudio extraído de Minecraft ou filmes.
+
+Android 7+, OpenGL ES 3.0, ARMv7/ARM64; Compatibility. Meta de 60 FPS; ainda não há medição em telefone físico. Pacote `com.kauan.noitedahorda`, versionCode 3, APK de desenvolvimento com mesma chave mantida no workflow para permitir atualização.
+
+## Verificação e reprodução
 
 ```sh
 godot --headless --path monster-game --editor --import
 godot --headless --path monster-game -- --self-test
 ```
 
-Testes de conexões da animação, voo com toque, carros com três/quatro membros, frenesi, recrutamento, pulos e buracos, compras, missões renováveis, save/migração, pausa, morte/retry e limites de entidades/efeitos.
+Testes de queda/perda total, sobreviventes, máscara/escudo, retry, seis limiares de veículos, balão/mergulho, tiros e esquiva, dificuldade/recuperação real na geração, quatro rotas, compras, missões, save v1/v2/v3, animações, limites e simulação longa.
 
-O workflow `.github/workflows/noite-da-horda-android.yml` renderiza capturas e um vídeo de 360 quadros do jogo real com entradas simuladas, exporta o APK e verifica assinatura v2/v3 e SHA-256. O vídeo de demonstração usa a música original e não é um benchmark de FPS.
+O workflow `.github/workflows/noite-da-horda-android.yml` valida testes, onze capturas do motor, vídeo de 480 quadros (16 s), exportação, assinatura e SHA-256 antes de publicar. O vídeo usa cenários preparados, entradas simuladas e a música original; não é benchmark de desempenho.
 
-`prepare_rigs.py` mede transparência e prepara regiões de atlas sem alterar os pixels gerados. `prepare_art.py` e `compose_audio.py` reproduzem os metadados da arte original e a síntese dos sons.
+`prepare_rigs.py` e `prepare_worlds.py` medem regiões alpha sem editar os pixels das imagens. `compose_audio.py` sintetiza a trilha/efeitos originais. `compose_threat_audio.py` processa as amostras creditadas e gera os sons novos; para reprodução, prepare os fontes em `horde-audio-sources/` e o cue `masked-voice.wav` com o filtro flite do FFmpeg, conforme o próprio script. Os OGG prontos estão incluídos no projeto.

@@ -60,10 +60,11 @@ func run(game) -> void:
 	game.consume_run_events()
 	check(game.runner.perk_kind==3 and game.runner.perk_left>6,"Distinctive crystal activates mutant-fly transformation")
 	var during=game.runner.members.size()
+	for i in range(60): game.runner.advance(1.0/60,false)
 	game.runner.add_entity("spikes",HordeRun.ANCHOR+4,HordeRun.FLOOR,0,95)
 	game.runner.advance(1.0/60)
 	game.consume_run_events()
-	check(game.runner.members.size()==during,"Strong perk destroys a physical hazard")
+	check(game.runner.members.size()==during,"Automatic flight safely avoids a ground hazard")
 	game.runner.entities.clear()
 	game.runner.add_entity("gap",HordeRun.ANCHOR-80,HordeRun.FLOOR,0,500)
 	for i in range(80): game.runner.advance(1.0/60)
@@ -94,12 +95,12 @@ func run(game) -> void:
 	var hover=flight.members[0].y
 	flight.jump()
 	for i in range(60): flight.advance(1.0/60,true)
-	check(flight.members[0].y<hover-100,"Holding flight control rises without a double-jump purchase")
+	check(flight.members[0].y>hover+100,"Holding flight control dives toward the ground")
 	var high=flight.members[0].y
 	for i in range(60): flight.advance(1.0/60,false)
-	check(flight.members[0].y>high+60 and flight.members[0].y<=HordeRun.FLOOR-71,"Releasing flight descends to a safe hover")
+	check(flight.members[0].y<high-100 and flight.members[0].y>=HordeRun.FLOOR-210,"Releasing flight automatically rises to a safe hover")
 	for i in range(100): flight.advance(1.0/60,true)
-	check(flight.members[0].y>=HordeRun.FLOOR-300,"Flying cannot leave the playable screen")
+	check(flight.members[0].y>=HordeRun.FLOOR-210,"Flying cannot leave the playable screen")
 	flight.perk_left=.001
 	for i in range(120): flight.advance(1.0/60,false)
 	check(flight.perk_kind==-1 and absf(flight.members[0].y-HordeRun.FLOOR)<.1,"Fly expiration lands and restores normal jump control")
@@ -110,7 +111,7 @@ func run(game) -> void:
 	frenzy.entities.clear();frenzy.next_segment=99999
 	frenzy.add_entity("boost",HordeRun.ANCHOR+4,HordeRun.FLOOR-48)
 	frenzy.advance(1.0/60)
-	for i in range(60): frenzy.advance(1.0/60)
+	for i in range(90): frenzy.advance(1.0/60)
 	frenzy.add_entity("coin",HordeRun.ANCHOR+4,HordeRun.FLOOR-48)
 	frenzy.advance(1.0/60)
 	check(frenzy.speed>320 and frenzy.coins==2 and frenzy.boost_px>0,"Frenzy really accelerates and doubles coin pickup")
@@ -183,8 +184,176 @@ func run(game) -> void:
 		if i%23==0: stress.jump()
 		stress.advance(1.0/60,true);stress.drain_events()
 		if stress.entities.size()>110: check(false,"Endless course cleans expired entities"); break
-	check(stress.members.size()<=12,"Horde remains within mobile rendering budget")
+	check(stress.members.size()<=24,"Horde remains within mobile rendering budget")
+	regressions_v3(game)
 	if failures.is_empty():
-		print("HORDE_TEST_OK: articulated animation, parallax, flight control, four-member car flips, frenzy, skin shop, renewing missions, effects bounds, save migration and gameplay regression")
+		print("HORDE_TEST_OK: permanent pit death, survivor continuity, game over/retry, adaptive difficulty/recovery, four districts/tunnels, six vehicle thresholds, bombs/helicopters/soldier bullets, balloon flight, character deaths/audio, progression/save v1-v3 and bounded long-run simulation")
 		get_tree().quit(0)
 	else: get_tree().quit(1)
+
+func isolated(count: int=1,kind: int=0) -> HordeRun:
+	var run=HordeRun.new()
+	run.start(MonsterCatalog.defaults().levels,123,kind)
+	run.entities.clear();run.events.clear();run.next_segment=99999
+	for i in range(count-1): run.add_member(kind,false)
+	return run
+
+func ticks(run: HordeRun,count: int,held: bool=false) -> void:
+	for i in range(count): run.advance(1.0/60,held)
+
+func regressions_v3(game) -> void:
+	check(game.art.rigs.size()==6 and game.art.world_layers.size()==4,"Four monster rigs, civilian, soldier and four painted worlds")
+	check(game.art.vehicles.size()==6 and game.art.props.size()==6,"Six new vehicle images and six characteristic props")
+	for name in ["voice_zombie","voice_skeleton","voice_masked","voice_fly","death_zombie","death_skeleton","death_masked","death_fly","city_scream","city_ambience","gunshot","explosion","tunnel"]:
+		check(game.sound.clips.has(name) and game.sound.clips[name].get_length()>.1,"Real offline audio bundled: "+name)
+	check(MonsterCatalog.defaults().areas==[0,1],"Cemetery and city unlocked initially")
+	# A below-floor member remains dead even when solid floor returns before removal.
+	for kind in range(4):
+		var pit=isolated(1,kind)
+		pit.add_entity("gap",HordeRun.ANCHOR-10,HordeRun.FLOOR,0,130)
+		ticks(pit,11)
+		check(pit.active_count()==0 and pit.members[0].falling,"Pit locks falling state for visual "+str(kind))
+		var falling_y=pit.members[0].y
+		pit.entities.clear()
+		pit.add_entity("recruit",pit.members[0].x,HordeRun.FLOOR,1)
+		pit.grant_perk(3);pit.jump();pit.add_member(1)
+		ticks(pit,4,true)
+		check(pit.members.size()==1 and pit.members[0].y>falling_y and pit.perk_kind==-1,"No floor, jump, perk or pickup can resurrect a falling member")
+		ticks(pit,40)
+		var ends=0
+		for event in pit.drain_events():
+			if event.type=="finish": ends+=1
+		check(pit.dead and pit.members.is_empty() and ends==1,"Last pit death permanently finishes exactly once")
+	var masked_pit=isolated(4)
+	masked_pit.grant_perk(2);masked_pit.shields=1
+	masked_pit.add_entity("gap",HordeRun.ANCHOR-200,HordeRun.FLOOR,0,550)
+	ticks(masked_pit,90)
+	check(masked_pit.dead and masked_pit.losses==4,"Mask and shield never protect against falling into a pit")
+	var partial=isolated(4)
+	var survivor_id=partial.members[1].id
+	var survivor_x=partial.members[1].x
+	partial.members[0].y=HordeRun.FLOOR+160;partial.members[0].vy=400;partial.members[0].falling=true
+	ticks(partial,2)
+	check(not partial.dead and partial.members.size()==3 and partial.members[0].id==survivor_id,"Partial loss preserves real surviving members")
+	check(partial.members[0].x-survivor_x<3,"New leader closes spacing gradually instead of respawning at the front")
+	# Every vehicle has its own real grounded strength threshold and reward.
+	for name in MonsterCatalog.VEHICLES:
+		var spec=MonsterCatalog.VEHICLES[name]
+		var weak=isolated(int(spec.need)-1)
+		var obstacle=weak.add_entity(name,HordeRun.ANCHOR+4)
+		weak.advance(1.0/60)
+		check(not obstacle.taken and weak.cars==0 and weak.losses==1,"One short cannot flip "+name)
+		var strong=isolated(int(spec.need))
+		strong.add_entity(name,HordeRun.ANCHOR+4);strong.advance(1.0/60)
+		check(strong.cars==1 and strong.coins==int(spec.reward) and strong.active_count()==int(spec.need)+int(spec.rescues),"Exact threshold flips and rescues: "+name)
+		var flip_found=false
+		for event in strong.events:
+			if event.type=="smash" and event.object==name: flip_found=true
+		check(flip_found,"Specific animated flip event for "+name)
+	var maximum_gap=isolated(24)
+	maximum_gap.world_px=54000;maximum_gap.speed=500;maximum_gap.pressure=1
+	maximum_gap.add_entity("gap",HordeRun.ANCHOR+35,HordeRun.FLOOR,0,325)
+	maximum_gap.jump();ticks(maximum_gap,160,false)
+	check(maximum_gap.active_count()==24 and not maximum_gap.dead,"Largest generated pit is crossable by every follower with an ordinary timed jump")
+	var cap=isolated(24)
+	cap.add_member(0)
+	check(cap.active_count()==24 and cap.coins==2,"Horde cap admits the sixteen-member airplane challenge")
+	# Consumable threats eliminate one member and cannot hit the whole group at once.
+	for hazard in ["bomb","bullet","helicopter"]:
+		var run=isolated(4)
+		var y=HordeRun.FLOOR-54 if hazard in ["bullet","helicopter"] else HordeRun.FLOOR
+		var threat=run.add_entity(hazard,HordeRun.ANCHOR+4,y)
+		ticks(run,35)
+		check(run.losses==1 and run.active_count()==3 and threat.taken,"Single casualty and threat consumed: "+hazard)
+	var dodge=isolated()
+	dodge.add_entity("bullet",HordeRun.ANCHOR+110,HordeRun.FLOOR-64)
+	dodge.jump();ticks(dodge,50,true)
+	check(not dodge.dead and dodge.losses==0,"Jump avoids an approaching army bullet")
+	var army=isolated(4)
+	var soldier=army.add_entity("soldier",1100);soldier.timer=.01
+	army.advance(1.0/60)
+	var fired=false
+	for e in army.entities:
+		if e.kind=="bullet": fired=true
+	check(army.shots==1 and fired and soldier.flash>0,"Distant soldier actually fires a visible moving bullet")
+	var vulnerable=isolated(4)
+	vulnerable.grant_perk(3);ticks(vulnerable,60,true)
+	vulnerable.add_entity("bomb",HordeRun.ANCHOR+4)
+	vulnerable.advance(1.0/60,true)
+	check(vulnerable.losses==1,"Diving fly remains vulnerable to ground hazards")
+	# Smooth scaling depends on tunnel and crew; recovery changes future spawns only.
+	var easy=HordeDirector.profile(0,2,0,0)
+	var large=HordeDirector.profile(30000,22,1,0)
+	var recovery=HordeDirector.profile(30000,2,0,7)
+	check(large.speed>easy.speed and large.gap>easy.gap and large.recruit_chance<easy.recruit_chance,"Speed, pit size and fewer recruits scale with progress and a large horde")
+	check(large.pressure_target>.9 and recovery.pressure_target==0 and recovery.recruit_chance>.95 and recovery.gap<=180,"Tunnel five escalates large crews; severe losses stabilize the profile")
+	var regroup=isolated(10)
+	regroup.world_px=30000;regroup.speed=430;regroup.pressure=.8
+	var existing=regroup.add_entity("bomb",1000)
+	for i in range(3): regroup.remove_member(0,"test")
+	var x=existing.x
+	regroup.advance(1.0/60)
+	var rescues=0
+	for e in regroup.entities:
+		if e.kind=="recruit": rescues+=1
+	check(regroup.recovery_left>6 and rescues>=2 and absf(existing.x-(x-regroup.speed/60))<.01,"Loss recovery adds recruits without teleporting an existing hazard")
+	var hard_spawns=isolated(22);hard_spawns.world_px=30000;hard_spawns.pressure=1
+	var soft_spawns=isolated(2);soft_spawns.world_px=30000;soft_spawns.recovery_left=7
+	for i in range(80): hard_spawns.spawn_segment(20+i);soft_spawns.spawn_segment(20+i)
+	var hard_recruits=0;var soft_recruits=0
+	for e in hard_spawns.entities:
+		if e.kind=="recruit": hard_recruits+=1
+	for e in soft_spawns.entities:
+		if e.kind=="recruit": soft_recruits+=1
+	check(soft_recruits>hard_recruits*2,"Adaptive profile actually generates more recruits after heavy losses")
+	var route=isolated()
+	route.world_px=HordeRun.ZONE_LENGTH-HordeRun.ANCHOR-100
+	check(route.area()==0 and route.inside_tunnel(),"Styled tunnel begins before the district boundary")
+	route.world_px+=150
+	check(route.area()==1 and route.tunnel_number()==1,"First tunnel leads from cemetery to free city")
+	route.start(MonsterCatalog.defaults().levels,123,0,[3,3,2,99])
+	check(route.route==[0,1,3,2],"Only purchased unique districts enter the route")
+	for i in range(1,7):
+		route.world_px=i*HordeRun.ZONE_LENGTH-HordeRun.ANCHOR
+		check(route.area()==route.route[i%4],"District route repeats correctly at tunnel "+str(i))
+	var civilian_x=game.scenery.civilians[0].x
+	route.world_px=7000;game.scenery.reset();game.scenery.update(3,route)
+	check(game.scenery.civilians[0].x!=civilian_x and "background_scream" in game.scenery.events,"City people move and scream on their own schedule")
+	game.scenery.update(4,route)
+	check("background_crash" in game.scenery.events,"Background helicopter crash triggers its own sound")
+	game.data=MonsterCatalog.defaults();game.data.wallet=1900
+	check(game.buy_area(2) and game.data.wallet==1200 and game.data.areas==[0,1,2],"Industrial district purchase uses earned coins")
+	check(game.buy_area(2) and game.data.wallet==1200,"Unlocked district never charges twice")
+	check(game.buy_area(3) and game.data.wallet==0 and game.data.areas==[0,1,2,3],"Airport purchase unlocks the fourth district")
+	game.start_run();game.capture_freeze=true
+	check(game.runner.route==[0,1,2,3],"Purchased worlds appear in the next actual run")
+	# The game UI must reach game-over from an actual full-horde pit loss.
+	game.runner.entities.clear();game.runner.next_segment=99999
+	game.runner.add_entity("coin",HordeRun.ANCHOR+4,HordeRun.FLOOR-48)
+	game.runner.advance(1.0/60);game.consume_run_events()
+	var banked=game.data.wallet
+	game.runner.add_entity("gap",HordeRun.ANCHOR-20,HordeRun.FLOOR,0,160)
+	ticks(game.runner,70);game.consume_run_events()
+	check(game.runner.dead and game.end_delay>0 and not game.effects.deaths.is_empty(),"Last pit death creates characteristic animation and queues game over")
+	game.capture_freeze=false;game._process(1.01);game.capture_freeze=true
+	check(game.screen=="results" and game.data.wallet==banked,"Styled game over is reached and earned coins remain")
+	game.perform_action("play");game.capture_freeze=true
+	check(game.screen=="run" and not game.runner.dead and game.runner.active_count()==1,"Retry from the game-over action starts a fresh run")
+	var migrated=game.validate_save({"version":2,"wallet":876,"best":654,"owned":[0,1],"skin":1,"levels":{"jump":2}})
+	check(migrated.version==3 and migrated.wallet==876 and migrated.best==654 and migrated.areas==[0,1] and migrated.skin==1,"Alpha 0.2 migrates to 0.3 with two free worlds and all purchases intact")
+	var sanitized=game.validate_save({"version":3,"areas":[3,3,99,-1],"mission_progress":{},"claimed":["0:coins"]})
+	check(sanitized.areas==[0,1,3] and sanitized.mission_progress.coins==25,"District ownership and already claimed mission bars sanitize correctly")
+	game.data.areas=[0,1,2,3]
+	var save_path="user://horde-v3-regression.json"
+	game.save_game(save_path)
+	check(game.read_save(save_path).areas==[0,1,2,3] and game.read_save(save_path).version==3,"All four worlds survive version-three disk round-trip")
+	for suffix in ["",".bak",".tmp"]: DirAccess.remove_absolute(save_path+suffix)
+	game.effects.clear()
+	for kind in range(4): game.effects.death(kind,Vector2(340,HordeRun.FLOOR-30))
+	var debris=[]
+	for part in game.effects.particles: debris.append(part.kind)
+	check(game.effects.deaths.size()==4 and "bone" in debris and "mask" in debris and "fly" in debris and "wing" in debris,"Four different short death animations exist")
+	for i in range(40): game.effects.death(1,Vector2(340,544))
+	check(game.effects.deaths.size()<=24 and game.effects.particles.size()<=240,"Death fragments also respect mobile effect budgets")
+	game.effects.update(2,0)
+	check(game.effects.deaths.is_empty() and game.effects.particles.is_empty(),"Deaths never respawn a creature and clean up quickly")
