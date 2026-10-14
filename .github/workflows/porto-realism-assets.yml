@@ -21,8 +21,10 @@ jobs:
           path: |
             .porto-asset-cache
             .blender-tools
-          key: porto-realism-tools-v2
-          restore-keys: porto-realism-tools-v1
+          key: porto-realism-tools-v4
+          restore-keys: |
+            porto-realism-tools-v2
+            porto-realism-tools-v1
       - name: Install pinned Blender
         run: |
           mkdir -p .blender-tools

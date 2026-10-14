@@ -41,7 +41,15 @@ var fps = 60.0
 var dynamic_resolution = 0.80
 var death_pending = false
 var footstep = 0.0
-var test_mode = false
+var test_mode=false
+var sky_material: ShaderMaterial
+var time_of_day=10.5
+var weather=0
+var weather_timer=0.0
+var daylight=1.0
+var wind_time=0.0
+var death_delay=0.0
+var aim_blend=0.0
 
 func _ready() -> void:
 	test_mode = "--self-test" in OS.get_cmdline_user_args()
@@ -106,22 +114,30 @@ func setup_environment() -> void:
 	environment = Environment.new()
 	environment.background_mode = Environment.BG_SKY
 	var sky = Sky.new()
-	var sky_material = ProceduralSkyMaterial.new()
-	sky_material.sky_top_color = Color("489dcc")
-	sky_material.sky_horizon_color = Color("c8e4e6")
-	sky_material.ground_horizon_color = Color("e8dac0")
-	sky_material.ground_bottom_color = Color("6c9e8f")
-	sky_material.sun_angle_max = 3
-	sky.sky_material = sky_material
-	environment.sky = sky
-	environment.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
-	environment.reflected_light_source = Environment.REFLECTION_SOURCE_SKY
-	environment.ambient_light_color = Color("c8d6d6")
-	environment.ambient_light_energy = 0.34
-	environment.tonemap_mode = Environment.TONE_MAPPER_FILMIC
-	environment.fog_enabled = true
-	environment.fog_light_color = Color("b8d5d5")
-	environment.fog_density = 0.0025
+	sky_material=ShaderMaterial.new()
+	sky_material.shader=load("res://shaders/coastal_sky.gdshader")
+	sky_material.set_shader_parameter("day_sky",load("res://assets/realism/sky/day.png"))
+	sky_material.set_shader_parameter("dawn_sky",load("res://assets/realism/sky/morning.png"))
+	sky_material.set_shader_parameter("night_sky",load("res://assets/realism/sky/night.png"))
+	var noise=FastNoiseLite.new()
+	noise.seed=7219;noise.frequency=.055;noise.noise_type=FastNoiseLite.TYPE_SIMPLEX_SMOOTH;noise.fractal_octaves=3
+	var volume=NoiseTexture3D.new()
+	volume.width=64;volume.height=32;volume.depth=64;volume.seamless=true;volume.noise=noise
+	sky_material.set_shader_parameter("cloud_noise",volume)
+	sky.sky_material=sky_material
+	sky.radiance_size=Sky.RADIANCE_SIZE_64
+	sky.process_mode=Sky.PROCESS_MODE_REALTIME
+	environment.sky=sky
+	environment.ambient_light_source=Environment.AMBIENT_SOURCE_COLOR
+	environment.reflected_light_source=Environment.REFLECTION_SOURCE_SKY
+	environment.ambient_light_color=Color("b8d6ee")
+	environment.ambient_light_energy=.36
+	environment.tonemap_mode=Environment.TONE_MAPPER_FILMIC
+	environment.fog_enabled=true
+	environment.fog_light_color=Color("a7c8da")
+	environment.fog_density=.0006
+	time_of_day=float(saved.get("hour",10.5))
+	weather=clampi(int(saved.get("weather",0)),0,2)
 	var node = WorldEnvironment.new()
 	node.environment = environment
 	add_child(node)
@@ -131,7 +147,37 @@ func setup_environment() -> void:
 	sun.light_energy = 0.97
 	sun.shadow_enabled = false
 	add_child(sun)
-	add_child(StreetAtmosphere.new())
+	update_weather(0)
+
+func update_weather(dt: float) -> void:
+	time_of_day=fposmod(time_of_day+dt/60.0,24.0)
+	wind_time+=dt
+	weather_timer+=dt
+	if weather_timer>240:
+		weather_timer=0;weather=(weather+1)%3
+	var solar=sin((time_of_day-6)/24*TAU)
+	daylight=clampf(solar*1.6+.12,0,1)
+	var sunset=clampf(1.0-absf(solar)*3,0,1)*daylight
+	sky_material.set_shader_parameter("daylight",daylight)
+	sky_material.set_shader_parameter("sunset",sunset)
+	sky_material.set_shader_parameter("cloudiness",[.3,.65,.95][weather])
+	sky_material.set_shader_parameter("wind_time",wind_time)
+	sun.rotation_degrees=Vector3(-maxf(12,solar*72),-35+(time_of_day-12)*10,0)
+	sun.light_color=Color("a2c5ff").lerp(Color("fff0cc").lerp(Color("ffc38b"),sunset),daylight)
+	sun.light_energy=lerpf(.22,.97,daylight)*(1.0-weather*.12)
+	environment.ambient_light_energy=lerpf(.30,.40,daylight)
+	environment.ambient_light_color=Color("6587b4").lerp(Color("b4d5ed"),daylight)
+	environment.fog_light_color=Color("263d60").lerp(Color("a7c8da"),daylight)
+
+func cycle_time() -> void:
+	time_of_day=14.0 if time_of_day<8 else (18.2 if time_of_day<17 else (22.0 if time_of_day<21 else 7.0))
+	update_weather(0)
+	save_game()
+
+func cycle_weather() -> void:
+	weather=(weather+1)%3;weather_timer=0
+	update_weather(0)
+	save_game()
 
 func spawn_vehicles() -> void:
 	var spawns = [[78,6,false,0],[44,7,true,0],[125,-95,false,1],[-115,12,true,1],[365,8,false,2],[-475,-115,true,0],[485,14,false,3],[125,252,false,4],[-350,15,true,1],[605,365,false,1]]
@@ -205,12 +251,13 @@ func set_quality(value: int) -> void:
 	dynamic_resolution = [0.72,0.86,1.0][quality]
 	get_viewport().scaling_3d_scale = dynamic_resolution
 	Engine.max_fps = 30 if quality==0 else 60
-	if camera: camera.far = draw_distance
+	if camera: camera.far = 1800
 	sun.shadow_enabled = quality>=1
 	get_viewport().msaa_3d = [Viewport.MSAA_DISABLED,Viewport.MSAA_2X,Viewport.MSAA_4X][quality]
 	sun.directional_shadow_max_distance = [50.0,75.0,120.0][quality]
 	if world: world.set_quality(quality)
-	environment.fog_density = [0.0028,0.0017,0.0010][quality]
+	environment.fog_density=[.0012,.0008,.00055][quality]
+	sky_material.set_shader_parameter("volumetric",quality==2)
 
 func focus_position() -> Vector3:
 	if not player: return START
@@ -222,8 +269,11 @@ func _process(dt: float) -> void:
 	if not running:
 		sound.update_motor(0,false)
 		return
+	update_weather(dt)
 	if death_pending:
-		perform_respawn()
+		death_delay-=dt
+		update_camera(dt)
+		if death_delay<=0: perform_respawn()
 		return
 	if controls.consume("pause"): toggle_pause(); return
 	if controls.consume("map"):
@@ -272,7 +322,7 @@ func _process(dt: float) -> void:
 		get_viewport().scaling_3d_scale = dynamic_resolution
 		frame_timer = 0
 		frame_samples = 0
-	sound.update_motor(player.vehicle.speed if player.vehicle else 0,player.vehicle!=null)
+	sound.update_motor(player.vehicle.speed if player.vehicle else 0,player.vehicle!=null,player.vehicle.throttle if player.vehicle else 0)
 	if not player.vehicle and Vector2(player.velocity.x,player.velocity.z).length()>1 and player.is_on_floor():
 		footstep -= dt
 		if footstep<=0:
@@ -291,15 +341,18 @@ func update_camera(dt: float) -> void:
 		camera_yaw = lerp_angle(camera_yaw,player.vehicle.rotation.y,minf(dt*1.4,1))
 	var focus = focus_position()+Vector3(0,1.55 if not player.vehicle else 1.75,0)
 	var distance = 5.4 if not player.vehicle else 8.0
-	if controls.held("fire") and not player.vehicle: distance = 2.9
+	aim_blend=move_toward(aim_blend,1.0 if player.aiming and not player.vehicle else 0.0,dt*6)
+	distance=lerpf(distance,1.85,aim_blend)
+	if player.vehicle is StreetAircraft: distance=14.0
+	if player.parachute: distance=10.0
 	var orbit = Basis(Vector3.UP,camera_yaw)*Basis(Vector3.RIGHT,camera_pitch)
-	var desired = focus+orbit*Vector3(0.65,0.5,distance)
+	var desired = focus+orbit*Vector3(lerpf(.65,.60,aim_blend),lerpf(.5,.08,aim_blend),distance)
 	var query = PhysicsRayQueryParameters3D.create(focus,desired,1)
 	var hit = get_world_3d().direct_space_state.intersect_ray(query)
 	if not hit.is_empty(): desired=hit.position+hit.normal*0.25
 	camera.global_position = camera.global_position.lerp(desired,minf(dt*12,1))
-	camera.look_at(focus-orbit.z*10,Vector3.UP)
-	camera.fov = lerpf(camera.fov,68+(absf(player.vehicle.speed)*0.35 if player.vehicle else 0),minf(dt*4,1))
+	camera.look_at(camera.global_position-orbit.z*10,Vector3.UP)
+	camera.fov = lerpf(camera.fov,lerpf(68,52,aim_blend)+(absf(player.vehicle.speed)*0.35 if player.vehicle else 0),minf(dt*4,1))
 
 func interact() -> void:
 	if player.vehicle:
@@ -307,12 +360,12 @@ func interact() -> void:
 		if v is StreetAircraft and v.global_position.y>CityWorld.elevation(v.global_position.x)+11:
 			player.vehicle = null
 			v.set_driver(false)
-			player.global_position = v.global_position+Vector3(3,-2,0)
-			player.velocity = Vector3.ZERO
+			player.global_position=v.global_position+v.global_basis.x*5+Vector3(0,1,0)
+			player.velocity=v.velocity
 			player.collision_layer = 2
 			player.visible = true
-			player.deploy_parachute()
-			notify("PARAQUEDAS ABERTO! Direcione com o analógico.")
+			controls.clear()
+			notify("Salto livre! Toque PARAQUEDAS para abrir; analógico para guiar.",6)
 			return
 		if absf(v.speed)>5:
 			notify("Freie antes de sair do veículo.")
@@ -343,7 +396,7 @@ func interact() -> void:
 		camera_yaw = v.rotation.y
 		return
 	var nearest: StreetVehicle
-	var distance = 4.2
+	var distance = 6.0
 	for v in vehicles:
 		if is_instance_valid(v) and v.health>0:
 			var d = v.global_position.distance_to(player.position)
@@ -378,7 +431,7 @@ func fire_weapon(kind: int,damage: float) -> void:
 		var endpoint = origin+direction*180
 		var query = PhysicsRayQueryParameters3D.create(origin,endpoint,1|4|8|16,[player.get_rid()])
 		var hit = get_world_3d().direct_space_state.intersect_ray(query)
-		var muzzle = player.position+Vector3(0,1.4,0)-Basis(Vector3.UP,camera_yaw).z*0.5
+		var muzzle=player.visual.muzzle()
 		if not hit.is_empty(): endpoint=hit.position
 		# A second ray from the character prevents shooting through nearby cover.
 		var obstruction = get_world_3d().direct_space_state.intersect_ray(PhysicsRayQueryParameters3D.create(muzzle,endpoint,1,[player.get_rid()]))
@@ -472,7 +525,9 @@ func update_heat(dt: float) -> void:
 	if not seen and heat_timer<=0: heat=maxf(0,heat-dt*3)
 
 func respawn() -> void:
-	death_pending = true
+	death_pending=true
+	death_delay=3.0
+	controls.clear()
 
 func perform_respawn() -> void:
 	death_pending = false
@@ -482,7 +537,10 @@ func perform_respawn() -> void:
 	player.visible = true
 	player.position = CityWorld.ground(START,0.2)
 	player.velocity = Vector3.ZERO
-	player.health = 100
+	player.health=100
+	player.visual.recover()
+	player.parachute=false
+	player.chute_visual.hide()
 	player.stamina = 100
 	player.parachute = false
 	player.chute_visual.visible = false
@@ -499,7 +557,7 @@ func notify(message: String,duration: float = 3.5) -> void:
 
 func save_data() -> Dictionary:
 	var p = focus_position()
-	return {"version":1,"completed":missions.index,"money":money,"position":[p.x,p.y,p.z],"owned":player.owned,"magazines":player.magazines,"reserve":player.reserve,"weapon":player.weapon,"pickups":pickup_ids,"quality":quality,"sound":sound.enabled,"music":sound.music_enabled}
+	return {"version":1,"completed":missions.index,"money":money,"position":[p.x,p.y,p.z],"owned":player.owned,"magazines":player.magazines,"reserve":player.reserve,"weapon":player.weapon,"pickups":pickup_ids,"quality":quality,"sound":sound.enabled,"music":sound.music_enabled,"hour":time_of_day,"weather":weather}
 
 func save_game() -> void:
 	if test_mode or not missions or not player: return

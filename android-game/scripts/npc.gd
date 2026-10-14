@@ -124,6 +124,6 @@ func take_hit(damage: float) -> void:
 	if role=="civilian" or role=="hostage" or role=="police": game.add_heat(22)
 	if health<=0:
 		dead = true
-		visual.death_pose()
+		visual.death_pose(velocity+(global_position-game.focus_position()).normalized()*3.5)
 		collision_layer = 0
 		game.missions.on_defeat(self)

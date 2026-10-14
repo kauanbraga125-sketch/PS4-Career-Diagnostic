@@ -57,7 +57,7 @@ func _physics_process(dt: float) -> void:
 	if global_position.distance_squared_to(game.focus_position())>pow(340,2) and not driver:
 		return
 	if driver:
-		throttle = maxf(-game.controls.move.y,1.0 if game.controls.held("accelerate") else -1.0)
+		throttle = float(game.controls.held("accelerate"))-float(game.controls.held("reverse"))
 		turn = game.controls.move.x
 		brake = game.controls.held("brake")
 	elif traffic:

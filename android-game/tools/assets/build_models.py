@@ -1,6 +1,7 @@
 """Convert licensed source art into bounded, skinned glTF assets using Blender 4.3.
 
-Locomotion clips are authored here; they are not motion-capture recordings.
+Locomotion is retargeted from the licensed KayKit humanoid animation library.
+The motorcycle pose remains authored here. No motion-capture claim is made.
 All characters wear complete outfits before export. Helpers and covered skin
 are removed, textures are capped at 1K, and only deform bones are exported.
 """
@@ -264,6 +265,9 @@ def people():
                 elif modifier.type != 'ARMATURE':
                     obj.modifiers.remove(modifier)
         animate(rig)
+        sys.path.insert(0,str(Path(__file__).parent))
+        import retarget
+        retarget.apply(rig)
         glb(f'person_{index}', animated=True)
 
 
@@ -348,7 +352,7 @@ def vehicles():
         if len(obj.data.polygons) > 150:
             activate(obj)
             modifier = obj.modifiers.new('Mobile exterior', 'DECIMATE')
-            modifier.ratio = ratio
+            modifier.ratio = min(1.,8000/max(1,len(obj.data.polygons))) if obj.name.startswith(('WheelFront','WheelRear')) else ratio
             bpy.ops.object.modifier_apply(modifier=modifier.name)
     normalize_vehicle(4.3)
     groups = {'CarBody': [], 'WFrontL': [], 'WFrontR': [], 'WRearL': [], 'WRearR': []}

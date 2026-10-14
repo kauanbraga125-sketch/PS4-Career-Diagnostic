@@ -106,6 +106,7 @@ static func architecture(style: int,size: Vector3) -> Node3D:
 	# Scale individually licensed Kenney CC0 glTF houses to their plots.
 	var id = posmod(style,8)
 	var asset = "building_%d" % id
+	if size.y>=14: asset="town/shops/building-skyscraper-"+String.chr(97+posmod(style,5))
 	var root = imported(asset)
 	var key = asset+"_bounds"
 	if not meshes.has(key):
@@ -170,37 +171,27 @@ static func car(style: int = 0) -> Node3D:
 					changed.clearcoat = 0.5
 					materials[key] = changed
 				part_node.set_surface_override_material(index,materials[key])
+			elif original is BaseMaterial3D:
+				var key="car_clean_"+str(original.get_instance_id())
+				if not materials.has(key):
+					var changed=original.duplicate()
+					changed.normal_enabled=false
+					changed.ao_enabled=false
+					changed.emission_enabled=false
+					if String(original.resource_name).to_lower().contains("tire") or String(original.resource_name).to_lower().contains("tyre"):
+						changed.albedo_texture=null
+						changed.albedo_color=Color("161e26")
+						changed.metallic=0
+						changed.roughness=.86
+					materials[key]=changed
+				part_node.set_surface_override_material(index,materials[key])
 	return root
 
 static func bike(_style: int = 0) -> Node3D:
 	return imported("bike")
 
 static func aircraft(plane: bool) -> Node3D:
-	var root = Node3D.new()
-	if plane:
-		part(root,Vector3(1.9,1.05,6.1),Vector3(0,1.30,0),Color("f6e3be"),"sphere")
-		part(root,Vector3(12.4,0.22,1.65),Vector3(0,1.29,0.15),Color("db764a"))
-		part(root,Vector3(4.4,0.15,1.15),Vector3(0,1.87,2.37),Color("efb567"))
-		part(root,Vector3(0.2,2.15,1.25),Vector3(0,2.45,2.45),Color("db764a"))
-		part(root,Vector3(1.45,0.55,1.25),Vector3(0,1.83,-0.9),Color("6aa9bb"),"sphere")
-		part(root,Vector3(0.24,0.9,0.24),Vector3(-1.1,0.43,0.2),Color("293641"),"cylinder")
-		part(root,Vector3(0.24,0.9,0.24),Vector3(1.1,0.43,0.2),Color("293641"),"cylinder")
-	else:
-		part(root,Vector3(2.55,1.95,5.1),Vector3(0,1.55,0),Color("edbd68"),"sphere")
-		part(root,Vector3(2.2,1.12,2.4),Vector3(0,1.70,-1.18),Color("4c879b"),"sphere")
-		part(root,Vector3(0.35,0.4,5.6),Vector3(0,1.86,3.35),Color("e4aa54"))
-		part(root,Vector3(1.8,0.34,1.1),Vector3(0,2.50,5.60),Color("b65d44"))
-		for side in [-1,1]:
-			segment(root,Vector3(side*0.9,0.44,-1.15),Vector3(side*1.6,0.43,1.5),0.085,Color("293641"))
-		var rotor_root = Node3D.new()
-		rotor_root.name = "Rotor"
-		rotor_root.position = Vector3(0,3.0,0)
-		root.add_child(rotor_root)
-		part(rotor_root,Vector3(0.18,0.9,0.18),Vector3(0,0.15,0),Color("454b50"),"cylinder")
-		part(rotor_root,Vector3(9.2,0.10,0.32),Vector3(0,0.62,0),Color("363d42"))
-		part(rotor_root,Vector3(0.32,0.10,9.2),Vector3(0,0.62,0),Color("363d42"))
-	return root
-
+	return imported("plane" if plane else "helicopter")
 
 static func surface(name_value: String,tint: Color = Color.WHITE) -> StandardMaterial3D:
 	var key = name_value+str(tint)
@@ -210,7 +201,7 @@ static func surface(name_value: String,tint: Color = Color.WHITE) -> StandardMat
 	m.albedo_texture = load(base+"_diff.jpg")
 	m.normal_enabled = true
 	m.normal_texture = load(base+"_nor_gl.jpg")
-	m.normal_scale = 0.65
+	m.normal_scale = 0.22
 	m.roughness_texture = load(base+"_rough.jpg")
 	m.roughness_texture_channel = BaseMaterial3D.TEXTURE_CHANNEL_RED
 	m.albedo_color = tint*Color(0.55,0.55,0.58) if name_value=="asphalt" else tint
@@ -223,21 +214,4 @@ static func surface(name_value: String,tint: Color = Color.WHITE) -> StandardMat
 	return m
 
 static func gun(kind: int) -> Node3D:
-	var root = Node3D.new()
-	var length = [0.29,0.50,0.95,0.85][kind]
-	part(root, Vector3(0.085,0.10,length),Vector3(0,0,0),Color("373d41"))
-	part(root, Vector3(0.07,0.22,0.10),Vector3(0,-0.14,length*0.27),Color("5b5140"))
-	part(root, Vector3(0.032,0.04,0.14),Vector3(0,0.005,-length*0.5),Color("161d24"),"cylinder").rotation.x = PI/2
-	if kind>0:
-		part(root, Vector3(0.07,0.25,0.13),Vector3(0,-0.15,-0.03),Color("292e33"))
-	if kind>1:
-		part(root, Vector3(0.09,0.15,0.28),Vector3(0,0.0,length*0.5),Color("6f5f46"))
-	# Readable silhouette at third-person distance: sights, rail, grip and stock.
-	part(root,Vector3(0.07,0.045,0.14),Vector3(0,0.095,-length*0.12),Color("11181e"))
-	part(root,Vector3(0.10,0.075,length*0.20),Vector3(0,0.06,length*0.25),Color("4b5257"))
-	if kind>0:
-		part(root,Vector3(0.07,0.17,0.27),Vector3(0,-0.035,length*0.55),Color("514738"))
-	if kind==3:
-		part(root,Vector3(0.085,0.09,0.35),Vector3(0,0.16,-0.09),Color("202d34"))
-	batch_parts(root)
-	return root
+	return imported("gun_%d" % clampi(kind,0,3))

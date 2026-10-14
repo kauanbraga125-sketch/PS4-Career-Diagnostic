@@ -92,29 +92,28 @@ func _draw() -> void:
 		text_at(Vector2(520,663),kind,15,TEAL)
 		text_at(Vector2(622,663),"ESTADO %d%%" % int(p.vehicle.health),13)
 	else:
-		draw_line(Vector2(630,360),Vector2(638,360),PAPER,2)
-		draw_line(Vector2(646,360),Vector2(654,360),PAPER,2)
-		draw_line(Vector2(642,348),Vector2(642,356),PAPER,2)
-		draw_line(Vector2(642,364),Vector2(642,372),PAPER,2)
+		draw_line(Vector2(628,360),Vector2(636,360),PAPER,2)
+		draw_line(Vector2(644,360),Vector2(652,360),PAPER,2)
+		draw_line(Vector2(640,348),Vector2(640,356),PAPER,2)
+		draw_line(Vector2(640,364),Vector2(640,372),PAPER,2)
 	# The complete mobile control layer remains visible in desktop previews.
 	draw_circle(Vector2(155,570),80,Color(0.04,0.09,0.12,0.38))
 	draw_arc(Vector2(155,570),79,0,TAU,48,Color(0.85,0.9,0.87,0.35),2)
 	draw_circle(Vector2(155,570)+game.controls.joystick*54,29,Color(0.9,0.92,0.87,0.53))
 	text_at(Vector2(110,677),"DIRIGIR" if p.vehicle else "MOVER",12)
-	var flying = p.vehicle is StreetAircraft
-	var titles = {"fire":"ATIRAR","enter":"SALTAR" if flying else ("SAIR" if p.vehicle else "ENTRAR"),"jump":"SUBIR" if flying else ("FREIO" if p.vehicle else "PULAR"),"reload":"RECARGA","weapon":"ARMA","sprint":"DESCER" if flying else "CORRER","accelerate":"ACELERAR"}
-	for action in titles:
-		if p.vehicle and action in ["fire","reload","weapon"]: continue
-		if p.vehicle and action=="sprint" and not flying: continue
-		if not p.vehicle and action=="accelerate": continue
-		var r: Rect2 = game.controls.areas()[action]
-		panel(r,Color(0.18,0.30,0.33,0.68) if not game.controls.states.get(action,false) else Color(0.78,0.57,0.25,0.86))
-		text_at(r.position+Vector2(7,r.size.y/2+5),titles[action],11 if action=="accelerate" else 14)
+	var titles={"aim":"MIRAR","fire":"ATIRAR","enter":"SALTAR" if p.vehicle is StreetAircraft and p.vehicle.position.y-CityWorld.elevation(p.vehicle.position.x)>11 else ("SAIR" if p.vehicle else "ENTRAR"),"jump":"PULAR","reload":"RECARGA","weapon":"ARMA","sprint":"CORRER","accelerate":"ACELERAR","brake":"FREIO","reverse":"RÉ","climb":"SUBIR","descend":"DESCER","parachute":"RECOLHER VELA" if p.parachute else "ABRIR PARAQUEDAS"}
+	for action in game.controls.areas():
+		if not titles.has(action): continue
+		var r: Rect2=game.controls.areas()[action]
+		panel(r,Color(.12,.26,.31,.72) if not game.controls.held(action) else Color(.78,.57,.25,.9))
+		text_at(r.position+Vector2(9,r.size.y/2+5),titles[action],14)
+	text_at(Vector2(1010,229),"%02d:%02d  ·  %s" % [int(game.time_of_day),int(fmod(game.time_of_day,1)*60),["LIMPO","NUBLADO","COBERTO"][game.weather]],15)
+	if p.vehicle is StreetAircraft: text_at(Vector2(510,568),"ALTITUDE %d m" % int(p.vehicle.position.y-CityWorld.elevation(p.vehicle.position.x)),17)
 	text_at(Vector2(927,689),"ARRASTE PARA OLHAR",12,Color("d1d6ca"))
 	if game.notice_time>0:
 		panel(Rect2(342,612,570,72),Color(0.035,0.085,0.105,0.90))
 		paragraph(Vector2(365,640),game.notice,525,18)
-	text_at(Vector2(20,710),"PORTO LIVRE  /  ALPHA 0.3     %d FPS  ·  %s" % [int(game.fps),["LEVE","EQUILIBRADO","ALTO"][game.quality]],11,Color("d0d8cf"))
+	text_at(Vector2(20,710),"PORTO LIVRE  /  ALPHA 0.4     %d FPS  ·  %s" % [int(game.fps),["LEVE","EQUILIBRADO","ALTO"][game.quality]],11,Color("d0d8cf"))
 	if game.damage_flash>0: draw_rect(Rect2(0,0,1280,720),Color(0.7,0.05,0.03,game.damage_flash*0.45))
 
 func draw_menu() -> void:
@@ -124,13 +123,15 @@ func draw_menu() -> void:
 	text_at(Vector2(74,181),"PORTO",92)
 	text_at(Vector2(74,269),"LIVRE",92,GOLD)
 	text_at(Vector2(80,315),"Seis distritos. Dez histórias. Seu caminho.",21)
-	text_at(Vector2(80,350),"ANDROID  ·  OFFLINE  ·  ALPHA 0.3",13,Color("a2b9bb"))
+	text_at(Vector2(80,350),"ANDROID  ·  OFFLINE  ·  ALPHA 0.4",13,Color("a2b9bb"))
 	button(Rect2(80,386,540,66),"CONTINUAR" if game.missions.index>0 or game.saved.size()>0 else "EXPLORAR PORTO LIVRE","Toque para jogar · progresso salvo automaticamente",true)
 	button(Rect2(80,468,540,62),"QUALIDADE: "+["LEVE","EQUILIBRADA","ALTA"][game.quality],"Toque para alternar · resolução 3D adaptativa")
 	button(Rect2(80,546,174,62),"EFEITOS: "+("SIM" if game.sound.enabled else "NÃO"))
 	button(Rect2(268,546,170,62),"MÚSICA: "+("SIM" if game.sound.music_enabled else "NÃO"))
 	button(Rect2(452,546,168,62),"MAPA")
 	button(Rect2(80,618,180,44),"CRÉDITOS")
+	button(Rect2(278,618,162,44),"HORÁRIO")
+	button(Rect2(458,618,162,44),"CLIMA")
 	text_at(Vector2(80,667),"Texturas e modelos 3D · recomendado para celulares potentes",14,Color("9eafb0"))
 	text_at(Vector2(775,80),"SUA HISTÓRIA",15,TEAL)
 	for i in range(10):
@@ -140,8 +141,8 @@ func draw_menu() -> void:
 	if game.missions.index<10:
 		paragraph(Vector2(775,468),StreetMissions.STORIES[game.missions.index][1],410,18)
 	text_at(Vector2(775,586),"NO CELULAR",13,TEAL)
-	paragraph(Vector2(775,611),"Analógico à esquerda. Arraste à direita para olhar. Aproxime-se para recolher armas.",420,15)
-	text_at(Vector2(775,675),"PC: WASD · mouse · E · espaço · R · Tab · M",13,Color("93a9ac"))
+	paragraph(Vector2(775,611),"MIRAR aproxima a câmera; arraste para apontar. Segure ACELERAR para dirigir. SUBIR / DESCER nas aeronaves.",420,15)
+	text_at(Vector2(775,675),"PC: WASD · mouse direito: mira · E: entrar/saltar · P: paraquedas",13,Color("93a9ac"))
 
 func map_point(p: Vector3,rect: Rect2,center: Vector3,span: float) -> Vector2:
 	return rect.get_center()+Vector2(p.x-center.x,p.z-center.z)*rect.size/span
@@ -189,7 +190,10 @@ func draw_map() -> void:
 		draw_line(Vector2(x,r.position.y),Vector2(x,r.end.y),Color("d5cebb"),3)
 		draw_line(Vector2(r.position.x,y),Vector2(r.end.x,y),Color("d5cebb"),3)
 	for v in game.vehicles:
-		if is_instance_valid(v): draw_circle(map_point(v.position,r,Vector3.ZERO,1440),3,Color("174d60"))
+		if is_instance_valid(v):
+			var marker=map_point(v.position,r,Vector3.ZERO,1440)
+			draw_circle(marker,5 if v is StreetAircraft else 3,TEAL if v is StreetAircraft else Color("174d60"))
+			if v is StreetAircraft: text_at(marker+Vector2(6,-3),"AVIÃO" if v.airplane else "HELI",12,INK)
 	for p in game.pickups:
 		if is_instance_valid(p): draw_circle(map_point(p.position,r,Vector3.ZERO,1440),4,GOLD)
 	if game.missions.index<10: draw_circle(map_point(game.missions.current_target(),r,Vector3.ZERO,1440),9,GOLD)
@@ -212,6 +216,8 @@ func draw_credits() -> void:
 	text_at(Vector2(80,90),"PORTO LIVRE / CRÉDITOS",36,GOLD)
 	var rows = [
 		"Personagens: MakeHuman Community — CC0.",
+		"Animações: Kay Lousberg / KayKit (retarget). Cidade e céu: Kenney — CC0.",
+		"Armas: Quaternius. Helicóptero: z11z11. Avião: mujtaba-io — CC0.",
 		"Texturas: artistas da Poly Haven — CC0. polyhaven.com/license",
 		"Car Concept: Eric Chadwick / Darmstadt Graphics Group GmbH, © 2024 — CC BY 4.0.",
 		"Carro adaptado: malha simplificada, texturas reduzidas, escala e materiais ajustados.",
@@ -221,7 +227,7 @@ func draw_credits() -> void:
 		"Wednesday Night: Zane Little Music. Efeitos: rubberduck. Motor: domasx2 — CC0.",
 		"Engine Godot: colaboradores do Godot — MIT. godotengine.org/license"
 	]
-	for i in range(rows.size()): text_at(Vector2(80,155+i*45),rows[i],19)
+	for i in range(rows.size()): text_at(Vector2(80,145+i*39),rows[i],17)
 	button(Rect2(80,625,220,55),"VOLTAR", "",true)
 
 func menu_click(p: Vector2) -> void:
@@ -248,3 +254,5 @@ func menu_click(p: Vector2) -> void:
 		game.save_game()
 	elif Rect2(452,546,168,62).has_point(p): map_open=true
 	elif Rect2(80,618,180,44).has_point(p): credits_open=true
+	elif Rect2(278,618,162,44).has_point(p): game.cycle_time()
+	elif Rect2(458,618,162,44).has_point(p): game.cycle_weather()

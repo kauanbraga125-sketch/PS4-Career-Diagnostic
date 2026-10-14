@@ -13,11 +13,10 @@ var step_index = 0
 func _ready() -> void:
 	for name_value in ["shot","pickup","reload","mission","step","engine"]:
 		clips[name_value] = synth(name_value)
-	for key in ["step_1","step_2","grass","land","impact","door","reload","ambient","music"]:
+	for key in ["step_1","step_2","grass","land","impact","door","reload","ambient","music","wind"]:
 		clips[key] = load("res://assets/realism/audio/"+key+".ogg")
-	clips.engine = load("res://assets/realism/audio/engine.wav")
-	clips.engine.loop_mode = AudioStreamWAV.LOOP_FORWARD
-	clips.engine.loop_end = int(clips.engine.get_length()*clips.engine.mix_rate)
+	clips.engine=load("res://assets/realism/audio/engine.ogg")
+	clips.engine.loop=true
 	clips.music.loop = true
 	clips.ambient.loop = true
 	for i in range(7):
@@ -89,11 +88,9 @@ func play(key: String,pitch: float = 1.0) -> void:
 			voice.play()
 			return
 
-func update_motor(speed: float,active: bool) -> void:
+func update_motor(speed: float,active: bool,throttle: float=0.0) -> void:
 	if active and enabled:
 		if not engine.playing: engine.play()
-		var target_pitch = 0.84+clampf(absf(speed)/35.0,0.0,1.0)*1.48
-		engine.pitch_scale = lerpf(engine.pitch_scale,target_pitch,0.12)
-		engine.volume_db = -27+minf(absf(speed)*0.20,8)
-	else:
-		engine.stop()
+		engine.pitch_scale=lerpf(engine.pitch_scale,clampf(.75+absf(speed)*.025+absf(throttle)*.30,.65,2.4),.12)
+		engine.volume_db=-10+minf(absf(throttle)*4,4)
+	else: engine.stop()

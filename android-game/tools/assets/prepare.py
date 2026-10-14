@@ -31,6 +31,18 @@ for i, letter in enumerate('abcdefgh'):
         f'https://raw.githubusercontent.com/Hidencod/tge-assets/{KENNEY_PIN}/packs/city-kit-suburban/building-type-{letter}.glb'
     )
 
+KAYKIT = 'https://raw.githubusercontent.com/GeorgeQLe/assets-kaykit-3d-characters/af08a62d3669370ec4636ae6314b38cdcd5dd759/assets/kaykit/character-animations-1.1/Animations/gltf/Rig_Medium/'
+SOURCES.update({
+    'commercial.zip': 'https://kenney.nl/media/pages/assets/city-kit-commercial/a742d900eb-1753115042/kenney_city-kit-commercial_2.1.zip',
+    'skyboxes.zip': 'https://kenney.nl/media/pages/assets/skyboxes/6736ff5c10-1784123473/kenney_skyboxes.zip',
+    'guns.zip': 'https://opengameart.org/sites/default/files/ultimate_gun_pack_by_quaternius.zip',
+    'helicopter.zip': 'https://opengameart.org/sites/default/files/Heli_0.zip',
+    'plane.blend': 'https://opengameart.org/sites/default/files/biplane-1.blend',
+    'MovementBasic.glb': KAYKIT+'Rig_Medium_MovementBasic.glb',
+    'General.glb': KAYKIT+'Rig_Medium_General.glb',
+    'CombatRanged.glb': KAYKIT+'Rig_Medium_CombatRanged.glb',
+})
+
 MATERIALS = {
     'asphalt': 'asphalt_03', 'concrete': 'concrete_wall_006',
     'paving': 'pavement_02', 'grass': 'aerial_grass_rock',
@@ -71,6 +83,19 @@ def unzip(name, folder):
     return target
 
 
+def prepare_style_assets():
+    # Keep the relative texture paths provided by Kenney's GLB files.
+    source = unzip('commercial.zip','commercial') / 'Models/GLB format'
+    shutil.copytree(source,OUT/'models/town/shops',dirs_exist_ok=True)
+    sky = unzip('skyboxes.zip','skyboxes')
+    (OUT/'sky').mkdir(exist_ok=True)
+    for name in ['day','morning','night']:
+        subprocess.run(['ffmpeg','-v','error','-y','-i',str(next(sky.rglob('skybox-'+name+'.png'))),'-vf','scale=2048:1024',str(OUT/'sky'/(name+'.png'))],check=True)
+    for archive in ['guns','helicopter']:
+        unzip(archive+'.zip',archive)
+    subprocess.run(['ffmpeg','-v','error','-y','-i',str(CACHE/'engine.wav'),'-af','loudnorm=I=-18:TP=-2:LRA=7','-ac','1','-ar','22050','-c:a','libvorbis','-q:a','4',str(OUT/'audio/engine.ogg')],check=True)
+
+
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
     for material, source in MATERIALS.items():
@@ -99,10 +124,12 @@ def main():
     for i in range(8):
         shutil.copyfile(CACHE / f'building_{i}.glb', OUT / 'models' / f'building_{i}.glb')
     shutil.copyfile(next(unzip('tree.zip', 'tree').rglob('tree.glb')), OUT / 'models/tree.glb')
+    prepare_style_assets()
     (OUT / 'sources.json').write_text(json.dumps(provenance, indent=2) + '\n')
     env = os.environ | {'PORTO_ASSET_CACHE': str(CACHE), 'PORTO_ASSET_OUTPUT': str(OUT), 'PORTO_MPFB': str(mpfb)}
     subprocess.run([os.environ.get('PORTO_BLENDER', 'blender'), '--background', '--factory-startup', '--python-exit-code', '1', '--python', str(Path(__file__).with_name('build_models.py'))], env=env, check=True)
-    for name in ('person_0', 'person_1', 'person_2', 'person_3', 'car', 'bike', 'tree', *(f'building_{i}' for i in range(8))):
+    subprocess.run([os.environ.get('PORTO_BLENDER', 'blender'), '--background', '--factory-startup', '--python-exit-code', '1', '--python', str(Path(__file__).with_name('build_style.py'))], env=env, check=True)
+    for name in ('person_0', 'person_1', 'person_2', 'person_3', 'car', 'bike', 'tree', 'helicopter', 'plane', *(f'gun_{i}' for i in range(4)), *(f'building_{i}' for i in range(8))):
         if not (OUT / 'models' / f'{name}.glb').is_file():
             raise RuntimeError(f'Missing model {name}')
     print('PORTO_ASSETS_OK', flush=True)

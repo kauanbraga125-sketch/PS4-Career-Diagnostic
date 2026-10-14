@@ -4,3 +4,7 @@ bin/
 *.elf
 *.oelf
 .DS_Store
+
+# Porto Livre source art and Blender build cache
+.porto-asset-cache/
+.blender-tools/

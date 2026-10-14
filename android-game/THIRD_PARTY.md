@@ -21,3 +21,19 @@ Blender 4.3.2 e MPFB (commit `d0a32e57a7f915cb2f2b95410e2117648c7bbb7e`) são fe
 O disparo e os sinais de coleta/missão permanecem sintetizados pelo código do jogo. As armas e a arquitetura são criadas pelo projeto. Godot: [MIT, copyright dos colaboradores](https://godotengine.org/license/); o APK também inclui as licenças dos componentes da engine.
 
 Car Concept foi adaptado para câmera externa: simplificação das malhas, remoção de interiores ocultos e placas/emblemas, escala de 4,3 m, textura limitada a 1K, vidro opaco e agrupamento das rodas. Licença: https://creativecommons.org/licenses/by/4.0/ . A licença original é preservada em `assets/realism/licenses/CarConcept-LICENSE.md`. Créditos também disponíveis no menu do jogo.
+
+
+## Alpha 0.4 — additional CC0 assets
+
+| Asset | Creator | Primary source | Adaptation |
+| --- | --- | --- | --- |
+| City Kit Commercial 2.1 | Kenney | https://kenney.nl/assets/city-kit-commercial | GLB exterior buildings, plot scaling, shared MultiMesh batches |
+| Skyboxes | Kenney | https://kenney.nl/assets/skyboxes | 2K day, morning and night panoramas blended in a custom sky shader |
+| Ultimate Gun Pack | Quaternius | https://opengameart.org/content/low-poly-guns-pack | Four Blender models converted to GLB, scaled, oriented and fitted to character grips |
+| Cartoon Helicopter | z11z11 | https://opengameart.org/content/cartoon-helicopter-0 | Textured mirrored mesh converted to GLB; rotor separated, orientation and scale adjusted |
+| Low Poly Biplane Airplane Model | mujtaba-io | https://opengameart.org/content/low-poly-biplane-airplane-model | Blender scene converted to GLB; mobile scale, paint materials and orientation adjusted |
+| KayKit Character Animations 1.1 | Kay Lousberg | https://kaylousberg.itch.io/kaykit-character-animations | Full humanoid walk, run, idle, jump, fall, land and aiming clips retargeted to MakeHuman CMU skeletons; translation limited to body compression |
+
+All additional rows above are CC0-1.0. KayKit source GLBs are retrieved from the public GeorgeQLe/assets-kaykit-3d-characters mirror at fixed revision `af08a62d3669370ec4636ae6314b38cdcd5dd759`; the original creator's page establishes the license. These clips are not described as motion capture.
+
+The previous CarConcept CC BY 4.0 attribution continues to apply. Sources and downloaded SHA-256 values are bundled in `assets/realism/sources.json`. The runtime uses original game code for physics, ragdoll, cameras, sky rendering and parachute geometry. No Rockstar/Capcom game assets are included.

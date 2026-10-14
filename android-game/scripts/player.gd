@@ -20,6 +20,7 @@ var reload_left = 0.0
 var gun_visual: Node3D
 var parachute = false
 var chute_visual: Node3D
+var aiming=false
 
 func setup(owner_game) -> void:
 	game = owner_game
@@ -36,16 +37,11 @@ func setup(owner_game) -> void:
 	visual = StreetModels.person(0)
 	visual.rotation.y = -PI/2
 	add_child(visual)
-	chute_visual = Node3D.new()
-	chute_visual.visible = false
+	chute_visual=StreetParachute.new()
 	add_child(chute_visual)
-	StreetModels.part(chute_visual,Vector3(4.8,0.72,3.1),Vector3(0,3.65,0.3),Color("edbd68"),"sphere")
-	for side in [-1,1]:
-		for front in [-1,1]:
-			StreetModels.segment(chute_visual,Vector3(side*1.75,3.40,front*0.95),Vector3(side*0.26,1.3,0),0.022,Color("e5e1d4"))
 
 func _physics_process(dt: float) -> void:
-	if not game or not game.running: return
+	if not game or not game.running or health<=0: return
 	cooldown = maxf(cooldown-dt,0)
 	if reload_left>0:
 		reload_left = maxf(0,reload_left-dt)
@@ -61,12 +57,22 @@ func _physics_process(dt: float) -> void:
 		return
 	var move = game.controls.move
 	var direction = Basis(Vector3.UP,game.camera_yaw)*Vector3(move.x,0,move.y)
-	var sprinting = game.controls.held("sprint") and stamina>2 and direction.length()>0.1
-	var target = direction.limit_length()* (7.3 if sprinting else 4.1)
+	aiming=weapon>=0 and (game.controls.held("aim") or game.controls.held("fire")) and not parachute
+	var sprinting = game.controls.held("sprint") and stamina>2 and direction.length()>0.1 and not aiming
+	var target = direction.limit_length()* (2.4 if aiming else (6.1 if sprinting else 3.1))
 	velocity.x = move_toward(velocity.x,target.x,22*dt)
 	velocity.z = move_toward(velocity.z,target.z,22*dt)
+	if game.controls.consume("parachute") and not is_on_floor() and position.y-CityWorld.elevation(position.x)>6:
+		if parachute:
+			parachute=false
+			chute_visual.hide()
+		else: deploy_parachute()
 	if parachute:
-		velocity.y = maxf(velocity.y-7.0*dt,-5.2)
+		var glide=-Basis(Vector3.UP,game.camera_yaw).z*6+direction*4
+		velocity.x=move_toward(velocity.x,glide.x,9*dt)
+		velocity.z=move_toward(velocity.z,glide.z,9*dt)
+		velocity.y=move_toward(velocity.y,-4.2,32*dt)
+		chute_visual.rotation.y=game.camera_yaw
 	else:
 		velocity.y -= 23*dt
 	if is_on_floor():
@@ -85,13 +91,13 @@ func _physics_process(dt: float) -> void:
 		if impact_speed>12: take_hit((impact_speed-12)*4)
 	phase += Vector2(velocity.x,velocity.z).length()*dt*2.0
 	var moving = Vector2(velocity.x,velocity.z).length()/7.3
-	var aiming = game.controls.held("fire") and weapon>=0
+	visual.aim_pitch=game.camera_pitch
 	if aiming:
 		visual.rotation.y = lerp_angle(visual.rotation.y,game.camera_yaw,minf(dt*14,1))
 	elif moving>0.01:
 		visual.rotation.y = lerp_angle(visual.rotation.y,atan2(-velocity.x,-velocity.z),minf(dt*12,1))
 	visual.move_pose(Vector2(velocity.x,velocity.z).length(),is_on_floor(),velocity.y,aiming,dt,landed)
-	if aiming: fire()
+	if game.controls.held("fire") and not parachute: fire()
 	if position.y < -8: take_hit(200)
 
 func deploy_parachute() -> void:
@@ -105,7 +111,7 @@ func equip(index: int) -> void:
 	reload_left = 0
 	if gun_visual: gun_visual.queue_free()
 	gun_visual = StreetModels.gun(index)
-	visual.attach_weapon(gun_visual)
+	visual.attach_weapon(gun_visual,index)
 
 func cycle_weapon() -> void:
 	for offset in range(1,5):
@@ -135,6 +141,12 @@ func fire() -> void:
 	game.sound.play("shot",0.80 if weapon==2 else 1.1)
 
 func take_hit(amount: float) -> void:
+	if health<=0: return
 	health = maxf(0,health-amount)
 	game.damage_flash = 0.35
-	if health<=0: game.respawn()
+	if health<=0:
+		parachute=false
+		chute_visual.hide()
+		collision_layer=0
+		visual.death_pose(velocity)
+		game.respawn()

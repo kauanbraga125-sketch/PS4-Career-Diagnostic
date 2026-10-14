@@ -10,10 +10,12 @@ var queue: Array[Vector2i] = []
 var radius = 1
 var center = Vector2i(999,999)
 var tree_transforms: Array[Transform3D] = []
+var architecture_batches: Dictionary={}
 var batches: Dictionary
 var current_body: StaticBody3D
 var current_root: Node3D
 var rng = RandomNumberGenerator.new()
+var street_lights: Array[OmniLight3D]=[]
 
 static func elevation(x: float) -> float:
 	return maxf(-x-240.0,0.0)*0.075
@@ -47,6 +49,14 @@ func setup(owner_game) -> void:
 	landform(Vector2(-535,417),36,14,Color("90aa73"))
 	landform(Vector2(-655,500),33,12,Color("9db17a"))
 	landform(Vector2(-365,480),36,14,Color("90ad7b"))
+	for i in range(8):
+		var lamp=OmniLight3D.new()
+		lamp.light_color=Color("ffd394")
+		lamp.omni_range=16
+		lamp.light_energy=0
+		lamp.shadow_enabled=false
+		add_child(lamp)
+		street_lights.append(lamp)
 	refresh(Vector3(60,0,6),true)
 
 
@@ -109,6 +119,10 @@ func refresh(pos: Vector3, immediate: bool = false) -> void:
 func _process(_dt: float) -> void:
 	if game and game.running:
 		refresh(game.focus_position())
+		for i in range(street_lights.size()):
+			var p=game.focus_position()
+			street_lights[i].position=ground(Vector3(floorf(p.x/120)*120+30+(i%2)*70,0,floorf(p.z/120)*120+15+(i/2-1)*120),6.7)
+			street_lights[i].light_energy=(1.0-game.daylight)*1.6 if game.quality>0 else 0.0
 		# One district block per frame avoids a large allocation spike while driving.
 		if not queue.is_empty(): build_chunk(queue.pop_front())
 
@@ -161,7 +175,8 @@ func build_chunk(key: Vector2i) -> void:
 	current_body = StaticBody3D.new()
 	current_body.collision_layer = 1
 	current_root.add_child(current_body)
-	batches = {}
+	batches={}
+	architecture_batches={}
 	tree_transforms.clear()
 	var slope = -0.075 if ox < -240 else 0.0
 	var rot = Vector3(0,0,atan(slope))
@@ -259,14 +274,32 @@ func build_chunk(key: Vector2i) -> void:
 		instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF if game.quality==0 else GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 		current_root.add_child(instance)
 	batches.clear()
+	for item in architecture_batches.values():
+		var mm=MultiMesh.new()
+		mm.transform_format=MultiMesh.TRANSFORM_3D
+		mm.mesh=item.mesh
+		mm.instance_count=item.transforms.size()
+		for i in range(mm.instance_count): mm.set_instance_transform(i,item.transforms[i])
+		var instance=MultiMeshInstance3D.new()
+		instance.multimesh=mm
+		instance.visibility_range_end=game.draw_distance
+		instance.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF if game.quality==0 else GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+		current_root.add_child(instance)
+	architecture_batches.clear()
 	tree_batches()
 
 func building(p: Vector3,size: Vector3,style: int,windows: bool) -> void:
 	var base = ground(p)
-	if windows and size.y<14 and style%3!=0:
-		var house = StreetModels.architecture(style,size)
+	if windows:
+		var house = StreetModels.architecture(rng.randi_range(0,7),size)
 		house.position += base
-		current_root.add_child(house)
+		var parts: Array=[]
+		StreetModels.collect_meshes(house,Transform3D.IDENTITY,parts)
+		for item in parts:
+			var mesh_key=item.mesh.get_instance_id()
+			if not architecture_batches.has(mesh_key): architecture_batches[mesh_key]={"mesh":item.mesh,"transforms":[]}
+			architecture_batches[mesh_key].transforms.append(item.transform)
+		house.free()
 		var solid = CollisionShape3D.new()
 		var box_shape = BoxShape3D.new()
 		box_shape.size = size

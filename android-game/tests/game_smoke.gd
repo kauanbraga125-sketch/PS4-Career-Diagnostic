@@ -58,7 +58,7 @@ func run(game) -> void:
 	car.position=Vector3(40,0.2,-6)
 	car.rotation.y=-PI/2
 	car.set_driver(true)
-	game.controls.joystick=Vector2(0,-1)
+	game.controls.states["accelerate"]=true
 	var wall = StaticBody3D.new()
 	wall.collision_layer=1
 	game.add_child(wall)

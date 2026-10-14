@@ -1,36 +1,24 @@
-# Porto Livre — Android alpha 0.3
+# Porto Livre — Android alpha 0.4
 
-## Novidades da alpha 0.3 (experimental)
+Jogo original de exploração urbana criado para Kauan, em Godot 4.5.1. Esta alpha continua o projeto da 0.3, na pasta `android-game`; o plugin FIFA/PS4 permanece separado.
 
-- Visual cartoon ensolarado: cores mais claras, luz quente, nuvens em camadas 3D econômicas (não é volumetria por ray marching).
-- Casas variadas feitas com **8 modelos Kenney City Kit Suburban CC0**, recuperados por revisão fixa durante o build; edifícios altos ainda usam arquitetura procedural.
-- Montanhas orgânicas construídas a partir de malhas com alturas variáveis e colisão; morros acessíveis nos parques. Área arenosa com cactos no leste e trecho de praia com guarda-sóis.
-- Caminhar/correr com transições mais suaves, separação entre NPCs e recuperação ao encontrar paredes.
-- Rodas animadas em torno dos eixos locais sem descartar a transformação do modelo importado. Botão **ACELERAR** específico na tela de veículo; motor com mudança gradual de tom.
-- Protótipos jogáveis de **helicóptero** e **avião** no porto, controles SUBIR/DESCER e paraquedas automático ao saltar em altitude. São veículos de arcade com modelos geométricos próprios: não simuladores aeronáuticos.
-- Armas procedurais recebem miras, guarda-mão e detalhes adicionais. Ainda não foram substituídas por armas 3D externas.
+## Novidades da 0.4
 
-**Status:** os recursos precisam passar pela compilação no GitHub Actions e por testes em aparelhos Android. FPS e estabilidade não são garantidos. Esta versão preserva as dez missões e o save da alpha 0.2.
+- Botões **MIRAR** e **ATIRAR** independentes. Mira em terceira pessoa sobre o ombro, transição de câmera/FOV, arraste do próprio botão para apontar no celular e bloqueio do tiro por cobertura próxima.
+- Quatro armas **Quaternius CC0 importadas em GLB**. Mãos posicionadas com IK e cano orientado ao ponto de mira; inventário e 12 locais de coleta continuam offline.
+- Caminhada, corrida, espera, salto, queda e aterrissagem da biblioteca **KayKit 1.1 CC0**, adaptadas ao esqueleto humano MakeHuman. Mistura entre clipes e velocidade ajustada ao deslocamento; não são alegadas captura de movimentos ou IK dos pés.
+- **Ragdoll físico com 12 corpos e juntas limitadas**, ativado em NPCs abatidos e na morte do jogador. Colisão com terreno e veículos, impulso inicial e recuperação do jogador após 3 segundos. Sistema experimental.
+- Céus texturizados Kenney, ciclo de **24 minutos por dia**, amanhecer, noite, nuvens/tempo limpo ou coberto e postes iluminados perto do jogador. O perfil Alto usa um shader com amostragem de ruído 3D para as nuvens; Leve/Equilibrado preservam as panorâmicas com custo menor.
+- Prédios de fachada variada importados do **Kenney City Kit Commercial**, além das oito casas da 0.3. Geometria exterior agrupada em MultiMesh por modelo/bloco.
+- Avião biplano e helicóptero **importados de fontes CC0**, com voo assistido. O avião precisa ganhar velocidade para subir; o helicóptero pode pairar. Modelos de arcade, sem aerodinâmica profissional.
+- **Salto livre e abertura manual de paraquedas**, vela curvada, cordas, controle de direção e descida limitada. O botão aparece no ar; pousar recolhe a vela.
+- Aceleração e ré por botões próprios; analógico usado para virar. Motor gravado convertido para Ogg com loop e volume audível, variação de tom conforme velocidade/aceleração. Materiais de pneus sem mapas de microdetalhe que cintilavam.
 
-Jogo original de exploração urbana em terceira pessoa, desenvolvido para Kauan. Projeto Godot **4.5.1**, separado dos arquivos do plugin FIFA/PS4 nesta mesma branch. Não usa mapas, personagens, marcas, sons ou assets de GTA ou Bully.
+## Mundo e campanha
 
-## Estado real desta entrega
+Mapa de 1.440 × 1.440 m (2,0736 km² delimitados), com seis regiões, montanhas esculpidas e colisão, pequenos morros acessíveis, campus, praia, área arenosa com cactos, porto e farol. Esse tamanho é geométrico; não afirma equivalência exata com a área de Bully.
 
-Esta é uma **alpha jogável**, não um jogo comercial finalizado nem um equivalente visual a GTA. Há um ciclo completo de dez missões, exploração livre, carros e motos dirigíveis, armas, NPCs e salvamento. A versão 0.2 usa quatro personagens MakeHuman vestidos e animados por esqueleto, carro/moto importados, árvores com folhas texturizadas e materiais PBR fotográficos de 2K. A arquitetura ainda é gerada por blocos, agora com textura, frisos e detalhes de cobertura; ainda há repetição visual. As missões usam instruções de texto, sem dublagem/cutscenes. Não há interiores exploráveis, multiplayer, ragdolls, deformação de carro ou sistema avançado de tráfego. O comportamento de pedestres é simples e pode precisar de ajustes ao redor de construções.
-
-O mapa mede **1.440 × 1.440 metros (2,0736 km² de área delimitada)**. Essa é a escala geométrica do projeto; não foi verificada uma equivalência exata com a área de Bully. Edifícios ocupam parte do terreno, com circulação pelas ruas, calçadas, praças e pátios. Não confundir área com quantidade de conteúdo.
-
-## Sistemas implementados
-
-- Seis regiões: Serra Verde, Centro Financeiro, Distrito Industrial, Campus/Parque, Vila Antiga e Porto/Orla; ruas contínuas, morro no oeste, farol, prédios, casas, armazéns, contêineres, calçadas, faixa de pedestres, árvores e mobiliário.
-- Personagem em terceira pessoa: andar, correr com stamina, pular, olhar livremente, colisões e câmera que evita atravessar paredes.
-- Carros e motos com modelos diferentes, aceleração gradual, freios, arrasto proporcional ao quadrado da velocidade, direção conforme velocidade, aderência lateral, gravidade, inclinação visual e dano por colisão. São **modelos de condução simplificados**, não simulação validada de pneus/suspensão; a moto usa equilíbrio assistido.
-- Quatro modelos humanos com anatomia, pele, cabelo e roupas diferentes. Nove clipes por esqueleto: espera, andar, correr, saltar, cair, aterrissar, ser abatido, pilotar e mirar. Transições com mistura entre clipes; a mão animada carrega a arma. São animações autorais, sem mocap, IK dos pés ou ragdoll. Civis, hostis, patrulhas e um personagem de resgate têm comportamentos próprios.
-- Pistola, SMG, escopeta e carabina em 12 posições exploráveis; inventário, munição, carregador, recarga, dispersão e consulta de linha de tiro. Sem violência gráfica.
-- Trânsito limitado, alerta policial, perseguição a pé e perda do alerta por distância/ocultação.
-- HUD, minimapa, mapa completo, marcador pessoal, velocímetro, missão, saúde, stamina, dinheiro, toque simultâneo e controles de teclado/mouse.
-- Música de fundo, ambiente urbano, passos alternados, impacto, aterrissagem, porta e recarga gravados; loop de motor com mudança de tom. Música e efeitos têm controles independentes. Disparos, coleta e missão ainda são sintetizados.
-- Save local com escrita temporária e backup; campanha concluída, armas, munição, itens coletados, dinheiro e preferências persistem. Ao carregar, **a missão incompleta recomeça na primeira etapa**. Estado individual de veículos e NPCs não persiste.
+Esta é uma alpha jogável com física simplificada, IA limitada, repetição de cenários e missões narradas por texto. Não há interiores, multiplayer, cutscenes dubladas, deformação de carro ou equivalência visual/tecnológica a GTA V. Não contém assets de outros jogos comerciais.
 
 ## Campanha
 
@@ -51,38 +39,40 @@ As etapas avançam por posição e condições concretas de veículo/alvos/comba
 
 ## Controles
 
-Celular em paisagem: analógico esquerdo para mover/dirigir; arraste em região livre à direita para câmera. Botões: correr, pular, entrar/sair, atirar, recarga, trocar arma, freio, pausa. Toque no minimapa abre o mapa. Armas são coletadas automaticamente ao passar perto **a pé**. É preciso frear abaixo de 18 km/h para sair do veículo. Interagir perto da oficina (60,18) restaura saúde, munição de armas encontradas e veículos próximos.
+Celular em paisagem: analógico esquerdo move o personagem ou vira o veículo. Arraste à direita para olhar; também pode arrastar enquanto segura MIRAR/ATIRAR. Armas são recolhidas automaticamente a pé. Segure ACELERAR para dirigir, FREIO para parar ou RÉ para recuar. Aproxime-se e use ENTRAR/SAIR. Nos veículos terrestres, freie abaixo de 18 km/h antes de sair.
 
-PC: WASD ou setas; mouse para olhar; clique esquerdo dispara; E entra/sai/interage; espaço pula/freia; Shift corre; R recarrega; Tab troca arma; M abre mapa; Esc pausa. Na pausa, clique em Continuar captura o mouse.
+As aeronaves estão no porto: helicóptero em (532,629), avião em (572,658), sinalizados no mapa. ACELERAR ganha velocidade; SUBIR/DESCER mudam altitude. Use SALTAR em altitude e ABRIR PARAQUEDAS no ar. Guie a descida pelo analógico. A oficina (60,18) restaura saúde, munição e veículos próximos.
 
-## Otimização e compatibilidade
+PC: WASD/setas; mouse para olhar; botão direito mira, esquerdo dispara; E entra/sai/salta; espaço pula/freia; Shift corre/sobe; Ctrl desce; P abre/recolhe paraquedas; R recarrega; Tab troca arma; M mapa; Esc pausa. Na pausa, HORÁRIO e CLIMA permitem alternar para testar as condições.
 
-Renderizador OpenGL de compatibilidade; Android 7+ (API 24), GPU com OpenGL ES 3.0. APK universal ARMv7/ARM64. O projeto **não foi medido em celular físico**, portanto não há FPS mínimo garantido. Esta versão prioriza celulares mais potentes. A memória mínima e os modelos de aparelho suportados ainda precisam de teste físico; a versão do Android por si só não garante bom desempenho.
+## Compatibilidade e otimização
 
-| Perfil | Alvo | Blocos simultâneos | Pedestres comuns | Trânsito | Sombras |
-|---|---|---|---|---|---|
-| Leve | 30 FPS | até 9 | 10 | 2 | desligadas |
-| Equilibrado | 60 FPS | até 25 | 18 | 4 | sol, 75 m, MSAA 2× |
-| Alto (padrão) | 60 FPS | até 49 | 28 | 6 | sol, 120 m, MSAA 4× |
+Android 7+ (API 24), ARMv7/ARM64, OpenGL ES 3.0. O projeto prioriza celulares potentes. Ainda não foi medido em aparelho físico; FPS, memória mínima e estabilidade por modelo de celular precisam de teste real.
 
-Geometria estática agrupada em MultiMesh por material e bloco; malhas compartilhadas; geração determinística e descarregamento de blocos; um bloco novo por frame; IA distante suspensa; distância de visão 235/350/470 m; texturas PBR 2K com mipmaps e normais, texturas humanas limitadas a 1K, malhas e materiais compartilhados, árvores agrupadas em MultiMesh e esqueletos com quatro influências por vértice. Escala 3D adaptativa com piso de 60/70/80% conforme perfil; interface preserva a resolução. O alvo de FPS é uma configuração, não uma medição em hardware real.
+| Perfil | Alvo configurado | Blocos | Pedestres | Trânsito | Sombras | Nuvens |
+| --- | --- | --- | --- | --- | --- | --- |
+| Leve | 30 FPS | até 9 | 10 | 2 | desligadas | panorama |
+| Equilibrado | 60 FPS | até 25 | 18 | 4 | sol, 75 m | panorama |
+| Alto | 60 FPS | até 49 | 28 | 6 | sol, 120 m | ruído 3D |
 
-## Reproduzir o APK no GitHub
+Malhas/materiais compartilhados, MultiMesh estático, streaming de blocos, IA distante suspensa, resolução 3D adaptativa sem reduzir a interface, mipmaps e texturas humanas de 1K/skyboxes de 2K. Sombras dos postes desligadas; apenas oito luzes próximas. Ragdolls são criados ao serem necessários. Alvo de FPS não é resultado de benchmark.
 
-Workflow: `.github/workflows/porto-livre-android.yml`, disparado por alterações desta pasta na branch `game/porto-livre-android`. Primeiro executa o workflow reutilizável de recursos: baixa as fontes CC0 e CC BY 4.0 e converte os modelos com Blender 4.3.2 e MPFB fixado por commit. Depois instala Java 17, SDK Android 35 e templates oficiais Godot 4.5.1, importa recursos, executa validação integrada, renderiza uma captura e exporta um APK assinado para testes. O artefato `PortoLivre-Android-v0.2.0` contém APK, imagem, hash e metadados. A chave de desenvolvimento fica no cache do Actions; se esse cache expirar, uma nova chave pode exigir reinstalação (faça backup do save antes de desinstalar). Não é uma assinatura de publicação na Play Store.
+## Salvamento e compilação
 
-Validação local:
+O save da 0.2/0.3 é preservado, acrescido de horário e clima. Persistem campanha, dinheiro, armas, munição, itens coletados e preferências; a missão incompleta recomeça na primeira etapa. Veículos e NPCs individuais não persistem. Save local com arquivo temporário e backup.
+
+O workflow `.github/workflows/porto-livre-android.yml` converte as fontes com Blender 4.3.2, importa em Godot 4.5.1, roda a suíte integrada, renderiza capturas reais, exporta `PortoLivre-v0.4.0.apk` e verifica assinatura, manifesto e SHA-256. Artefato: `PortoLivre-Android-v0.4.0`. Assinatura de desenvolvimento; a chave é preservada no cache do GitHub Actions, cujo vencimento pode exigir reinstalação.
 
 ```sh
-PORTO_BLENDER=/caminho/para/blender python3 android-game/tools/assets/prepare.py
+PORTO_BLENDER=/caminho/blender python3 android-game/tools/assets/prepare.py
 godot --headless --path android-game --editor --import
 python3 android-game/tools/configure_imports.py
 godot --headless --path android-game --editor --import
 godot --headless --path android-game -- --self-test
 ```
 
-A suíte verifica a inicialização do mundo, entrada/saída de veículo, restauração de colisões, recarga, condições e conclusão das dez missões, rejeição de veículo errado, repetição por tempo, serialização e respawn. Esses testes injetam estados e posições: **não substituem jogar toda a campanha, testar o toque num Android real ou medir fluidez**.
+Testes injetam entradas e posições para verificar os sistemas; não substituem jogar a campanha completa nem testar toque e desempenho no Android físico.
 
 ## Licenças
 
-Código e elementos autorais foram criados para este projeto. As fontes, autores e licenças da arte e do áudio importados estão em [THIRD_PARTY.md](THIRD_PARTY.md). Engine Godot: MIT, copyright dos colaboradores, https://godotengine.org/license/. O APK inclui componentes da engine sujeitos às suas respectivas licenças. Não há assets extraídos de outros jogos.
+Arte/áudio e adaptações documentados em [THIRD_PARTY.md](THIRD_PARTY.md), com fontes e hashes no pacote de recursos. CarConcept: CC BY 4.0; demais assets artísticos listados: CC0. Godot e seus colaboradores: MIT, https://godotengine.org/license/.
