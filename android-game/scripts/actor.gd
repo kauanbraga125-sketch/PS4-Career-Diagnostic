@@ -102,6 +102,9 @@ func mount_pose() -> void:
 func death_pose(impulse: Vector3=Vector3.ZERO) -> void:
 	if dead: return
 	dead=true
+	# Physical bone motion can leave the mesh's imported rest bounds.
+	for mesh_node in skeleton.get_parent().find_children("*","MeshInstance3D",true,false):
+		mesh_node.custom_aabb=mesh_node.mesh.get_aabb().grow(8.0)
 	animator.pause()
 	weapon_anchor.hide()
 	if right_ik: right_ik.stop()

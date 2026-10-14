@@ -695,7 +695,10 @@ func capture_preview() -> void:
 	var fallen=StreetModels.person(0)
 	review.add_child(fallen)
 	fallen.position=Vector3(0,2,-3)
-	await get_tree().physics_frame
+	camera.position=review.position+Vector3(4,2,-9)
+	camera.look_at(review.position+Vector3(1,.6,-3))
+	await capture_frame(base+"-ragdoll-before.png")
+	await get_tree().create_timer(.3).timeout
 	fallen.death_pose(Vector3(2,0,0))
 	await get_tree().create_timer(2.5).timeout
 	camera.position=review.position+Vector3(4,2,-9)

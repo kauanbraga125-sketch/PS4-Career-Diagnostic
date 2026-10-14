@@ -75,6 +75,10 @@ jobs:
           timeout 180 godot --headless --path android-game -- --self-test 2>&1 | tee android-game/build/test.log
           grep -q PORTO_SELF_TEST_OK android-game/build/test.log
           if grep -E 'SCRIPT ERROR|TEST_FAIL' android-game/build/test.log; then exit 1; fi
+      - name: Audit imported transforms and physical skeleton
+        run: |
+          timeout 45 godot --headless --path android-game --script res://tests/pose_audit.gd 2>&1 | tee android-game/build/pose-audit.log
+          grep -q POSE_AUDIT_OK android-game/build/pose-audit.log
       - name: Render desktop gameplay preview
         env:
           PORTO_CAPTURE_PATH: ${{ github.workspace }}/android-game/build/PortoLivre-preview.png
