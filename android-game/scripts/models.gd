@@ -191,7 +191,33 @@ static func bike(_style: int = 0) -> Node3D:
 	return imported("bike")
 
 static func aircraft(plane: bool) -> Node3D:
-	return imported("plane" if plane else "helicopter")
+	var root=Node3D.new()
+	var model=imported("plane" if plane else "helicopter")
+	root.add_child(model)
+	if not plane:
+		for instance in model.find_children("*","MeshInstance3D",true,false):
+			for index in range(instance.mesh.get_surface_count()):
+				var original=instance.mesh.surface_get_material(index)
+				if original is BaseMaterial3D:
+					var key="helicopter_blue_"+str(original.get_instance_id())
+					if not materials.has(key):
+						var paint=original.duplicate()
+						paint.albedo_color=Color("478ba8")
+						paint.roughness=.65
+						materials[key]=paint
+					instance.set_surface_override_material(index,materials[key])
+		for original in model.find_children("Rotor*","Node3D",true,false):
+			original.hide()
+			original.name="StaticBlades"
+		var rotor=Node3D.new()
+		rotor.name="Rotor"
+		rotor.position=Vector3(0,3.8,0)
+		root.add_child(rotor)
+		part(rotor,Vector3(.14,.45,.14),Vector3(0,-.18,0),Color("334754"),"cylinder")
+		for yaw in [0,PI/2]:
+			var blade=part(rotor,Vector3(8.4,.07,.22),Vector3.ZERO,Color("293f4f"))
+			blade.rotation.y=yaw
+	return root
 
 static func surface(name_value: String,tint: Color = Color.WHITE) -> StandardMaterial3D:
 	var key = name_value+str(tint)

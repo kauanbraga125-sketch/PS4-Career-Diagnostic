@@ -22,8 +22,10 @@ def bounds():
     return Vector([min(p[i] for p in points) for i in range(3)]),Vector([max(p[i] for p in points) for i in range(3)])
 def bake():
     bpy.context.view_layer.update()
-    for o in meshes():
-        m=o.matrix_world.copy();o.parent=None;o.matrix_world=Matrix.Identity(4);o.data.transform(m)
+    world={o:o.matrix_world.copy() for o in meshes()}
+    for o,m in world.items():
+        o.parent=None;o.matrix_world=Matrix.Identity(4);o.data.transform(m)
+    bpy.context.view_layer.update()
     for o in list(bpy.context.scene.objects):
         if o.type!='MESH':bpy.data.objects.remove(o,do_unlink=True)
 def paint(name,color,rough=.55,metal=0):
@@ -46,7 +48,7 @@ load_blend(next((CACHE/'helicopter').rglob('heli.blend')));bake()
 # Nose is at source -X; Blender +Y exports as Godot -Z.
 for o in meshes():o.data.transform(Matrix.Rotation(-math.pi/2,4,'Z'))
 lo,hi=bounds();factor=7.2/(hi.y-lo.y);center=Vector(((lo.x+hi.x)/2,(lo.y+hi.y)/2,lo.z))
-mat=paint('Helicopter painted body',(.7,.8,.9));tex=mat.node_tree.nodes.new('ShaderNodeTexImage');tex.image=bpy.data.images.load(str(next((CACHE/'helicopter').rglob('heli.png'))));tex.image.pack();mat.node_tree.links.new(tex.outputs['Color'],mat.node_tree.nodes.get('Principled BSDF').inputs['Base Color'])
+mat=paint('Helicopter painted body',(.22,.58,.82),.5,.18);tex=mat.node_tree.nodes.new('ShaderNodeTexImage');tex.image=bpy.data.images.load(str(next((CACHE/'helicopter').rglob('heli.png'))));tex.image.pack();mat.node_tree.links.new(tex.outputs['Color'],mat.node_tree.nodes.get('Principled BSDF').inputs['Base Color'])
 for o in meshes():
     for v in o.data.vertices:v.co=(v.co-center)*factor
     o.data.materials.clear();o.data.materials.append(mat)
@@ -64,7 +66,7 @@ for o in list(meshes()):
     mesh=bpy.data.meshes.new('Rotor');mesh.from_pydata(coords,[],faces);mesh.materials.append(paint('Rotor dark metal',(.06,.09,.12)))
     rotor=bpy.data.objects.new('Rotor',mesh);bpy.context.collection.objects.link(rotor)
     bmesh.ops.delete(bm,geom=blades,context='FACES');bm.to_mesh(o.data);bm.free()
-    bpy.context.view_layer.objects.active=rotor;rotor.select_set(True);bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY',center='BOUNDS');rotor.select_set(False)
+    bpy.ops.object.select_all(action='DESELECT');bpy.context.view_layer.objects.active=rotor;rotor.select_set(True);bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY',center='BOUNDS');rotor.select_set(False)
 export('helicopter')
 load_blend(CACHE/'plane.blend');bake()
 for o in meshes():o.data.transform(Matrix.Rotation(math.pi,4,'Z'))

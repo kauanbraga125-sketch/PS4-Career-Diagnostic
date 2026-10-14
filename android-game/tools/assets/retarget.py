@@ -69,6 +69,13 @@ def apply(rig):
                 pose_matrices[bone.name]=parent_pose@local_rest@basis
                 bone.keyframe_insert('rotation_quaternion',frame=frame+1,group=bone.name)
                 if bone.name=='Hips':bone.keyframe_insert('location',frame=frame+1,group=bone.name)
+            if name in ('idle','walk','run','aim'):
+                feet=[label for label in ('LeftToeBase','RightToeBase') if label in pose_matrices]
+                if feet:
+                    lift=min(pose_matrices[label].translation.z-rig.data.bones[label].head_local.z for label in feet)
+                    hip=rig.pose.bones['Hips']
+                    hip.location+=hip.bone.matrix_local.to_quaternion().inverted()@Vector((0,0,max(-.35,min(.35,-lift))))
+                    hip.keyframe_insert('location',frame=frame+1,group=hip.name)
         for curve in action.fcurves:
             for key in curve.keyframe_points:key.interpolation='LINEAR'
     rig.animation_data.action=bpy.data.actions.get('idle');bpy.context.scene.frame_set(1);bpy.context.view_layer.update()

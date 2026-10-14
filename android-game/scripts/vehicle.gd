@@ -117,7 +117,7 @@ func _physics_process(dt: float) -> void:
 		var original: Transform3D = wheel_originals[wheel.get_instance_id()]
 		var steer_basis = Basis(Vector3.UP,steering if String(wheel.name).begins_with("WFront") else 0.0)
 		var spin_basis = Basis(Vector3.RIGHT,wheel_angle)
-		wheel.transform = Transform3D(original.basis*steer_basis*spin_basis,original.origin)
+		wheel.transform = Transform3D(steer_basis*original.basis*spin_basis,original.origin)
 	var acceleration_now = (speed-old_speed)/maxf(dt,0.001)
 	var roll = steering*speed*0.035 if not motorcycle else steering*speed*0.13
 	visual.rotation.z = lerpf(visual.rotation.z,clampf(roll,-0.45,0.45),minf(dt*7,1))

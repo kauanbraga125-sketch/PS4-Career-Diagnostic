@@ -75,7 +75,7 @@ func landform(center: Vector2,radius: float,peak: float,tint: Color) -> void:
 			var b = land_vertex(center,Vector2(x0,z1),radius,peak)
 			var c = land_vertex(center,Vector2(x1,z0),radius,peak)
 			var d = land_vertex(center,Vector2(x1,z1),radius,peak)
-			for vertex in [a,b,c,c,b,d]:
+			for vertex in [a,c,b,c,d,b]:
 				builder.set_uv(Vector2(vertex.x,vertex.z)*0.035)
 				builder.add_vertex(vertex)
 	builder.generate_normals()

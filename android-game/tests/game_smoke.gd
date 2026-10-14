@@ -13,6 +13,9 @@ func run(game) -> void:
 	game.running = true
 	game.sound.enabled = false
 	await get_tree().physics_frame
+	var mound_ray=PhysicsRayQueryParameters3D.create(Vector3(-535,75,417),Vector3(-535,0,417),1)
+	var mound_hit=game.get_world_3d().direct_space_state.intersect_ray(mound_ray)
+	check(not mound_hit.is_empty() and mound_hit.position.y>CityWorld.elevation(-535)+8 and mound_hit.normal.y>.3,"Explorable mound has visible upward faces and walkable collision")
 	check(game.world.chunks.size()>=4,"Initial playable city chunks loaded")
 	check(game.vehicles.size()>=12,"Cars, motorcycles and aircraft available")
 	check(game.vehicles[10] is StreetAircraft and game.vehicles[11] is StreetAircraft,"Helicopter and airplane ready for boarding")
@@ -120,7 +123,8 @@ func run(game) -> void:
 	body_actor.death_pose(Vector3(1,0,0))
 	check(body_actor.simulator.is_simulating_physics(),"Ragdoll simulation starts")
 	var hips=body_actor.simulator.get_node("Body_Hips") as PhysicalBone3D
-	var start_height=hips.global_position.y
+	var bone_id=body_actor.skeleton.find_bone("Hips")
+	var start_height=(body_actor.skeleton.global_transform*(body_actor.skeleton.get_bone_global_pose(bone_id)*hips.body_offset)).origin.y
 	for frame in range(100): await get_tree().physics_frame
 	print("RAGDOLL_CHECK: start=",start_height," end=",hips.global_position)
 	check(hips.global_position.y<start_height-.7,"Ragdoll falls under gravity")

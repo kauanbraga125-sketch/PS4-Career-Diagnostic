@@ -127,7 +127,7 @@ func attach_weapon(weapon: Node3D,kind: int=0) -> void:
 	weapon_anchor.add_child(weapon)
 	has_weapon=true
 	weapon_kind=kind
-	weapon.transform=Transform3D.IDENTITY
+	# Preserve the imported root transform (including glTF axis conversion).
 
 func muzzle() -> Vector3:
 	return weapon_anchor.global_transform*Vector3(0,.04,-[.26,.42,.72,.69][weapon_kind])

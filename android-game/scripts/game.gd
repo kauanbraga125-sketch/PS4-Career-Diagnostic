@@ -164,8 +164,8 @@ func update_weather(dt: float) -> void:
 	sky_material.set_shader_parameter("wind_time",wind_time)
 	sun.rotation_degrees=Vector3(-maxf(12,solar*72),-35+(time_of_day-12)*10,0)
 	sun.light_color=Color("a2c5ff").lerp(Color("fff0cc").lerp(Color("ffc38b"),sunset),daylight)
-	sun.light_energy=lerpf(.22,.97,daylight)*(1.0-weather*.12)
-	environment.ambient_light_energy=lerpf(.30,.40,daylight)
+	sun.light_energy=lerpf(.22,.82,daylight)*(1.0-weather*.12)
+	environment.ambient_light_energy=lerpf(.30,.32,daylight)
 	environment.ambient_light_color=Color("6587b4").lerp(Color("b4d5ed"),daylight)
 	environment.fog_light_color=Color("263d60").lerp(Color("a7c8da"),daylight)
 

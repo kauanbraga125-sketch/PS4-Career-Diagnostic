@@ -16,9 +16,9 @@ Os recursos abaixo são redistribuídos sob CC0 1.0, exceto Car Concept, sob CC 
 
 [Texto da CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/legalcode).
 
-Blender 4.3.2 e MPFB (commit `d0a32e57a7f915cb2f2b95410e2117648c7bbb7e`) são ferramentas de criação/conversão sob GPL, executadas no build e não incluídas no APK. O uso dessas ferramentas não altera a licença dos recursos CC0 exportados. As animações de movimento foram criadas no script `tools/assets/build_models.py`; não são captura de movimento nem animações de GTA.
+Blender 4.3.2 e MPFB (commit `d0a32e57a7f915cb2f2b95410e2117648c7bbb7e`) são ferramentas de criação/conversão sob GPL, executadas no build e não incluídas no APK. O uso dessas ferramentas não altera a licença dos recursos CC0 exportados. A pose de pilotagem é autoral; os clipes de movimento da 0.4 são adaptados da biblioteca KayKit CC0 em `tools/assets/retarget.py`. Não são alegados como captura de movimento nem animações de GTA.
 
-O disparo e os sinais de coleta/missão permanecem sintetizados pelo código do jogo. As armas e a arquitetura são criadas pelo projeto. Godot: [MIT, copyright dos colaboradores](https://godotengine.org/license/); o APK também inclui as licenças dos componentes da engine.
+O disparo e os sinais de coleta/missão permanecem sintetizados pelo código do jogo. Os modelos de armas, casas e prédios são importados das fontes CC0 identificadas nesta página; o projeto cria a distribuição, colisões e comportamento. Godot: [MIT, copyright dos colaboradores](https://godotengine.org/license/); o APK também inclui as licenças dos componentes da engine.
 
 Car Concept foi adaptado para câmera externa: simplificação das malhas, remoção de interiores ocultos e placas/emblemas, escala de 4,3 m, textura limitada a 1K, vidro opaco e agrupamento das rodas. Licença: https://creativecommons.org/licenses/by/4.0/ . A licença original é preservada em `assets/realism/licenses/CarConcept-LICENSE.md`. Créditos também disponíveis no menu do jogo.
 
