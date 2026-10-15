@@ -37,6 +37,6 @@ godot --path monster-game -- --menu-preview
 
 Testes verificam progressão, migração, economia, capturas, túneis, salto, veículos, intervalo e sorteio de poderes, percurso dos civis, mixagem e estabilidade em simulação. A suíte visual usa toques e arrastos em três proporções e captura uma metamorfose em movimento. Desempenho em celular físico não foi medido.
 
-As opções de importação com mipmaps evitam serrilhado ao reduzir sprites. A atualização 0.7 adiciona arte de passageiros e do frasco de almas. Créditos e proveniência em ASSETS.md, assets/art/prompts-v7.json e nos manifestos de áudio SOURCES-v6.json e SOURCES-v7.json. Para reproduzir o tratamento: HORDE_AUDIO_SOURCE aponta para os MP3 originais enviados e HORDE_AUDIO_BASE para os OGG anteriores; executar tools/prepare_audio_v6.py (NumPy, SciPy e FFmpeg).
+As opções de importação com mipmaps evitam serrilhado ao reduzir sprites. A atualização 0.7 adiciona arte de passageiros e do frasco de almas. Créditos e proveniência em ASSETS.md, assets/art/prompts-v7.json e nos manifestos de áudio assets/audio/SOURCES-v6.json e assets/audio/v7/manifest.json. Para reproduzir o tratamento: HORDE_AUDIO_SOURCE aponta para os MP3 originais enviados e HORDE_AUDIO_BASE para os OGG anteriores; executar tools/prepare_audio_v6.py (NumPy, SciPy e FFmpeg).
 
 Pacote de desenvolvimento: com.kauan.noitedahorda. A entrega compatível com o APK Local usa com.kauan.noitedahorda.local, versionCode 8 e versionName 0.7.0, com a chave Local existente. Não requer internet, anúncios ou pagamentos reais.
