@@ -2,7 +2,7 @@ name: Noite da Horda Android
 
 on:
   push:
-    branches: [main, game/monster-rush-android, game/horda-zumbi-v0.7]
+    branches: [main, game/monster-rush-android, game/horda-zumbi-v0.7, fix/zombie-rig-v0.7.1]
     paths: ['monster-game/**', '.github/workflows/noite-da-horda-android.yml']
   workflow_dispatch:
 
@@ -90,13 +90,13 @@ jobs:
           echo "GODOT_ANDROID_KEYSTORE_DEBUG_PASSWORD=android" >> "$GITHUB_ENV"
       - name: Export APK and verify signature
         run: |
-          godot --headless --path monster-game --export-debug Android build/NoiteDaHorda-v0.7.0.apk 2>&1 | tee monster-game/build/export.log
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose monster-game/build/NoiteDaHorda-v0.7.0.apk
-          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging monster-game/build/NoiteDaHorda-v0.7.0.apk > monster-game/build/apk-info.txt
-          sha256sum monster-game/build/NoiteDaHorda-v0.7.0.apk > monster-game/build/SHA256SUMS.txt
+          godot --headless --path monster-game --export-debug Android build/NoiteDaHorda-v0.7.1.apk 2>&1 | tee monster-game/build/export.log
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose monster-game/build/NoiteDaHorda-v0.7.1.apk
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging monster-game/build/NoiteDaHorda-v0.7.1.apk > monster-game/build/apk-info.txt
+          sha256sum monster-game/build/NoiteDaHorda-v0.7.1.apk > monster-game/build/SHA256SUMS.txt
       - uses: actions/upload-artifact@v4
         with:
-          name: NoiteDaHorda-Android-v0.7.0
+          name: NoiteDaHorda-Android-v0.7.1
           path: |
             monster-game/build/*.apk
             monster-game/build/*.mp4

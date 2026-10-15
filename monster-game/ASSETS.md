@@ -125,3 +125,7 @@ O sussurro existente do Mascarado e os créditos das amostras anteriores foram p
 ## Atualização 0.7
 
 Artes originais feitas com a ferramenta integrada image_gen: assets/art/passengers-v7.png (12 poses) e assets/art/soul-jar-frame-v7.png (vidro vazio). O motor compõe o líquido em assets/art/soul-jar-states-v7.png (61 níveis). Os menus mantêm controles e textos independentes. Prompts em assets/art/prompts-v7.json. Os 60 sons fornecidos por Kauan, hashes e tratamento estão em assets/audio/v7/manifest.json; sete ambiências provisórias aguardam identificação.
+
+## Correção de articulação 0.7.1
+
+`assets/art/rig-zombie-v71.png` foi editado pela ferramenta de geração de imagens integrada a partir de `rig-zombie.png`, preservando a aparência do personagem. Só as regiões dos membros e da mão são usadas; cabeça, camisa, short e pés continuam vindo da arte original. O arquivo mantém transparência real. O prompt completo está em `assets/art/rig-zombie-v71-source.json`; as regiões alpha medidas estão em `assets/art/zombie-rig-v71.json`.

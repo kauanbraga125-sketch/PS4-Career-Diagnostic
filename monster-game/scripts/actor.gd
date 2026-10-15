@@ -6,9 +6,11 @@ extends RefCounted
 var art: HordeArt
 var facing=1.0
 var basis_angle=0.0
+var zombie: HordeZombieRig
 
 func _init(source: HordeArt) -> void:
 	art=source
+	zombie=HordeZombieRig.new(source)
 
 static func stride_foot(phase: float) -> Vector2:
 	var t=fposmod(phase,1.0)
@@ -57,6 +59,9 @@ func arm(canvas: Node2D,kind: int,shoulder: Vector2,swing: float,tint: Color,roo
 
 func paint(canvas: Node2D,kind: int,foot: Vector2,height: float,phase: float,state: String="run",time: float=0,landing: float=0,tint: Color=Color.WHITE,reverse: bool=false,pose_mix: float=1.0,show_prop: bool=true) -> void:
 	kind=clampi(kind,0,art.rigs.size()-1)
+	if kind==0:
+		zombie.paint(canvas,foot,height,phase,state,time,landing,tint,reverse,pose_mix)
+		return
 	facing=-1.0 if reverse else 1.0
 	var scale=height/112.0
 	basis_angle=0.0

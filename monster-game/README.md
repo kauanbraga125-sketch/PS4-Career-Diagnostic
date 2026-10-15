@@ -1,8 +1,10 @@
-# Noite da Horda — Android 0.7.0
+# Noite da Horda — Android 0.7.1
 
 Jogo offline de corrida 2D para Kauan. Godot 4.5.1, Android 7+, OpenGL ES 3.0, ARMv7 e ARM64. Atualização do pacote Local mantém a assinatura e migra o progresso das versões 0.1–0.5.1 para o save 6.
 
-Detalhes da atualização e pendência de ambientes: [UPDATE-v0.7.md](UPDATE-v0.7.md).
+Correção dos encaixes do zumbi: [UPDATE-v0.7.1.md](UPDATE-v0.7.1.md).
+
+Detalhes da atualização 0.7 e pendência de ambientes: [UPDATE-v0.7.md](UPDATE-v0.7.md).
 
 ## Atualização 0.7
 
@@ -39,4 +41,4 @@ Testes verificam progressão, migração, economia, capturas, túneis, salto, ve
 
 As opções de importação com mipmaps evitam serrilhado ao reduzir sprites. A atualização 0.7 adiciona arte de passageiros e do frasco de almas. Créditos e proveniência em ASSETS.md, assets/art/prompts-v7.json e nos manifestos de áudio assets/audio/SOURCES-v6.json e assets/audio/v7/manifest.json. Para reproduzir o tratamento: HORDE_AUDIO_SOURCE aponta para os MP3 originais enviados e HORDE_AUDIO_BASE para os OGG anteriores; executar tools/prepare_audio_v6.py (NumPy, SciPy e FFmpeg).
 
-Pacote de desenvolvimento: com.kauan.noitedahorda. A entrega compatível com o APK Local usa com.kauan.noitedahorda.local, versionCode 8 e versionName 0.7.0, com a chave Local existente. Não requer internet, anúncios ou pagamentos reais.
+Pacote de desenvolvimento: com.kauan.noitedahorda. A entrega compatível com o APK Local usa com.kauan.noitedahorda.local, versionCode 9 e versionName 0.7.1, com a chave Local existente. Não requer internet, anúncios ou pagamentos reais.

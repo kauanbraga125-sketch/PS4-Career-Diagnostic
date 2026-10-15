@@ -307,6 +307,7 @@ func run(game) -> void:
 		stress.advance(1.0/60,true);stress.drain_events()
 		if stress.entities.size()>160:check(false,"Long runner session cleans entities");break
 	check(stress.members.size()<=24,"Long simulation respects the mobile horde cap")
+	var rig_suite=load("res://tests/zombie_rig_test.gd").new();add_child(rig_suite);rig_suite.run(game);checks+=rig_suite.checks;failures.append_array(rig_suite.failures)
 	var v7=load("res://tests/update_v7_test.gd").new();add_child(v7);v7.run(game);checks+=v7.checks;failures.append_array(v7.failures)
 	var v6=load("res://tests/update_v6_test.gd").new();add_child(v6);v6.run(game);checks+=v6.checks;failures.append_array(v6.failures)
 	if failures.is_empty():

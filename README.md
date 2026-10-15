@@ -2,15 +2,15 @@
 
 Jogo de corrida 2D para Android, feito com Godot 4.5.1.
 
-**[Baixar Noite da Horda 0.7.0](https://github.com/kauanbraga125-sketch/horda-zumbi/releases/tag/noite-da-horda-v0.7.0)** · [Código do jogo](monster-game) · [Mudanças da versão](monster-game/UPDATE-v0.7.md)
+**[Baixar Noite da Horda 0.7.1](https://github.com/kauanbraga125-sketch/horda-zumbi/releases/tag/noite-da-horda-v0.7.1)** · [Código do jogo](monster-game) · [Mudanças da versão](monster-game/UPDATE-v0.7.1.md)
 
 O APK, as imagens e o código desta versão ficam publicados no GitHub. A release é um download permanente, separado dos arquivos temporários das compilações.
 
 ## Jogar no Android
 
-Na página da versão, baixe **NoiteDaHorda-v0.7.0.apk**. Quem já usa a edição Local deve instalar por cima, sem desinstalar, para manter o progresso. A versão publicada preserva o pacote `com.kauan.noitedahorda.local` e a assinatura da edição Local anterior.
+Na página da versão, baixe **NoiteDaHorda-v0.7.1.apk**. Quem já usa a edição Local deve instalar por cima, sem desinstalar, para manter o progresso. A versão publicada preserva o pacote `com.kauan.noitedahorda.local` e a assinatura da edição Local anterior.
 
-![Menu da versão 0.7](https://github.com/kauanbraga125-sketch/horda-zumbi/releases/download/noite-da-horda-v0.7.0/NoiteDaHorda-v0.7.0-menu.png)
+![Menu da versão 0.7](https://github.com/kauanbraga125-sketch/horda-zumbi/releases/download/noite-da-horda-v0.7.1/NoiteDaHorda-v0.7.1-menu.png)
 
 ## Código e compilação
 
@@ -29,6 +29,6 @@ A compilação de desenvolvimento do Actions usa `com.kauan.noitedahorda`; o APK
 ## Documentação
 
 - [Projeto Android](monster-game/README.md)
-- [Atualização 0.7 e verificações](monster-game/UPDATE-v0.7.md)
+- [Atualização 0.7 e verificações](monster-game/UPDATE-v0.7.1.md)
 - [Arte, áudio e créditos](monster-game/ASSETS.md)
 - [Documentação anterior do CareerTrace](docs/CareerTrace-v2110.md)

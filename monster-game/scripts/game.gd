@@ -68,6 +68,7 @@ var market_touch_moved=false
 
 func _ready() -> void:
 	Engine.max_fps=60
+	actor.zombie.attach(self)
 	paint_target=self
 	world_canvas=Node2D.new();world_canvas.z_index=-1
 	add_child(world_canvas);world_canvas.draw.connect(paint_world)
@@ -80,7 +81,7 @@ func _ready() -> void:
 	configure_layout()
 	reward_rng.randomize()
 	test_mode="--self-test" in OS.get_cmdline_user_args()
-	capture_mode="--v7-preview" in OS.get_cmdline_user_args() or "--capture" in OS.get_cmdline_user_args() or "--motion-preview" in OS.get_cmdline_user_args() or "--menu-preview" in OS.get_cmdline_user_args()
+	capture_mode="--rig-preview" in OS.get_cmdline_user_args() or "--v7-preview" in OS.get_cmdline_user_args() or "--capture" in OS.get_cmdline_user_args() or "--motion-preview" in OS.get_cmdline_user_args() or "--menu-preview" in OS.get_cmdline_user_args()
 	if not test_mode and not capture_mode: data=read_save()
 	sound=HordeSound.new()
 	add_child(sound)
@@ -91,6 +92,7 @@ func _ready() -> void:
 		HordeProgress.settle(data,int(data.active_souls),reward_rng);save_game()
 	if not test_mode and not capture_mode: begin_ritual()
 	if test_mode: call_deferred("run_tests")
+	elif "--rig-preview" in OS.get_cmdline_user_args():call_deferred("preview_rig")
 	elif "--v7-preview" in OS.get_cmdline_user_args():call_deferred("preview_v7")
 	elif "--menu-preview" in OS.get_cmdline_user_args(): call_deferred("capture_menu_preview")
 	elif "--motion-preview" in OS.get_cmdline_user_args(): call_deferred("motion_preview")
@@ -1353,4 +1355,9 @@ func paint_market_rows() -> void:
 
 func preview_v7() -> void:
 	var suite=load("res://tests/visual_v7.gd").new();add_child(suite)
+	await suite.run(self)
+
+func preview_rig() -> void:
+	var suite=load("res://tests/rig_game_preview.gd").new()
+	add_child(suite)
 	await suite.run(self)
