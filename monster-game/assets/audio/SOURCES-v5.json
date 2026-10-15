@@ -1,0 +1,84 @@
+{
+  "license": "CC0 for imported samples; original synthesis for added foley and flite commands",
+  "sources": [
+    {
+      "files": [
+        "smash_moto",
+        "smash_car",
+        "smash_bus",
+        "smash_truck",
+        "smash_tank",
+        "smash_plane",
+        "metal_push"
+      ],
+      "author": "qubodup",
+      "title": "Crash Collision",
+      "page": "https://opengameart.org/content/crash-collision",
+      "source": "https://opengameart.org/sites/default/files/qubodup-crash.ogg",
+      "license": "CC0",
+      "changes": "pitch/time layers, filtered foley, original tones and glass"
+    },
+    {
+      "files": [
+        "helicopter_loop"
+      ],
+      "author": "WuxiaScrub",
+      "title": "Helicopter SFX",
+      "page": "https://opengameart.org/content/helicopter-sfx",
+      "source": "https://opengameart.org/sites/default/files/heli_0.ogg",
+      "license": "CC0",
+      "changes": "3.8-second loudest passage, loop crossfade and normalization"
+    },
+    {
+      "files": [
+        "plane_loop"
+      ],
+      "author": "Mish7913",
+      "title": "Propeller (Cartoon) Loop",
+      "page": "https://opengameart.org/content/propeller-cartoon-loop",
+      "source": "https://opengameart.org/sites/default/files/propeller_cartoon_loop_0.ogg",
+      "license": "CC0",
+      "changes": "mono conversion and normalization"
+    },
+    {
+      "files": [
+        "civil_male",
+        "civil_worker"
+      ],
+      "author": "JohnsonBrandEditing; adaptation by congusbongus",
+      "title": "human male scream multi, aargh3/aargh5 only",
+      "page": "https://opengameart.org/content/aargh-male-screams",
+      "original": "https://freesound.org/people/JohnsonBrandEditing/sounds/173944/",
+      "license": "CC0",
+      "changes": "mono, normalization; worker slowed"
+    },
+    {
+      "files": [
+        "civil_female"
+      ],
+      "author": "tcrocker68; adaptation by congusbongus",
+      "title": "Girl_Scream.wav, female/2.ogg only",
+      "page": "https://opengameart.org/content/female-screams",
+      "original": "https://www.freesound.org/people/tcrocker68/sounds/235592/",
+      "license": "CC0",
+      "changes": "mono and normalization"
+    }
+  ],
+  "original": [
+    "police_stop",
+    "army_command",
+    "glass_break",
+    "engine_loop",
+    "fire_loop",
+    "transform_fly",
+    "transform_mask",
+    "revive"
+  ],
+  "source_sha256": {
+    "crash.ogg": "e468ee00a6c94313cf4efcf347b5f4e51e98e629608be277a8f58feb5e2267ff",
+    "helicopter.ogg": "39c574ce2c95b456863481b93873d6576b60acda6771d050168f1600529f0a24",
+    "propeller.ogg": "42c59645248e546ff4a0baa26fc9aef411a0045babb5f883c42060df52a582d5",
+    "male.zip": "c7b5d1987502b3c398666f325c8afca083b9d5387f4fb00cc5873d82d858eb62",
+    "female.zip": "7d824f9ad7040992e7e48ccc22b86eb6a6e632e162022a9f69f2e31e06b3f9a1"
+  }
+}

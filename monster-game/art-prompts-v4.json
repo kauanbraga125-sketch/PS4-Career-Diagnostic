@@ -1,0 +1,47 @@
+{
+  "mode": "built-in imagegen",
+  "assets": [
+    {
+      "file": "tunnel-interior-v4.png",
+      "prompt": "Use case: stylized-concept. Original game art for Noite da Horda, an animated cartoon horror runner. Match the reference's soft painted volume, dark plum outlines, violet shadows, mint rim light and warm amber highlights. No words, numbers, logos, UI or watermark. Asset type: opaque seamless horizontally scrolling tunnel INTERIOR background, landscape 1536x1024. A real long road tunnel carved through a hillside, seen from inside in a side-scrolling cutaway perspective. Road follows horizontally left to right across lower fifth. Barrel-vault stone ceiling, curved repeating support ribs, attractive varied brick masonry, pipes, warm hanging lamps, drainage channels and shallow teal puddles. Dim purple depths, mint luminous moss, amber lamp pools. No sky, no outdoor arch or portal, no people, no vehicles. Left/right edges tile naturally; repeated ribs should imply depth and length while keeping a broad unobstructed travel corridor in front. The game draws ground and characters separately; keep the bottom 20 percent simple dark stone.",
+      "reference": "parallax-city.png",
+      "mode": "built-in imagegen"
+    },
+    {
+      "file": "tunnel-mouths-v4.png",
+      "prompt": "Use case: stylized-concept. Original game art for Noite da Horda, an animated cartoon horror runner. Match the reference's soft painted volume, dark plum outlines, violet shadows, mint rim light and warm amber highlights. No words, numbers, logos, UI or watermark. Asset type: TWO isolated tunnel boundary facades, transparent 1536x1024, exactly two equal cells side by side separated by a wide clear gutter. SIDE VIEW CUTAWAY of a hillside road tunnel, a passage running horizontally, not a freestanding frontal arch or magical portal. LEFT CELL: entrance seen from outside on the left, massive sloping rock and brick roof extending to the RIGHT with a deep dark recess opening toward LEFT; the road corridor at the bottom stays truly transparent for running characters. RIGHT CELL: matching EXIT seen from outside on the right, roof extending LEFT and lit corridor opening toward RIGHT. Chunky irregular stone, hanging vines, amber wall lamps, teal highlights. Each facade has a solid roof/top mass, one outside buttress, and wide open lower half. No floor slab blocking passage. Both fit entirely inside cells with at least 40px transparent padding, no neighbouring spill.",
+      "reference": "parallax-city.png",
+      "mode": "built-in imagegen"
+    },
+    {
+      "file": "rig-civilian-woman-v4.png",
+      "prompt": "Use case: stylized-concept. Original game art for Noite da Horda, an animated cartoon horror runner. Match the reference's soft painted volume, dark plum outlines, violet shadows, mint rim light and warm amber highlights. No words, numbers, logos, UI or watermark. Asset type: transparent 3 by 3 cutout animation rig atlas. Square PNG, nine equal cells, exactly one detached part per cell, wide transparent padding, no touching or cropped pieces. Reading order HEAD including short neck; TORSO without arms/legs; UPPER ARM shoulder-to-elbow; FOREARM elbow-to-wrist; HAND; THIGH hip-to-knee; SHIN knee-to-ankle; FOOT pointing right; ACCESSORY. Face RIGHT in a slight three-quarter profile. Limb segments straight vertical, proximal joint at top, rounded overlapping ends. Not a posed full person. Subject: a scared living young adult woman with medium brown skin, curly dark plum hair in a puff, expressive large brown eyes and frightened open mouth. Coral cardigan over mint shirt, cardigan sleeves, brown hands, charcoal pants, mint sneakers. ACCESSORY: a detached small lilac handbag. Cute chibi human proportions matching reference, no zombie skin, no injuries.",
+      "reference": "rig-civilian.png",
+      "mode": "built-in imagegen"
+    },
+    {
+      "file": "rig-civilian-worker-v4.png",
+      "prompt": "Use case: stylized-concept. Original game art for Noite da Horda, an animated cartoon horror runner. Match the reference's soft painted volume, dark plum outlines, violet shadows, mint rim light and warm amber highlights. No words, numbers, logos, UI or watermark. Asset type: transparent 3 by 3 cutout animation rig atlas. Square PNG, nine equal cells, exactly one detached part per cell, wide transparent padding, no touching or cropped pieces. Reading order HEAD including short neck; TORSO without arms/legs; UPPER ARM shoulder-to-elbow; FOREARM elbow-to-wrist; HAND; THIGH hip-to-knee; SHIN knee-to-ankle; FOOT pointing right; ACCESSORY. Face RIGHT in a slight three-quarter profile. Limb segments straight vertical, proximal joint at top, rounded overlapping ends. Not a posed full person. Subject: a scared older adult construction worker with warm tan skin, bushy grey moustache and eyebrows, large expressive brown eyes, worried open mouth, yellow hard hat. Orange safety vest over blue shirt, blue upper and lower sleeves, tan glove/hand, navy work pants, brown heavy boot. ACCESSORY: detached small teal lunch bag. Cute chibi HUMAN matching reference, no green skin, no blood, no wounds.",
+      "reference": "rig-civilian.png",
+      "mode": "built-in imagegen"
+    },
+    {
+      "file": "vehicles-v4.png",
+      "prompt": "Use case: stylized-concept. Original game art for Noite da Horda, an animated cartoon horror runner. Match the reference's soft painted volume, dark plum outlines, violet shadows, mint rim light and warm amber highlights. No words, numbers, logos, UI or watermark. Asset type: six separated vehicle sprites on transparent 1536x1024 PNG, 3 equal columns by 2 equal rows. STRICT side view, every front faces LEFT toward the approaching monsters. Reading order top row: coral MOTORCYCLE without rider; red family CAR with visible blue side windows; long yellow CITY BUS with four large readable empty blue passenger windows. Bottom row: blue CARGO TRUCK with long trailer; olive TANK with cannon pointing LEFT and long tracks; substantially long ivory/teal PASSENGER PROPELLER AIRPLANE with six windows, large wings and landing gear, nose LEFT. These will be scaled realistically in engine, so use naturally long vehicle proportions, not toy stubs. Transparent windows should remain light blue and EMPTY so animated human heads can be drawn over them. No people. Fit wheels, wings, cannon and tails inside each cell with at least 30px clear padding; no neighbouring overlap, no shadows, no text, no floor. Bold readable silhouettes and attractive detailed cartoon painting.",
+      "reference": "vehicles-v3.png",
+      "mode": "built-in imagegen"
+    },
+    {
+      "file": "ritual-v4.png",
+      "prompt": "Use case: stylized-concept. Original game art for Noite da Horda, an animated cartoon horror runner. Match the reference's soft painted volume, dark plum outlines, violet shadows, mint rim light and warm amber highlights. No words, numbers, logos, UI or watermark. Asset type: FOUR isolated gameplay/UI sprites, transparent 1536x1024, exact 2 columns by 2 rows with very wide clear gutters. Top left: a friendly yet spooky mint-blue SOUL FLAME with expressive cream eyes, curling wispy tail and purple glow, no container. Top right: ornate squat stone RITUAL ALTAR with a round basin, glowing mint runes as decorative shapes, violet bat carvings, amber candles (no flame), full frontal view. Bottom left: ornate small REWARD CHEST, purple wood, gold hinges and skull latch, partly open with several gold coins glowing inside. Bottom right: stylized AERIAL BOMB, round plum skull-marked mine with two small mechanical bat-like wings and a short cord fuse rising above, no flame, no background. Every sprite entirely within its cell, no words or numbers, no frame.",
+      "reference": "props-v3.png",
+      "mode": "built-in imagegen"
+    },
+    {
+      "file": "vfx-v4.png",
+      "prompt": "Use case: stylized-concept. Original game art for Noite da Horda, an animated cartoon horror runner. Match the reference's soft painted volume, dark plum outlines, violet shadows, mint rim light and warm amber highlights. No words, numbers, logos, UI or watermark. Asset type: 6 separated ANIMATION FRAME effects in transparent 1536x1024 PNG, exact 3 columns by 2 rows, wide gutters, consistent centre/scale within each row. Top row: THREE sequential frames of a bright small yellow-orange burning FUSE FLAME with tiny rising golden sparks; flame bends left in frame1, straight in frame2, right in frame3. Same size and pivot, no bomb or candle. Bottom row: THREE sequential frames of a magical mint/violet SOUL CAPTURE PUFF, swirling smoke and little star motes; first tight burst, second expanding ring, third wispy dispersal. No character, no objects, no ground, no text. These are actual game FX sprites. All fully isolated on alpha, painterly vibrant, no black rectangle.",
+      "reference": "props-v3.png",
+      "mode": "built-in imagegen"
+    }
+  ]
+}

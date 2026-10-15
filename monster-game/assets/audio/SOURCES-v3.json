@@ -1,0 +1,40 @@
+{
+  "zombie": {
+    "page": "https://opengameart.org/content/zombies-sound-pack",
+    "author": "artisticdude",
+    "license": "CC0",
+    "files": [
+      "zombie-1.wav",
+      "zombie-5.wav",
+      "zombie-13.wav"
+    ]
+  },
+  "skeleton": {
+    "page": "https://opengameart.org/content/bones-rattle",
+    "author": "congusbongus; adapted from blukotek",
+    "license": "CC0",
+    "files": [
+      "0.ogg",
+      "2.ogg",
+      "4.ogg",
+      "6.ogg"
+    ]
+  },
+  "scream": {
+    "page": "https://opengameart.org/content/high-pitch-scream-sounds2",
+    "author": "pauliuw",
+    "license": "CC0",
+    "files": [
+      "high_pitch_scream.mp3"
+    ]
+  },
+  "breath": {
+    "page": "https://opengameart.org/content/ghost-breath",
+    "author": "qubodup",
+    "license": "CC0",
+    "files": [
+      "ghostbreath.flac"
+    ]
+  },
+  "original": "Masked ki-ki-ma-ma cue synthesized with FFmpeg/libflite then converted to a whispered effect; fly, gunshot, explosion, tunnel and city ambience synthesized for this project. No Minecraft or film audio was extracted."
+}
