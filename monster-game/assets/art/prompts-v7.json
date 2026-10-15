@@ -1,0 +1,13 @@
+{
+  "generator": "Built-in image_gen",
+  "assets": [
+    {
+      "file": "passengers-v7.png",
+      "prompt": "Production 2D sprite sheet for Noite da Horda. Friendly spooky cartoon, thick deep purple outlines, dimensional cel shading and transparent background. Four columns by three rows. Row 1: scared male passenger, orange hair, cream shirt, blue vest, waist up; looking behind, leaning forward, waving, climbing out. Row 2: female bus passenger, brown skin, dark wavy hair, yellow jacket; anxious, arms raised, moving sideways, leaning forward. Row 3: motorcycle rider, red helmet, purple biker jacket, gray trousers and boots; full body left-facing seated poses, normal, looking back, ducking, startled. Connected limbs, consistent proportions, no text, clean alpha."
+    },
+    {
+      "file": "soul-jar-frame-v7.png",
+      "prompt": "One empty magical glass bottle for a cute spooky 2D zombie game. Symmetric front view, centered on transparent background. Painted cartoon, bold purple outline, gold bronze filigree, purple stone base, cork and skull emblem, mint highlights. Round bulb and narrow neck. Entire large interior cavity transparent for engine liquid. Only glass perimeter painted, no liquid, no souls, no text, clean alpha."
+    }
+  ]
+}

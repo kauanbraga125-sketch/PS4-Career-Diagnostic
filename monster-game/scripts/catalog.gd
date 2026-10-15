@@ -39,6 +39,21 @@ const CHALLENGES=[
 ]
 
 const SKIN_PRICES=[0,1000,2800,4500]
+const POWERS=[
+	{"kind":3,"name":"SUPER FLY","price":0,"description":"Suba sozinho. Segure a tela para mergulhar."},
+	{"kind":2,"name":"MASCARADO","price":2800,"description":"Transforme a horda em uma força de destruição."}
+]
+const POWER_UPGRADES=[
+	{"id":"fly_time","kind":3,"name":"VOO PROLONGADO","price":500,"max":3,"description":"Mais 3 segundos de voo por nível."},
+	{"id":"mask_time","kind":2,"name":"MAIS TEMPO","price":500,"max":3,"description":"Mais 3 segundos de transformação por nível."},
+	{"id":"mask_force","kind":2,"name":"MAIS FORÇA","price":650,"max":3,"description":"Cada membro empurra com força extra."},
+	{"id":"mask_shield","kind":2,"name":"ESCUDO","price":900,"max":1,"description":"Absorve três impactos por transformação."},
+	{"id":"mask_size","kind":2,"name":"TITÃ MASCARADO","price":1600,"max":1,"description":"Aumenta o tamanho e dobra a força."},
+	{"id":"mask_revive","kind":2,"name":"ÚLTIMO SUSPIRO","price":2500,"max":1,"description":"Resgata a horda de um buraco uma vez por transformação."}
+]
+const CIVIL_PHRASES=["HELP ME!","ME AJUDE!","¡AYUDA!","SOCORRO!","RUN, MARTY!","¡CORRE!","NOPE!","I WANT TO LIVE!","SALVE-SE!","¡NO ME COMAS!","WINTER IS COMING!","CADÊ O HERÓI?","THIS IS FINE!","¡SOCORRO!","GAME OVER?!","ME TIRA DAQUI!","NOT TODAY!","¡VÁMONOS!","HASTA LA VISTA!","CORRE, FORREST!","WHY ME?!","NÃO HOJE!","¡POR AQUÍ!","HELP!"]
+const ARMY_PHRASES=["CONTACT!","MOVE! MOVE!","RECUAR!","¡ATRÁS!","HOLD THE LINE!"]
+const POLICE_PHRASES=["STOP!","POLICE!","STOP! STOP!","PARADO!","¡ALTO!"]
 const MISSIONS=[
 	{"id":"recruits","stat":"souls","target":8,"ritual":22,"title":"CAPTURE 8 ALMAS","mode":"sum"},
 	{"id":"coins","stat":"coins","target":40,"ritual":20,"title":"COLETE 40 MOEDAS","mode":"sum"},
@@ -73,7 +88,7 @@ static func active_missions(tier: int) -> Array[Dictionary]:
 	return result
 
 static func defaults() -> Dictionary:
-	return {"version":4,"wallet":120,"best":0,"runs":0,"audio":true,"levels":{"horde":0,"jump":0,"magnet":0,"perk":0},"claimed":[],"owned":[0],"skin":0,"areas":[0,1],"mission_tier":0,"mission_progress":{},"missions_completed":0,"player_level":1,"level_souls":0,"total_souls":0,"best_souls":0,"active_souls":0,"ritual_progress":0,"ritual_pending":[],"ritual_ready":false}
+	return {"version":6,"audio_levels":{"music":.75,"effects":.85,"voices":1.0},"wallet":120,"best":0,"runs":0,"audio":true,"levels":{"horde":0,"jump":0,"magnet":0,"perk":0},"claimed":[],"owned":[0],"skin":0,"areas":[0,1],"power_owned":[3],"power_levels":{"fly_time":0,"mask_time":0,"mask_force":0,"mask_shield":0,"mask_size":0,"mask_revive":0},"mission_tier":0,"mission_progress":{},"missions_completed":0,"player_level":1,"level_souls":0,"best_souls":0,"total_souls":0,"active_souls":0,"ritual_progress":0,"ritual_pending":[],"ritual_ready":false}
 
 static func upgrade_cost(item: Dictionary,level: int) -> int:
 	return int(item.price)*(level+1)*(level+1)

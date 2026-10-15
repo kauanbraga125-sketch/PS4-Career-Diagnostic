@@ -1,4 +1,4 @@
-# Arte e áudio — alpha 0.4
+# Arte e áudio — alpha 0.5
 
 Arte bitmap criada para o projeto com o gerador de imagens integrado (modo built-in imagegen). Fontes e pixels preservados nos arquivos; recortes são regiões de AtlasTexture em tempo de execução.
 
@@ -76,3 +76,52 @@ Os veículos novos apontam à esquerda; a moto é espelhada em tempo de execuç�
 - Crédito apresentado também no menu **Como jogar → Créditos**.
 
 `soul_capture.ogg`, `level_up.ogg` e `ritual_fill.ogg`: composições originais com osciladores e envelopes. Processamento por `tools/compose_progress_audio.py`; hashes, origem, atribuição e modificações em `assets/audio/SOURCES-v4.json`. As fontes CC0 da versão anterior permanecem creditadas acima; a amostra nova do mascarado usa CC BY 4.0.
+
+## Alpha 0.5: animações, metamorfose, policiais e destroços
+
+Seis imagens geradas com **built-in imagegen**, mantendo a identidade cartoon. Prompts completos, referências e nomes originais em [art-prompts-v5.json](art-prompts-v5.json). Os PNGs foram copiados sem alterar pixels. `tools/prepare_atlas_v5.py` mede os limites das peças e escreve `assets/art/atlas-v5.json`; almas, poderes e fogo usam células fixas para evitar saltos de pivô.
+
+| Arquivo em assets/art/ | Uso | Formato |
+|---|---|---|
+| rig-police-v5.png | Nove partes do policial, incluindo placa STOP | 1254 × 1254 RGBA, 3 × 3 |
+| soul-frames-v5.png | Seis quadros de alma/chama | 1536 × 1024 RGBA, 3 × 2 |
+| power-pickups-v5.png | Três estados do casulo e três da máscara | 1536 × 1024 RGBA, 3 × 2 |
+| vehicles-damaged-v5.png | Moto, carro, ônibus, caminhão, tanque e avião amassados | 1536 × 1024 RGBA, 3 × 2 |
+| vehicles-wrecks-v5.png | Mesmos seis veículos capotados | 1536 × 1024 RGBA, 3 × 2 |
+| fire-frames-v5.png | Dois ciclos de três quadros de fogo/fumaça | 1536 × 1024 RGBA, 3 × 2 |
+
+Corrida usa apoio do pé e retorno Hermite contínuo; pernas são articuladas com duas juntas. Empurrar, capturar, saltar, pousar e voar são poses combinadas com as peças. Transformação de 2,8 s usa mistura progressiva das criaturas, casulo/máscara, partículas e lettering; não é vídeo. Destroços completam uma rotação no motor e recebem emissores próprios de fogo. A placa STOP mantém a leitura ao inverter a direção do policial.
+
+### Áudio novo e atribuição
+
+Metadados, modificações e hashes dos arquivos de origem em `assets/audio/SOURCES-v5.json`. Notas de licença dos pacotes em `assets/audio/NPC-LICENSES-v5.txt`. Os pacotes de gritos têm licenças mistas: o jogo usa **somente as três amostras CC0 indicadas abaixo**. As demais gravações não foram incluídas.
+
+| Uso | Autor e amostra | Licença / fonte |
+|---|---|---|
+| Seis colisões e esforço de metal | qubodup, Crash Collision, com novas camadas/tempos/timbres por veículo | CC0 — https://opengameart.org/content/crash-collision |
+| Rotor de helicóptero | WuxiaScrub, Helicopter SFX; trecho de 3,8 s com crossfade e normalização | CC0 — https://opengameart.org/content/helicopter-sfx |
+| Hélice de avião | Mish7913, Propeller (Cartoon) Loop | CC0 — https://opengameart.org/content/propeller-cartoon-loop |
+| Gritos masculinos / operário | JohnsonBrandEditing, human male scream multi; `aargh3.ogg` / `aargh5.ogg`, adaptação por congusbongus | CC0 — https://opengameart.org/content/aargh-male-screams ; https://freesound.org/people/JohnsonBrandEditing/sounds/173944/ |
+| Grito feminino | tcrocker68, Girl_Scream.wav; `female/2.ogg`, adaptação por congusbongus | CC0 — https://opengameart.org/content/female-screams ; https://www.freesound.org/people/tcrocker68/sounds/235592/ |
+
+Comandos “Stop! Stop! Police!” e “Contact! Move! Hold the line!” são síntese flite kal16/rms, filtrada como voz/rádio; não são amostras retiradas de um filme ou jogo. Vidro, motor, fogo, metamorfoses e resgate são sínteses originais com osciladores, ruído e envelopes. Processamento em `tools/compose_scene_audio_v5.py`, Ogg Vorbis mono normalizado. Sons de veículos variam timbre, duração, impactos e camadas. Sons contínuos param na pausa/menu e respeitam SOM: OFF. As fontes das versões anteriores permanecem creditadas acima, incluindo o sussurro CC BY 4.0 do Mascarado.
+
+
+## Menu e ícone 0.5.1
+
+O menu usa a imagem aprovada apenas como referência de organização; todos os textos, botões, contadores, personagens, asas, almas e ritual são renderizados de forma independente pelo motor. Nenhuma imagem do menu completo é carregada.
+
+- Luckiest Guy: Astigmatic / Brian J. Bonislawsky, Apache 2.0. Origem: https://github.com/google/fonts/tree/main/apache/luckiestguy; licença em assets/fonts/Luckiest-LICENSE.txt.
+- Lilita One: Juan Montoreano, SIL OFL 1.1. Origem: https://github.com/google/fonts/tree/main/ofl/lilitaone; licença em assets/fonts/Lilita-OFL.txt.
+- assets/icon-monsters-v51.png: ícone gerado com imagegen usando os sprites originais como referência de identidade; zumbi manchado, esqueleto com olhos azuis, mosca de olhos compostos magenta e máscara de hóquei. Aprovado pelo usuário.
+
+
+## Atualização 0.6 — áudios fornecidos e integração
+
+Kauan forneceu os dezesseis efeitos do pacote de 14/10/2026 e os MP3 Mischief Under Moonlight, Clockwork Ghoul’s Dash e Midnight Sprint. As gravações foram tratadas com filtros, compressão suave, normalização de energia/loudness, proteção de picos, fades e emendas de loop. O runtime faz a mixagem, atenuação musical durante vozes/impactos e crossfades. O borbulhar de fundo do ritual é síntese original. SOURCES-v6.json registra nomes originais, hashes e processamento; a autoria das gravações fornecidas não é reivindicada pelo projeto.
+
+O sussurro existente do Mascarado e os créditos das amostras anteriores foram preservados. Artes existentes continuam intactas; mipmaps e o shader do primeiro plano ajustam sua apresentação sem alterar os pixels dos arquivos PNG.
+
+## Atualização 0.7
+
+Artes originais feitas com a ferramenta integrada image_gen: assets/art/passengers-v7.png (12 poses) e assets/art/soul-jar-frame-v7.png (vidro vazio). O motor compõe o líquido em assets/art/soul-jar-states-v7.png (61 níveis). Os menus mantêm controles e textos independentes. Prompts em assets/art/prompts-v7.json. Os 60 sons fornecidos por Kauan, hashes e tratamento estão em assets/audio/v7/manifest.json; sete ambiências provisórias aguardam identificação.

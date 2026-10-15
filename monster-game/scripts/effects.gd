@@ -6,9 +6,10 @@ var particles: Array[Dictionary]=[]
 var trails: Array[Dictionary]=[]
 var flashes: Array[Dictionary]=[]
 var deaths: Array[Dictionary]=[]
+var wrecks: Array[Dictionary]=[]
 
 func clear() -> void:
-	particles.clear();trails.clear();flashes.clear();deaths.clear()
+	particles.clear();trails.clear();flashes.clear();deaths.clear();wrecks.clear()
 
 func add(kind: String,pos: Vector2,velocity: Vector2,color: Color,size: float,life: float,gravity: float=0,drift: bool=true) -> Dictionary:
 	if particles.size()>=LIMIT: particles.pop_front()
@@ -37,8 +38,8 @@ func smash(pos: Vector2,object_kind: String,start_angle: float=0) -> void:
 	ring(pos,Color("ee917e"))
 	for i in range(8): add("chip",pos,Vector2(randf_range(-190,170),randf_range(-260,-100)),Color("99705f"),randf_range(3,8),.9,750)
 	if MonsterCatalog.VEHICLES.has(object_kind):
-		var p=add("vehicle",pos,Vector2(125,-340),Color.WHITE,float(MonsterCatalog.VEHICLES[object_kind].height),1.18,880)
-		p.object=object_kind;p.rotation=0;p.start_angle=start_angle
+		if wrecks.size()>=12:wrecks.pop_front()
+		wrecks.append({"object":object_kind,"pos":pos,"origin_y":pos.y,"age":0.0,"start_angle":start_angle})
 	elif object_kind in ["bomb","helicopter","air_bomb"]: explosion(pos)
 
 func capture(pos: Vector2,kind: int) -> void:
@@ -76,6 +77,12 @@ func ghost(kind: int,foot: Vector2,phase: float,state: String,landing: float) ->
 	trails.append({"kind":kind,"foot":foot,"phase":phase,"state":state,"landing":landing,"life":.32})
 
 func update(dt: float,speed: float) -> void:
+	for w in wrecks:
+		w.age+=dt;w.pos.x-=speed*dt
+		var height=float(MonsterCatalog.VEHICLES[w.object].height)
+		w.pos.y=HordeRun.FLOOR-height*.44-sin(minf(1,w.age/.7)*PI)*46
+	for i in range(wrecks.size()-1,-1,-1):
+		if wrecks[i].pos.x+float(MonsterCatalog.VEHICLES[wrecks[i].object].width)*.5< -650:wrecks.remove_at(i)
 	for i in range(particles.size()-1,-1,-1):
 		var p=particles[i]
 		p.life-=dt
@@ -153,7 +160,7 @@ func paint(canvas: Node2D,art: HordeArt,actor: HordeActor=null) -> void:
 				var pos=p.origin.lerp(p.target,t)+Vector2(sin(progress*TAU)*18,-sin(progress*PI)*80)
 				canvas.draw_set_transform(pos,sin(progress*TAU)*.1)
 				canvas.draw_circle(Vector2.ZERO,23,Color(.3,1,.8,color.a*.08))
-				var texture=art.ritual[0]
+				var texture=art.soul(progress*1.2)
 				var size=texture.get_size()*(p.size/texture.get_height())*(1-progress*.4)
 				canvas.draw_texture_rect(texture,Rect2(-size*.5,size),false,color)
 			"bone","mask","fly","wing","explosion":
@@ -175,3 +182,32 @@ func paint(canvas: Node2D,art: HordeArt,actor: HordeActor=null) -> void:
 				canvas.draw_set_transform(pos,progress*TAU)
 				canvas.draw_texture_rect(texture,Rect2(-size*.5,size),false,color)
 		canvas.draw_set_transform(Vector2.ZERO)
+
+func paint_wrecks(canvas: Node2D,art: HordeArt,time: float,left: float) -> void:
+	for w in wrecks:
+		var spec=MonsterCatalog.VEHICLES[w.object]
+		var size=Vector2(spec.width,spec.height)
+		if w.pos.x+size.x*.5<left-90:continue
+		var turn=clampf(w.age/.7,0,1)
+		var angle=lerpf(float(w.start_angle),PI,smoothstep(0,1,turn))
+		var mix=smoothstep(.65,1.0,turn)
+		canvas.draw_set_transform(w.pos,angle,Vector2(-1 if spec.reverse else 1,1))
+		canvas.draw_texture_rect(art.damaged_vehicles[int(spec.icon)],Rect2(-size*.5,size),false,Color(1,1,1,1-mix))
+		canvas.draw_set_transform(w.pos,0,Vector2(1 if spec.reverse else -1,1))
+		canvas.draw_texture_rect(art.wreck_vehicles[int(spec.icon)],Rect2(-size*Vector2(.5,.44),size*Vector2(1,.88)),false,Color(1,1,1,mix))
+		canvas.draw_set_transform(Vector2.ZERO)
+		if w.age<.55:continue
+		var places={"moto":[-.08],"car":[-.30,.16],"bus":[-.34,-.12,.12,.34],"truck":[-.34,.18],"tank":[-.12,.23],"plane":[-.24,.02,.29]}[w.object]
+		var height={"moto":65,"car":92,"bus":128,"truck":148,"tank":165,"plane":168}[w.object]
+		for i in range(places.size()):
+			var at=Vector2(w.pos.x+float(places[i])*size.x,HordeRun.FLOOR-size.y*.27)
+			var grow=smoothstep(.55,1.5,w.age)
+			var frame=(3 if w.object in ["truck","tank","plane"] else 0)+posmod(int(time*10+i),3)
+			var h=float(height)*grow*(1+sin(time*7+i)*.07)
+			var texture=art.fire_frames[frame]
+			var flame_size=texture.get_size()*(h/texture.get_height())
+			canvas.draw_circle(at-Vector2(0,h*.3),h*.65,Color(1,.36,.06,.045*grow))
+			canvas.draw_texture_rect(texture,Rect2(at-Vector2(flame_size.x*.5,h),flame_size),false)
+			for spark in range(2):
+				var phase=fposmod(time*.8+i*.4+spark*.5,1)
+				canvas.draw_circle(at+Vector2(sin(time*3+i+spark)*h*.18,-phase*h),1.7,Color(1,.67,.19,1-phase))

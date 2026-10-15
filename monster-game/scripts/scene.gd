@@ -10,6 +10,10 @@ var district=-1
 var scream_left=2.8
 var crash_left=5.0
 var crash_age=-1.0
+var view_left=0.0
+var view_right=1280.0
+var view_top=0.0
+var view_bottom=720.0
 
 func _init(source: HordeArt,rig: HordeActor) -> void:
 	art=source;actor=rig
@@ -28,7 +32,7 @@ func update(dt: float,run: HordeRun) -> void:
 	if district!=1 or run.inside_tunnel(): return
 	for p in civilians:
 		p.x+=(-p.speed if p.reverse else p.speed)*dt-run.speed*dt*.38
-		p.phase+=dt*3.9
+		p.phase+=dt*1.4
 		if p.x< -90: p.x=1400
 		if p.x>1450: p.x=-70
 	scream_left-=dt;crash_left-=dt
@@ -60,8 +64,8 @@ func helicopter(canvas: Node2D,centre: Vector2,height: float,time: float,angle: 
 	canvas.draw_set_transform(Vector2.ZERO)
 
 func paint_outside(canvas: Node2D,run: HordeRun,time: float,area: int,left: float=0,right: float=1280) -> void:
-	canvas.draw_rect(Rect2(left,0,right-left,720),Color("342049"))
-	clip_texture(canvas,art.sky,Rect2(0,0,1280,448),left,right)
+	canvas.draw_rect(Rect2(left,view_top,right-left,view_bottom-view_top),Color("342049"))
+	clip_texture(canvas,art.sky,Rect2(view_left,view_top,view_right-view_left,448-view_top),left,right)
 	for i in range(20):
 		canvas.draw_rect(Rect2(left,380+i*10,right-left,11),Color(.24,.14,.31,float(i)/20*.26))
 	for layer in range(3):
@@ -126,12 +130,12 @@ func clip_texture(canvas: Node2D,texture: Texture2D,dest: Rect2,left: float,righ
 	canvas.draw_texture_rect_region(texture,Rect2(x0,dest.position.y,x1-x0,dest.size.y),source)
 
 func paint(canvas: Node2D,run: HordeRun,time: float) -> void:
-	paint_outside(canvas,run,time,run.area())
+	paint_outside(canvas,run,time,run.area(),view_left,view_right)
 	for t in run.tunnels:
 		var entrance=HordeRun.ANCHOR+float(t.entry)-run.world_px
 		var exit=entrance+float(t.length)
-		if entrance>=1280 or exit<=0: continue
-		var left=maxf(0,entrance);var right=minf(1280,exit)
+		if entrance>=view_right or exit<=view_left: continue
+		var left=maxf(view_left,entrance);var right=minf(view_right,exit)
 		if right>left:
 			var width=art.tunnel.get_width()*720.0/art.tunnel.get_height()
 			var offset=fposmod(run.world_px,width)
@@ -147,7 +151,7 @@ func paint(canvas: Node2D,run: HordeRun,time: float) -> void:
 				if x>left+15 and x<right-15:
 					canvas.draw_circle(Vector2(x,300),80,Color(1,.58,.22,.025+.015*sin(time*9+i)))
 					canvas.draw_circle(Vector2(x+sin(time*2+i)*13,280+fposmod(time*26+i*40,80)),2,Color(1,.76,.38,.35))
-		if exit<1280: paint_outside(canvas,run,time,int(t.to),maxf(0,exit),1280)
+		if exit<view_right: paint_outside(canvas,run,time,int(t.to),maxf(view_left,exit),view_right)
 
 func paint_front(canvas: Node2D,run: HordeRun) -> void:
 	for t in run.tunnels:

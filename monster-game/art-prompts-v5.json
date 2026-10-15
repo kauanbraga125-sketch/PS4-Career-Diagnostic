@@ -1,0 +1,54 @@
+{
+  "version": "0.5.0",
+  "mode": "built-in imagegen",
+  "assets": [
+    {
+      "key": "police",
+      "file": "rig-police-v5.png",
+      "ref": "rig-civilian-worker-v4.png",
+      "prompt": "Use case: stylized-concept. Asset type: original Noite da Horda cartoon horror runner game sprite atlas. Match reference soft painted volume, chunky dark plum outlines, mint rim lights, violet shadows, amber highlights. Genuine transparent PNG, isolated shapes and generous transparent cell gutters, no backgrounds, no watermark. Game objects, not a UI mockup. Exactly 3 columns by 3 rows, nine detached cutout rig parts, one per cell. Reading order: HEAD with short neck; TORSO without arms/legs; UPPER ARM; FOREARM; HAND; THIGH; SHIN; FOOT pointing right; ACCESSORY. Adult human police officer facing RIGHT in three-quarter profile, determined expressive tan face and navy police cap with simple golden star badge. Navy blue short-sleeve uniform, golden chest badge, black belt, navy trousers, black sturdy shoes. Straight vertical limb segments with proximal joint at top and round overlapping ends, no complete posed person. ACCESSORY is a detached hand-held red octagonal paddle sign on a wooden handle with exact large white word \"STOP\". Keep every part inside its cell; do not crop; no extra objects.",
+      "source": "/workspace/scratch/135a4bd386fb/generated_images/exec-0e1d83a2-ac05-4dda-8dde-5ecc487fb720.png",
+      "mode": "built-in imagegen"
+    },
+    {
+      "key": "souls",
+      "file": "soul-frames-v5.png",
+      "ref": "ritual-v4.png",
+      "prompt": "Use case: stylized-concept. Asset type: original Noite da Horda cartoon horror runner game sprite atlas. Match reference soft painted volume, chunky dark plum outlines, mint rim lights, violet shadows, amber highlights. Genuine transparent PNG, isolated shapes and generous transparent cell gutters, no backgrounds, no watermark. Game objects, not a UI mockup. Exactly THREE columns by TWO rows. SIX sequential animation frames of the SAME friendly mint-blue SOUL FLAME from the upper left of the reference: cream expressive skull face/eyes, purple edge, curling wispy turquoise flame tail. Keep skull face size, position, pivot, scale and identity absolutely consistent in all six cells. Animate curling upper flame and lower tail in a smooth loop: frame1 upright with slight left bend; frame2 bent left; frame3 upright swirling; frame4 bent right; frame5 right curl; frame6 return near upright. Small separate rising teal motes vary per frame. Each complete isolated sprite fully within cell, at least 45px clear padding, no objects or altar or chest.",
+      "source": "/workspace/scratch/135a4bd386fb/generated_images/exec-2919bc7b-da5a-4fe6-8fdb-97f7ccb940b2.png",
+      "mode": "built-in imagegen"
+    },
+    {
+      "key": "pickups",
+      "file": "power-pickups-v5.png",
+      "ref": "rig-fly.png",
+      "prompt": "Use case: stylized-concept. Asset type: original Noite da Horda cartoon horror runner game sprite atlas. Match reference soft painted volume, chunky dark plum outlines, mint rim lights, violet shadows, amber highlights. Genuine transparent PNG, isolated shapes and generous transparent cell gutters, no backgrounds, no watermark. Game objects, not a UI mockup. Exactly THREE columns by TWO rows, SIX isolated frames. TOP ROW three looping frames of a grotesque strange but cute FLY MUTATION COCOON pickup: translucent mottled teal oval insect egg, swollen pink compound eyes visible inside, folded purple veined wings, little curled black legs and mint slime droplets. Frame1 closed soft oval, frame2 swells/breathes and veins glow, frame3 slightly opens eye and wings; same pivot/scale, complete object. No gore. BOTTOM ROW three looping frames of an original scary cream hockey-like MASK pickup with coral cheek scars, plum shadows, dark round eyeholes, ominous red/purple organic tendrils, matching project's masked monster. Frame1 low glow, frame2 eyes brighten orange, frame3 tendrils curl. Keep each row object's silhouette consistent, no text, no characters, no icon circles or crystal. Each within its cell with 45px clear padding.",
+      "source": "/workspace/scratch/135a4bd386fb/generated_images/exec-fce7e48e-1fbc-443b-a405-fdf3145e3780.png",
+      "mode": "built-in imagegen"
+    },
+    {
+      "key": "damage",
+      "file": "vehicles-damaged-v5.png",
+      "ref": "vehicles-v4.png",
+      "prompt": "Use case: precise-object-edit. Edit target: reference vehicle atlas. Asset type: six intermediate damage sprites for Noite da Horda. Preserve the EXACT six vehicles, colors, proportions, direction, cell positions, 3 columns by 2 rows layout, side view and cartoon painted/plum-outline style of reference. Top row motorcycle/car/bus; bottom row truck/tank/plane. Change only DAMAGE: dent the front panels inward, partially crush bonnet/body, crack blue windows with visible white fracture lines, loosen a bumper or panel, scratch metal. Keep all vehicles UPRIGHT, all parts attached and within their own cell, no flames/smoke, no people. Keep original wheelbase and centers so the game can blend undamaged to damaged. Genuine transparency with wide clear gutters, no text or background or shadow.",
+      "source": "/workspace/scratch/135a4bd386fb/generated_images/exec-62b87f05-50cf-4af6-aa9f-daf68518f20d.png",
+      "mode": "built-in imagegen"
+    },
+    {
+      "key": "wrecks",
+      "file": "vehicles-wrecks-v5.png",
+      "ref": "vehicles-v4.png",
+      "prompt": "Use case: stylized-concept. Reference image supplies EXACT vehicle identities, colors, directions, proportions and art style. Asset type: six separate OVER­TURNED wrecked vehicle game sprites, transparent 3 columns by 2 rows. Reading order motorcycle, car, city bus / cargo truck, tank, passenger propeller airplane. Each lies upside down on its crushed roof/body on a flat imaginary road: WHEELS FACE UP, broken windows, bent roof, charred edges, dents, crumpled engines. Keep original coral motorbike, red car, yellow bus, blue long truck, olive tank and ivory/teal long plane recognizable. Side view, soft painted volume and chunky dark plum outline. All facing directions consistent with reference after rotation, all parts attached inside own cell with at least 30px transparent padding. No fire, smoke or floor; flames animated separately. No people, text or background.",
+      "source": "/workspace/scratch/135a4bd386fb/generated_images/exec-25ea9470-49de-4974-a830-ff6f97a601dd.png",
+      "mode": "built-in imagegen"
+    },
+    {
+      "key": "fire",
+      "file": "fire-frames-v5.png",
+      "ref": "ritual-v4.png",
+      "prompt": "Use case: stylized-concept. Asset type: six isolated fire animation frames for Noite da Horda cartoon game. Exactly THREE columns by TWO rows on genuine transparency, consistent center/scale/pivot within row. Match reference plum contour, warm amber/gold highlights and soft cartoon painted volume. Top row THREE looping frames of a lively vehicle ENGINE FIRE, golden core, orange/coral tongues and a few amber rising sparks, flame bends left, upright, right, same baseline. Bottom row THREE looping frames of a more powerful FUEL FIRE with amber-orange core, coral edges and curling purple-grey smoke at top, smoke moves left/up/right. No objects or bombs/candles, no characters, no floor, no dark background rectangle. Keep each complete fire/smoke frame inside cell with wide 50px clear gutters, no neighbouring spill. Visually beautiful and suitable for many overlapping small emitters on a burning vehicle.",
+      "source": "/workspace/scratch/135a4bd386fb/generated_images/exec-58d59825-77bc-4448-9adc-8b37b8e4a527.png",
+      "mode": "built-in imagegen"
+    }
+  ]
+}

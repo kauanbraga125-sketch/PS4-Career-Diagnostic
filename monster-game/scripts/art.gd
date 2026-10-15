@@ -4,7 +4,7 @@ extends RefCounted
 var background: Texture2D=preload("res://assets/art/background.png")
 var creature_sheet: Texture2D=preload("res://assets/art/creatures.png")
 var item_sheet: Texture2D=preload("res://assets/art/items.png")
-var title_font: Font=preload("res://assets/fonts/Bungee-Regular.ttf")
+var title_font: Font=preload("res://assets/fonts/LilitaOne-Regular.ttf")
 var body_font: Font=preload("res://assets/fonts/DejaVuSans.ttf")
 var creatures: Array=[]
 var items: Array[AtlasTexture]=[]
@@ -21,8 +21,17 @@ var tunnel: Texture2D=preload("res://assets/art/tunnel-interior-v4.png")
 var tunnel_mouths: Array[AtlasTexture]=[]
 var ritual: Array[AtlasTexture]=[]
 var vfx: Array[AtlasTexture]=[]
+var soul_frames: Array[AtlasTexture]=[]
+var power_frames: Array[AtlasTexture]=[]
+var fire_frames: Array[AtlasTexture]=[]
+var damaged_vehicles: Array[AtlasTexture]=[]
+var wreck_vehicles: Array[AtlasTexture]=[]
+var passenger_frames: Array[AtlasTexture]=[]
 
 func _init() -> void:
+	var passengers=load("res://assets/art/passengers-v7.png") as Texture2D
+	for row in range(3):
+		for col in range(4):passenger_frames.append(atlas(passengers,[col*362,[0,360,640][row],362,[350,285,446][row]]))
 	var data=JSON.parse_string(FileAccess.get_file_as_string("res://assets/art/layout.json"))
 	for row in data.creatures:
 		var frames: Array[AtlasTexture]=[]
@@ -70,6 +79,21 @@ func _init() -> void:
 	for region in newest.mouths: tunnel_mouths.append(atlas(preload("res://assets/art/tunnel-mouths-v4.png"),region))
 	for region in newest.ritual: ritual.append(atlas(preload("res://assets/art/ritual-v4.png"),region))
 	for region in newest.vfx: vfx.append(atlas(preload("res://assets/art/vfx-v4.png"),region))
+	var v5=JSON.parse_string(FileAccess.get_file_as_string("res://assets/art/atlas-v5.json"))
+	var police: Array[AtlasTexture]=[]
+	for region in v5.police: police.append(atlas(preload("res://assets/art/rig-police-v5.png"),region))
+	rigs.append(police)
+	for region in v5.souls: soul_frames.append(atlas(preload("res://assets/art/soul-frames-v5.png"),region))
+	for region in v5.pickups: power_frames.append(atlas(preload("res://assets/art/power-pickups-v5.png"),region))
+	for region in v5.fire: fire_frames.append(atlas(preload("res://assets/art/fire-frames-v5.png"),region))
+	for region in v5.damage: damaged_vehicles.append(atlas(preload("res://assets/art/vehicles-damaged-v5.png"),region))
+	for region in v5.wrecks: wreck_vehicles.append(atlas(preload("res://assets/art/vehicles-wrecks-v5.png"),region))
+
+func soul(time: float) -> Texture2D:
+	return soul_frames[posmod(int(time*8),6)]
+
+func power(kind: int,time: float) -> Texture2D:
+	return power_frames[(0 if kind==3 else 3)+posmod(int(time*5),3)]
 
 func vehicle(kind: String) -> Texture2D:
 	var index=int(MonsterCatalog.VEHICLES.get(kind,{"icon":-1}).icon)
