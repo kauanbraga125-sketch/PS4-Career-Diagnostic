@@ -15,7 +15,7 @@ Base: versão Local 0.6 recuperada, preservando as três músicas, sons anterior
 - Menu inicial mostra zumbi e Mosca disponíveis, sem oferta de Mascarado sobre os personagens. Compras anteriores preservadas.
 - Mercado em lista vertical contínua com arrasto, roda do mouse, barra de rolagem e recorte. Categorias, cabeçalho e Voltar fixos; detalhes e compras reais.
 - Coleção com cartões individuais e personagem selecionado grande e animado. Poderes separados e estado real de desbloqueio.
-- Missões com trio de cartões, ícones adequados, progresso e recompensas. Pausa com missões à esquerda e Continuar dourado. Mundo congelado enquanto a interface anima.
+- Missões com trio de cartões, ícones adequados, progresso e recompensas. Pausa com missões à esquerda e Continuar dourado. Mundo e enquadramento congelados enquanto a interface anima; comparação de pixels verifica o cenário parado e as almas em movimento.
 - Resultados: “A horda caiu. As almas permanecem.”, frasco à esquerda, quatro estatísticas à direita, ritual e ações. Nível e progresso juntos; crédito de recompensas continua sendo liquidado uma única vez.
 - Frasco com **61 sprites de enchimento**, de 0 a 100%, em atlas. A animação parte do progresso anterior, mostra o estado cheio ao subir de nível e conserva excedentes. Fluxo sonoro apenas durante enchimento.
 - **12 poses novas**: quatro tentativas de fuga no carro, quatro poses no ônibus e quatro poses exclusivas do motoqueiro. Passageiros maiores, diferentes fases e tipos alternados no ônibus. Recortes medidos para não mostrar partes de outro quadro.

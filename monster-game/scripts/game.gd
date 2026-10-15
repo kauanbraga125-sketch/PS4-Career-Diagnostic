@@ -55,6 +55,7 @@ var market=HordeMarket.new()
 var settings_from="home"
 var slider_channel=""
 var camera_focus=0.0
+var frozen_world_time=0.0
 var foreground_canvas: Node2D
 var market_clip: Control
 var market_canvas: Node2D
@@ -105,8 +106,9 @@ func _process(dt: float) -> void:
 	market.update(dt)
 	market_clip.visible=screen=="market"
 	if screen=="market":market_canvas.queue_redraw()
-	camera_focus=move_toward(camera_focus,1.0 if screen=="run" and runner.transform_left>0 else 0.0,dt*(1.8 if runner.transform_left>0 else 1.2))
-	camera_zoom=1.26+.16*smoothstep(0,1,camera_focus)
+	if screen=="run":
+		camera_focus=move_toward(camera_focus,1.0 if runner.transform_left>0 else 0.0,dt*(1.8 if runner.transform_left>0 else 1.2))
+		camera_zoom=1.26+.16*smoothstep(0,1,camera_focus)
 	toast_left=maxf(0,toast_left-dt)
 	shake=maxf(0,shake-dt*20)
 	flash=maxf(0,flash-dt*1.7)
@@ -130,6 +132,7 @@ func _physics_process(dt: float) -> void:
 		save_game()
 
 func change_screen(next: String) -> void:
+	if next in ["pause","results"] and screen=="run":frozen_world_time=ui_time
 	if next=="home": begin_ritual()
 	if next=="results":
 		result_time=0;result_full_flash=0;result_level=int(run_report.get("old_level",data.player_level))
@@ -1205,13 +1208,17 @@ func world_to_ui(point: Vector2) -> Vector2:
 	return world_canvas.position+point*camera_zoom
 
 func paint_world() -> void:
+	var interface_time=ui_time
+	if screen in ["pause","results"]:ui_time=frozen_world_time
 	paint_target=world_canvas
 	backdrop()
 	world_canvas.draw_rect(Rect2(scenery.view_left,scenery.view_top,scenery.view_right-scenery.view_left,scenery.view_bottom-scenery.view_top),Color(.045,.018,.09,.12))
-	paint_target=self
+	paint_target=self;ui_time=interface_time
 
 func paint_foreground() -> void:
-	paint_target=foreground_canvas;draw_run();paint_target=self
+	var interface_time=ui_time
+	if screen in ["pause","results"]:ui_time=frozen_world_time
+	paint_target=foreground_canvas;draw_run();paint_target=self;ui_time=interface_time
 
 func animated_soul(point: Vector2,height: float,time: float,tint: Color=Color.WHITE) -> void:
 	var frame=fposmod(time*8,6)

@@ -24,11 +24,21 @@ func run(g) -> void:
 	assert(g.market.scroll>100 and g.market.selected.is_empty());checks+=1
 	await shot(g,"powers-scroll")
 	g.settings_from="home";g.change_screen("settings");await shot(g,"settings")
-	g.preview_course(12000,4);g.runner.entities.clear();g.runner.add_entity("bus",810);g.runner.add_entity("moto",1170);await shot(g,"bus-and-rider")
+	g.preview_course(12000,4);g.runner.entities.clear();g.runner.add_entity("bus",840);g.runner.add_entity("moto",500);await shot(g,"bus-and-rider")
 	g.runner.entities.clear();var car=g.runner.add_entity("car",840);await shot(g,"car-passenger")
 	g.runner.entities.clear();g.runner.npc_serial=14;var npc=g.runner.add_entity("civilian",700);npc.spoke=true;npc.speech_left=2;await shot(g,"npc-bubble")
 	g.runner.npc_serial=0;g.runner.entities.clear();g.runner.add_entity("gap",680,HordeRun.FLOOR,0,320);g.runner.add_entity("hump",1150);await shot(g,"terrain")
+	g.camera_focus=.6;g.camera_zoom=1.26+.16*smoothstep(0,1,g.camera_focus)
 	g.change_screen("pause");await shot(g,"pause")
+	var paused_image=g.get_viewport().get_texture().get_image()
+	var before_pixels=paused_image.get_region(Rect2i(0,620,1280,100)).get_data()
+	var before_zoom=g.camera_zoom
+	g.capture_freeze=false;g._process(.75);g.capture_freeze=true
+	await shot(g,"pause-animated")
+	var after_image=g.get_viewport().get_texture().get_image()
+	assert(before_pixels==after_image.get_region(Rect2i(0,620,1280,100)).get_data());checks+=1
+	assert(before_zoom==g.camera_zoom);checks+=1
+	assert(paused_image.get_region(Rect2i(600,183,180,400)).get_data()!=after_image.get_region(Rect2i(600,183,180,400)).get_data());checks+=1
 	var before=g.runner.world_px;g._physics_process(.5);assert(g.runner.world_px==before);checks+=1
 	g.runner.souls=26;g.runner.coins=134;g.runner.cars=6;g.run_report={"old_level":2,"old_progress":27,"levels":1,"coins":256};g.data.player_level=3;g.data.level_souls=17;g.data.best_souls=31;g.data.best=1350
 	g.change_screen("results")
