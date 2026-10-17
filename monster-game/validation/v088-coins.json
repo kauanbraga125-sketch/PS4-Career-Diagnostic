@@ -1,0 +1,35 @@
+{
+  "seed": 88801,
+  "horde": 36,
+  "seconds_per_observation": 120,
+  "base_v087": [
+    {
+      "coins_spawned": 217,
+      "per_1000px": 5.30137171846456,
+      "stage": 3,
+      "world": 40932.8022112077
+    },
+    {
+      "coins_spawned": 217,
+      "per_1000px": 4.2701920027138,
+      "stage": 8,
+      "world": 50817.3871015851
+    }
+  ],
+  "v088": [
+    {
+      "coins_spawned": 153,
+      "per_1000px": 3.519431580979,
+      "stage": 3,
+      "world": 43472.9292158707
+    },
+    {
+      "coins_spawned": 177,
+      "per_1000px": 3.26061496485534,
+      "stage": 8,
+      "world": 54284.2383746015
+    }
+  ],
+  "mean_distance_density_reduction": 0.29164693007971276,
+  "note": "Two distribution observers; future planned formations are included. Full formations use a budget at 70% of the former road-time density."
+}

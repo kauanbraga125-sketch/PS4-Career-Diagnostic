@@ -1,0 +1,70 @@
+{
+  "failures": [],
+  "reports": [
+    {
+      "counts": {
+        "air_bomb": 28,
+        "bomb": 42,
+        "boost": 1,
+        "bullet": 11,
+        "bus": 1,
+        "car": 2,
+        "civilian": 6,
+        "coin": 140,
+        "collapse": 7,
+        "gap": 4,
+        "hostile_car": 3,
+        "moto": 1,
+        "plane": 2,
+        "soldier": 3,
+        "tank": 2,
+        "truck": 1
+      },
+      "generation_count": 28,
+      "horde": 36,
+      "horde_end": 36,
+      "max_physics_ms": 23.0,
+      "mean_generation_ms": 5.84,
+      "mean_physics_ms": 0.811,
+      "seconds": 89.9999999999962,
+      "sequence_rejections": 0,
+      "soul_limit": 57,
+      "souls": 56,
+      "spawn_checks": 243,
+      "stage_start": 3,
+      "unplaced": 0
+    },
+    {
+      "counts": {
+        "air_bomb": 17,
+        "bomb": 21,
+        "bullet": 15,
+        "car": 3,
+        "civilian": 5,
+        "coin": 105,
+        "collapse": 9,
+        "crystal": 1,
+        "gap": 2,
+        "hostile_car": 6,
+        "moto": 1,
+        "plane": 2,
+        "shield": 1,
+        "soldier": 3,
+        "tank": 4
+      },
+      "generation_count": 24,
+      "horde": 88,
+      "horde_end": 88,
+      "max_physics_ms": 42.36,
+      "mean_generation_ms": 7.7,
+      "mean_physics_ms": 1.681,
+      "seconds": 89.9999999999962,
+      "sequence_rejections": 0,
+      "soul_limit": 113,
+      "souls": 81,
+      "spawn_checks": 180,
+      "stage_start": 8,
+      "unplaced": 0
+    }
+  ]
+}

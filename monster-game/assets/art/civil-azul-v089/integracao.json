@@ -1,0 +1,104 @@
+{
+  "schema_version": 1,
+  "character_key_suggestion": "civil_casaco_azul_nerd",
+  "replacement": {
+    "description": "Civil masculino comum de casaco azul, camiseta e mochila laranja; novo visual nerd ruivo de oculos.",
+    "historical_asset": "rig-civilian.png",
+    "identification_reference": "referencias/CIVIL_ANTIGO_rig-civilian.png",
+    "catalog_index": "Confirmar a associacao no projeto atual; nao presumir o indice antigo.",
+    "scope": "Variante correspondente do NPC civil vivo no chao; manter outros civis, policiais e soldados em suas associacoes."
+  },
+  "art_manifest": "assets/animacoes.json",
+  "source_facing": "right",
+  "horde_approaches_from": "left",
+  "world_positive_x": "right",
+  "frame_size_px": [
+    640,
+    640
+  ],
+  "origin_px": [
+    320,
+    560
+  ],
+  "reference_neutral_visible_height_px": 500,
+  "scale_rule": "Uma escala base para todos os estados: altura visual do zumbi comum dividida por aproximadamente 500.",
+  "frame_indexing": "Os intervalos de quadros deste arquivo usam indices de codigo, comecando em zero.",
+  "states": {
+    "parado_nervoso": {
+      "facing": "left",
+      "flip_h": true,
+      "motion": "existing_idle",
+      "loop": true
+    },
+    "susto_inicio_fuga": {
+      "loop": false,
+      "facing_by_frame": [
+        {
+          "first": 0,
+          "last": 5,
+          "facing": "left",
+          "flip_h": true
+        },
+        {
+          "first": 6,
+          "last": 11,
+          "facing": "right",
+          "flip_h": false
+        }
+      ],
+      "flee_acceleration_begins_at_frame": 6
+    },
+    "transicao_susto_corrida": {
+      "facing": "right",
+      "flip_h": false,
+      "loop": false
+    },
+    "corrida": {
+      "facing": "right",
+      "flip_h": false,
+      "world_velocity_x_sign": 1,
+      "loop": true,
+      "base_fps": 25
+    },
+    "transicao_corrida_captura": {
+      "facing": "left",
+      "flip_h": true,
+      "loop": false,
+      "phase_constraint": "Desenhada a partir do quadro 1 da corrida. Usar somente se a pose for compativel; contato nao espera o fim do loop."
+    },
+    "captura": {
+      "facing": "left",
+      "flip_h": true,
+      "loop": false,
+      "motion": "decelerate_or_attach_using_existing_capture_logic",
+      "logical_timing": "preserve_existing_gameplay_capture_and_conversion_timing",
+      "reference_last_frame_hold_ms": 600,
+      "suggested_gameplay_last_frame_hold_ms": [
+        80,
+        100
+      ],
+      "timing_note": "Ajustar o clip para a janela existente, incluindo ou omitindo intermediarios; recompensa/conversao apenas uma vez."
+    }
+  },
+  "turn_effect": {
+    "duration_ms": [
+      80,
+      100
+    ],
+    "visual_width_multiplier_at_midpoint": 0.92,
+    "flip_at_midpoint": true,
+    "affects_physics": false,
+    "restore_visual_scale_on_cancel": true
+  },
+  "notes": [
+    "As previas mostram a arte voltada para a direita, nao a orientacao final de gameplay.",
+    "Espelhar o sprite inteiro em torno da origem; nao separar a cabeca para olhar para tras.",
+    "O sentido do olhar nao deve ser deduzido do deslocamento aparente causado pela camera.",
+    "Nao recortar transparencia nem recalcular a escala por bounding box a cada quadro.",
+    "Usar um unico caminho de texturas no runtime: folhas ou arquivos individuais."
+  ],
+  "engine_references": [
+    "https://docs.godotengine.org/en/stable/classes/class_spriteframes.html",
+    "https://docs.godotengine.org/en/stable/classes/class_animatedsprite2d.html"
+  ]
+}

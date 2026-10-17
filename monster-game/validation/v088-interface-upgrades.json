@@ -1,0 +1,23 @@
+{
+  "upgrade_sequence_cases": 576,
+  "upgrade_failures": 0,
+  "vehicle_rescue_cases": 120,
+  "ui_progression_unchanged": true,
+  "paused_run_restored": true,
+  "rendered_viewports": [
+    [
+      1280,
+      720
+    ],
+    [
+      1600,
+      720
+    ],
+    [
+      1280,
+      960
+    ]
+  ],
+  "physical_android_device_tested": false,
+  "compiled_apk_resource_boot": "Main scene loaded with desktop Godot headless. Shutdown reported 4 resources still referenced; no script parse/load errors."
+}

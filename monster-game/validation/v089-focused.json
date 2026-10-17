@@ -1,0 +1,172 @@
+{
+  "failures": [],
+  "reports": [
+    {
+      "delay_cap_seconds": 0.12,
+      "horde": 88,
+      "visible_drawings": 22
+    },
+    {
+      "attempts": 4,
+      "horde": 16,
+      "sequence": "bomb_sequence",
+      "valid_variants": 4
+    },
+    {
+      "attempts": 4,
+      "horde": 16,
+      "sequence": "air_sequence",
+      "valid_variants": 4
+    },
+    {
+      "attempts": 4,
+      "horde": 16,
+      "sequence": "mixed",
+      "valid_variants": 4
+    },
+    {
+      "attempts": 4,
+      "horde": 16,
+      "sequence": "gap",
+      "valid_variants": 4
+    },
+    {
+      "attempts": 4,
+      "horde": 16,
+      "sequence": "gap_chain",
+      "valid_variants": 4
+    },
+    {
+      "attempts": 4,
+      "horde": 16,
+      "sequence": "collapse",
+      "valid_variants": 4
+    },
+    {
+      "attempts": 4,
+      "horde": 16,
+      "sequence": "traffic_sequence",
+      "valid_variants": 4
+    },
+    {
+      "attempts": 4,
+      "horde": 16,
+      "sequence": "convoy",
+      "valid_variants": 4
+    },
+    {
+      "attempts": 4,
+      "horde": 16,
+      "sequence": "combined",
+      "valid_variants": 4
+    },
+    {
+      "attempts": 4,
+      "horde": 36,
+      "sequence": "bomb_sequence",
+      "valid_variants": 4
+    },
+    {
+      "attempts": 4,
+      "horde": 36,
+      "sequence": "air_sequence",
+      "valid_variants": 4
+    },
+    {
+      "attempts": 4,
+      "horde": 36,
+      "sequence": "mixed",
+      "valid_variants": 4
+    },
+    {
+      "attempts": 4,
+      "horde": 36,
+      "sequence": "gap",
+      "valid_variants": 4
+    },
+    {
+      "attempts": 4,
+      "horde": 36,
+      "sequence": "gap_chain",
+      "valid_variants": 4
+    },
+    {
+      "attempts": 4,
+      "horde": 36,
+      "sequence": "collapse",
+      "valid_variants": 4
+    },
+    {
+      "attempts": 4,
+      "horde": 36,
+      "sequence": "traffic_sequence",
+      "valid_variants": 4
+    },
+    {
+      "attempts": 4,
+      "horde": 36,
+      "sequence": "convoy",
+      "valid_variants": 4
+    },
+    {
+      "attempts": 4,
+      "horde": 36,
+      "sequence": "combined",
+      "valid_variants": 4
+    },
+    {
+      "attempts": 4,
+      "horde": 88,
+      "sequence": "bomb_sequence",
+      "valid_variants": 4
+    },
+    {
+      "attempts": 4,
+      "horde": 88,
+      "sequence": "air_sequence",
+      "valid_variants": 4
+    },
+    {
+      "attempts": 4,
+      "horde": 88,
+      "sequence": "mixed",
+      "valid_variants": 4
+    },
+    {
+      "attempts": 4,
+      "horde": 88,
+      "sequence": "gap",
+      "valid_variants": 4
+    },
+    {
+      "attempts": 4,
+      "horde": 88,
+      "sequence": "gap_chain",
+      "valid_variants": 4
+    },
+    {
+      "attempts": 4,
+      "horde": 88,
+      "sequence": "collapse",
+      "valid_variants": 4
+    },
+    {
+      "attempts": 4,
+      "horde": 88,
+      "sequence": "traffic_sequence",
+      "valid_variants": 4
+    },
+    {
+      "attempts": 4,
+      "horde": 88,
+      "sequence": "convoy",
+      "valid_variants": 4
+    },
+    {
+      "attempts": 4,
+      "horde": 88,
+      "sequence": "combined",
+      "valid_variants": 4
+    }
+  ]
+}

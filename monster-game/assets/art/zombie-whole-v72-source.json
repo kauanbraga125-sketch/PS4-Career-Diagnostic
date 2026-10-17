@@ -1,0 +1,25 @@
+{
+  "generator": "built-in image_gen",
+  "version": "0.7.2",
+  "pixels": "Original generated PNGs are preserved unchanged. Atlas regions and anchors are measured; no pixel editing by Python.",
+  "reference": "Same green cartoon zombie, violet-black hair, amber eyes, torn violet shirt, brown shorts at hips, bare feet, facing right.",
+  "atlases": [
+    {
+      "file": "zombie-whole-locomotion-v72.png",
+      "library_source": "libfile_8c35a87a680481918d853755cbb5cc06",
+      "prompt_recovered_from_request": true,
+      "prompt": "Production 2D game atlas, transparent alpha, square 4x4 equal grid, exactly16 complete intact zombie bodies of identical identity, proportions, clothing, perspective, lighting and scale; no puppet parts, text, props, scenery, glow or ground shadow. Row1: four idle breathing and blinking poses. Rows2-4: twelve chronological phases of one complete run cycle: right contact, right compression, right passing, right toe-off, left extension flight, left heel approach, left contact, left compression, left passing, left toe-off, right extension flight, right heel approach, then loop. Arms swing opposite to legs, far limbs shaded, each complete figure inside its own cell with transparent gutters. Both legs alternate, never same leg always forward."
+    },
+    {
+      "file": "zombie-whole-air-v72.png",
+      "library_source": "libfile_e4dcce3def3481918b6d83c5ecf73de5",
+      "prompt_recovered_from_request": true,
+      "prompt": "Same exact character and rendering as running sheet. Production 2D transparent 4x4 equal grid of16 complete connected full-body poses, one percell, consistent head/body scale and right-facing perspective. Row1 four takeoff/ascent poses: toe push, airborne knee lift, knees tuck, compact upward pose. Row2 four held-jump/apex poses with tucked legs and subtle balancing arms, loopable. Row3 four falling poses gradually extending legs for landing. Row4 four landing/recovery poses: feet contact, deepest natural crouch, spring up, return to running posture. Keep head/pelvis coordinates consistent for game physics. No detached limbs, labels, grid, props, backdrop, glow, scenery or ground shadow. True transparent alpha."
+    },
+    {
+      "file": "zombie-whole-actions-v72.png",
+      "prompt": "Use case: identity-preserve. Production 2D side scrolling game animation atlas. Input image: CHARACTER IDENTITY AND STYLE REFERENCE, same zombie as the running sheet. Create exactly 16 COMPLETE full-body poses in a strict 4 columns x 4 rows square grid. One complete connected body per cell. Same green cartoon zombie, purple-black spiky hair, amber eyes, torn purple shirt, brown shorts attached at hips, bare green feet. All face RIGHT in the same side/three-quarter view as reference. Head size, clothes, palette, proportions, camera, drawing scale identical across every frame and reference. Each figure fully inside its cell, no cut limbs or overlap, transparent gutters. Real transparent RGBA alpha background. NO background, scenery, haze, glow, ground/shadow, grid lines, labels, numbers, props, humans, text or watermark. Single intact-body drawings, not separate puppet parts. Arms attach to opposite sides of shoulders, legs to respective hips. Clean crisp silhouette.\nCanvas square 2048x2048, 4x4 equal cells of512px. Character standing height about410px; head about165px, baseline soles cell y470. Keep same body volume throughout.\nREADING ORDER:\nRows1 and2, frames0..7: EIGHT consecutive phases of PUSHING an invisible vehicle on the right. Both arms extend right, hands at chest level roughly same reach. Back leans forward naturally, effort expression. Legs alternately brace and shuffle through an 8-frame loop:0 right foot ahead and left braced back,1 compress right knee,2 left foot lifts passes forward,3 left foot reaches,4 left foot ahead right braced back,5 compress left knee,6 right foot lifts passes forward,7 right foot reaches to seamlessly loop0. Torso/head make subtle coherent effort motions, nothing disconnects.\nRows3 and4, frames8..15: EIGHT consecutive phases of a capture/grab action with NO victim drawn.8 prepare both hands,9 reach ahead,10 both hands fully extended,11 hands close/grab,12 small playful forward lunge with open mouth,13 pull hands towards chest,14 release and begin recovery,15 return to running-ready stance. Keep feet at ground baseline except natural short lunge. Clear smooth progression, same zombie throughout. No gore. Do not copy identical poses; this is chronological sprite animation.",
+      "reference_asset": "zombie-whole-locomotion-v72.png"
+    }
+  ]
+}

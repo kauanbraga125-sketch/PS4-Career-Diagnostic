@@ -1,0 +1,16 @@
+{
+  "generator": "built-in image_gen",
+  "reference": "Mercado da horda sob a lua, referência aprovada por Kauan em 15/10/2026",
+  "file": "market-art-v82.png",
+  "size": [1536,1024],
+  "alpha": "Transparência real preservada; sem remoção por cor",
+  "regions": {
+    "logo": [8,82,1520,490],
+    "shoe": [0,620,384,350],
+    "magnet": [390,606,378,364],
+    "potion": [768,598,384,378],
+    "church": [1152,590,384,390]
+  },
+  "prompt_summary": "Atlas transparente em duas faixas: letreiro largo de madeira roxa com letras MERCADO, caveira e lanternas; abaixo, tênis roxo e verde com trilhas turquesa, ímã vermelho com moedas douradas, poção verde em vidro roxo e igreja torta de janelas âmbar. Mesma pintura cartoon, contorno ameixa e dourado da referência. Objetos separados com margens transparentes.",
+  "processing": "PNG original preservado; AtlasTexture em tempo de execução"
+}

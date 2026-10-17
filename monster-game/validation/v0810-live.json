@@ -1,0 +1,121 @@
+{
+  "failures": [],
+  "reports": [
+    {
+      "commands": 2,
+      "horde": 1,
+      "kind": "car",
+      "losses": 0,
+      "rejections": 0,
+      "seconds": 11.7166666666668,
+      "survivors": 1,
+      "variation": 0
+    },
+    {
+      "commands": 2,
+      "horde": 1,
+      "kind": "convoy",
+      "losses": 0,
+      "rejections": 0,
+      "seconds": 12.2833333333335,
+      "survivors": 1,
+      "variation": 0
+    },
+    {
+      "commands": 3,
+      "horde": 1,
+      "kind": "combined",
+      "losses": 0,
+      "rejections": 0,
+      "seconds": 13.3000000000002,
+      "survivors": 1,
+      "variation": 0
+    },
+    {
+      "commands": 3,
+      "horde": 1,
+      "kind": "collapse",
+      "losses": 0,
+      "rejections": 0,
+      "seconds": 13.8666666666669,
+      "survivors": 1,
+      "variation": 0
+    },
+    {
+      "commands": 3,
+      "horde": 1,
+      "kind": "gap",
+      "losses": 0,
+      "rejections": 0,
+      "seconds": 13.8666666666669,
+      "survivors": 1,
+      "variation": 0
+    },
+    {
+      "commands": 2,
+      "horde": 1,
+      "kind": "car",
+      "losses": 0,
+      "rejections": 0,
+      "seconds": 12.2333333333335,
+      "survivors": 1,
+      "variation": 6
+    },
+    {
+      "commands": 2,
+      "horde": 1,
+      "kind": "convoy",
+      "losses": 0,
+      "rejections": 0,
+      "seconds": 12.1500000000002,
+      "survivors": 1,
+      "variation": 5
+    },
+    {
+      "commands": 2,
+      "horde": 1,
+      "kind": "combined",
+      "losses": 0,
+      "rejections": 0,
+      "seconds": 13.3666666666669,
+      "survivors": 1,
+      "variation": 1
+    },
+    {
+      "commands": 3,
+      "horde": 36,
+      "kind": "gap",
+      "losses": 35,
+      "rejections": 0,
+      "seconds": 14.0000000000003,
+      "survivors": 1,
+      "variation": 0
+    },
+    {
+      "commands": 3,
+      "horde": 36,
+      "kind": "collapse",
+      "losses": 35,
+      "rejections": 0,
+      "seconds": 13.7166666666669,
+      "survivors": 1,
+      "variation": 0
+    },
+    {
+      "commands": 3,
+      "horde": 36,
+      "kind": "convoy",
+      "losses": 3,
+      "rejections": 0,
+      "seconds": 12.7666666666669,
+      "survivors": 33,
+      "variation": 4
+    },
+    {
+      "bullet_checks": 650,
+      "initial_distance": 2400,
+      "kind": "soldier",
+      "shots": 4
+    }
+  ]
+}

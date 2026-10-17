@@ -1,0 +1,258 @@
+{
+  "failures": [],
+  "reports": [
+    {
+      "collisions": {
+
+      },
+      "commands": 2,
+      "fps": 30,
+      "guided": true,
+      "horde": 36,
+      "horde_end": 36,
+      "kind": "car",
+      "losses": 0,
+      "max_step_ms": 0.69,
+      "mean_step_ms": 0.439,
+      "rejections": 0,
+      "seconds": 12.3,
+      "stage": 3,
+      "traffic_cars": 1
+    },
+    {
+      "collisions": {
+
+      },
+      "commands": 2,
+      "fps": 30,
+      "guided": true,
+      "horde": 36,
+      "horde_end": 36,
+      "kind": "convoy",
+      "losses": 0,
+      "max_step_ms": 0.93,
+      "mean_step_ms": 0.455,
+      "rejections": 0,
+      "seconds": 13.37,
+      "stage": 3,
+      "traffic_cars": 1
+    },
+    {
+      "collisions": {
+
+      },
+      "commands": 3,
+      "fps": 30,
+      "guided": true,
+      "horde": 36,
+      "horde_end": 36,
+      "kind": "combined",
+      "losses": 0,
+      "max_step_ms": 3.47,
+      "mean_step_ms": 0.46,
+      "rejections": 0,
+      "seconds": 12.83,
+      "stage": 3,
+      "traffic_cars": 0
+    },
+    {
+      "collisions": {
+        "fall": 6
+      },
+      "commands": 2,
+      "fps": 30,
+      "guided": true,
+      "horde": 36,
+      "horde_end": 30,
+      "kind": "gap",
+      "losses": 6,
+      "max_step_ms": 0.75,
+      "mean_step_ms": 0.406,
+      "rejections": 0,
+      "seconds": 12.57,
+      "stage": 3,
+      "traffic_cars": 0
+    },
+    {
+      "collisions": {
+
+      },
+      "commands": 2,
+      "fps": 30,
+      "guided": true,
+      "horde": 36,
+      "horde_end": 36,
+      "kind": "mixed",
+      "losses": 0,
+      "max_step_ms": 1.19,
+      "mean_step_ms": 0.6,
+      "rejections": 0,
+      "seconds": 12.5,
+      "stage": 3,
+      "traffic_cars": 0
+    },
+    {
+      "collisions": {
+
+      },
+      "commands": 2,
+      "fps": 60,
+      "guided": true,
+      "horde": 36,
+      "horde_end": 36,
+      "kind": "car",
+      "losses": 0,
+      "max_step_ms": 0.92,
+      "mean_step_ms": 0.412,
+      "rejections": 0,
+      "seconds": 12.3,
+      "stage": 3,
+      "traffic_cars": 1
+    },
+    {
+      "collisions": {
+
+      },
+      "commands": 2,
+      "fps": 60,
+      "guided": true,
+      "horde": 36,
+      "horde_end": 36,
+      "kind": "convoy",
+      "losses": 0,
+      "max_step_ms": 3.67,
+      "mean_step_ms": 0.435,
+      "rejections": 0,
+      "seconds": 13.35,
+      "stage": 3,
+      "traffic_cars": 1
+    },
+    {
+      "collisions": {
+
+      },
+      "commands": 3,
+      "fps": 60,
+      "guided": true,
+      "horde": 36,
+      "horde_end": 36,
+      "kind": "combined",
+      "losses": 0,
+      "max_step_ms": 0.92,
+      "mean_step_ms": 0.401,
+      "rejections": 0,
+      "seconds": 12.82,
+      "stage": 3,
+      "traffic_cars": 0
+    },
+    {
+      "collisions": {
+
+      },
+      "commands": 2,
+      "fps": 60,
+      "guided": true,
+      "horde": 36,
+      "horde_end": 36,
+      "kind": "gap",
+      "losses": 0,
+      "max_step_ms": 1.31,
+      "mean_step_ms": 0.381,
+      "rejections": 0,
+      "seconds": 12.47,
+      "stage": 3,
+      "traffic_cars": 0
+    },
+    {
+      "collisions": {
+
+      },
+      "commands": 2,
+      "fps": 60,
+      "guided": true,
+      "horde": 36,
+      "horde_end": 36,
+      "kind": "mixed",
+      "losses": 0,
+      "max_step_ms": 1.07,
+      "mean_step_ms": 0.472,
+      "rejections": 0,
+      "seconds": 12.48,
+      "stage": 3,
+      "traffic_cars": 0
+    },
+    {
+      "collisions": {
+
+      },
+      "commands": 3,
+      "fps": 30,
+      "guided": true,
+      "horde": 36,
+      "horde_end": 36,
+      "kind": "convoy",
+      "losses": 0,
+      "max_step_ms": 0.78,
+      "mean_step_ms": 0.47,
+      "rejections": 0,
+      "seconds": 14.6,
+      "stage": 3,
+      "traffic_cars": 1
+    },
+    {
+      "collisions": {
+
+      },
+      "commands": 3,
+      "fps": 60,
+      "guided": true,
+      "horde": 88,
+      "horde_end": 88,
+      "kind": "convoy",
+      "losses": 0,
+      "max_step_ms": 5.34,
+      "mean_step_ms": 0.971,
+      "rejections": 0,
+      "seconds": 12.5,
+      "stage": 8,
+      "traffic_cars": 1
+    },
+    {
+      "collisions": {
+        "fall": 88
+      },
+      "commands": 0,
+      "fps": 30,
+      "guided": false,
+      "horde": 88,
+      "horde_end": 0,
+      "kind": "gap",
+      "losses": 88,
+      "max_step_ms": 2.02,
+      "mean_step_ms": 1.102,
+      "rejections": 0,
+      "seconds": 8.3,
+      "stage": 8,
+      "traffic_cars": 0
+    },
+    {
+      "collisions": {
+        "bomb": 1,
+        "fall": 87
+      },
+      "commands": 0,
+      "fps": 30,
+      "guided": false,
+      "horde": 88,
+      "horde_end": 0,
+      "kind": "combined",
+      "losses": 88,
+      "max_step_ms": 1.86,
+      "mean_step_ms": 1.164,
+      "rejections": 0,
+      "seconds": 9.17,
+      "stage": 8,
+      "traffic_cars": 0
+    }
+  ]
+}

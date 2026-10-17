@@ -1,0 +1,103 @@
+{
+  "failures": [],
+  "reports": [
+    {
+      "bonus_opportunities": [
+        7655.25122880936,
+        19407.4609099211,
+        32131.9458967985,
+        47833.8252077267,
+        62754.2992628606,
+        75125.2984858761
+      ],
+      "bonuses_collected": 6,
+      "chunks": 44,
+      "longest_quiet_seconds": 1.16666666666667,
+      "raised_fraction": 0.055555555555558,
+      "seconds": 239.999999999989,
+      "seed": 877000,
+      "stage_start": 0,
+      "tunnels": 4,
+      "visible_frames": {
+        "air_bomb": 308,
+        "bomb": 1293,
+        "boost": 153,
+        "bus": 216,
+        "car": 658,
+        "civilian": 2164,
+        "coin": 22501,
+        "crystal": 223,
+        "gap": 159,
+        "moto": 623,
+        "police": 219,
+        "shield": 70,
+        "tank": 78,
+        "truck": 68
+      }
+    },
+    {
+      "bonus_opportunities": [
+        10243.3591743945,
+        26601.3143324543,
+        41196.0302776754,
+        63585.5927549184,
+        84773.1448688703
+      ],
+      "bonuses_collected": 5,
+      "chunks": 40,
+      "longest_quiet_seconds": 1.1,
+      "raised_fraction": 0.0554166666666691,
+      "seconds": 239.999999999989,
+      "seed": 877008,
+      "stage_start": 8,
+      "tunnels": 12,
+      "visible_frames": {
+        "air_bomb": 248,
+        "bomb": 2155,
+        "boost": 54,
+        "car": 321,
+        "civilian": 1445,
+        "coin": 21958,
+        "crystal": 177,
+        "gap": 429,
+        "moto": 138,
+        "plane": 66,
+        "shield": 60,
+        "tank": 175
+      }
+    },
+    {
+      "bonus_opportunities": [
+        9805.09764515021,
+        31306.1323733196,
+        46413.4305015074,
+        71265.1931588791,
+        92478.2239583284
+      ],
+      "bonuses_collected": 5,
+      "chunks": 34,
+      "longest_quiet_seconds": 1.46666666666667,
+      "raised_fraction": 0.056805555555558,
+      "seconds": 239.999999999989,
+      "seed": 877011,
+      "stage_start": 11,
+      "tunnels": 16,
+      "visible_frames": {
+        "air_bomb": 395,
+        "bomb": 2955,
+        "boost": 101,
+        "bus": 45,
+        "car": 92,
+        "civilian": 645,
+        "coin": 20914,
+        "crystal": 111,
+        "gap": 777,
+        "helicopter": 53,
+        "moto": 51,
+        "shield": 53,
+        "tank": 92,
+        "truck": 46
+      }
+    }
+  ]
+}

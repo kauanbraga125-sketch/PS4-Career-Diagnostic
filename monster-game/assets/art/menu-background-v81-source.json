@@ -1,0 +1,8 @@
+{
+  "generator": "built-in image_gen",
+  "reference": "Nova referência de menu aprovada por Kauan em 15/10/2026",
+  "asset": "menu-background-v81.png",
+  "purpose": "Cenário opaco independente do menu inicial, sem interface ou personagens",
+  "prompt_summary": "Cemitério cartoon pintado à noite em formato panorâmico; paleta roxa e turquesa, lua dourada, árvores tortas e lanternas nas bordas, igreja e vila com janelas âmbar, ponte e névoa em planos distantes. Caminho baixo de pedras iluminado a 78% da altura para apoiar o zumbi. Regiões livres para logo, indicadores, personagens, altar e botões renderizados no jogo.",
+  "raster_processing": "PNG original copiado sem edição de pixels; enquadramento proporcional pelo motor Godot"
+}

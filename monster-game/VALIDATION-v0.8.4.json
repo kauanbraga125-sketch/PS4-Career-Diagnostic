@@ -1,0 +1,503 @@
+{
+  "chunks": 840,
+  "coin_checks": 6461,
+  "failures": [],
+  "jump_metrics": [
+    {
+      "distance": 195.46,
+      "flight": 0.64,
+      "fps": 30,
+      "height": 81.14,
+      "hold": 0.04,
+      "horde": 1,
+      "speed": 305.0
+    },
+    {
+      "distance": 315.85,
+      "flight": 1.033,
+      "fps": 30,
+      "height": 173.08,
+      "hold": 0.5,
+      "horde": 1,
+      "speed": 305.0
+    },
+    {
+      "distance": 195.46,
+      "flight": 0.64,
+      "fps": 30,
+      "height": 81.14,
+      "hold": 0.04,
+      "horde": 5,
+      "speed": 305.0
+    },
+    {
+      "distance": 315.85,
+      "flight": 1.033,
+      "fps": 30,
+      "height": 173.08,
+      "hold": 0.5,
+      "horde": 5,
+      "speed": 305.0
+    },
+    {
+      "distance": 197.77,
+      "flight": 0.64,
+      "fps": 30,
+      "height": 81.14,
+      "hold": 0.04,
+      "horde": 20,
+      "speed": 305.0
+    },
+    {
+      "distance": 322.01,
+      "flight": 1.033,
+      "fps": 30,
+      "height": 173.08,
+      "hold": 0.5,
+      "horde": 20,
+      "speed": 305.0
+    },
+    {
+      "distance": 320.42,
+      "flight": 0.64,
+      "fps": 30,
+      "height": 81.14,
+      "hold": 0.04,
+      "horde": 1,
+      "speed": 500.0
+    },
+    {
+      "distance": 517.79,
+      "flight": 1.033,
+      "fps": 30,
+      "height": 173.08,
+      "hold": 0.5,
+      "horde": 1,
+      "speed": 500.0
+    },
+    {
+      "distance": 320.42,
+      "flight": 0.64,
+      "fps": 30,
+      "height": 81.14,
+      "hold": 0.04,
+      "horde": 5,
+      "speed": 500.0
+    },
+    {
+      "distance": 517.79,
+      "flight": 1.033,
+      "fps": 30,
+      "height": 173.08,
+      "hold": 0.5,
+      "horde": 5,
+      "speed": 500.0
+    },
+    {
+      "distance": 322.74,
+      "flight": 0.64,
+      "fps": 30,
+      "height": 81.14,
+      "hold": 0.04,
+      "horde": 20,
+      "speed": 500.0
+    },
+    {
+      "distance": 523.95,
+      "flight": 1.033,
+      "fps": 30,
+      "height": 173.08,
+      "hold": 0.5,
+      "horde": 20,
+      "speed": 500.0
+    },
+    {
+      "distance": 486.71,
+      "flight": 0.64,
+      "fps": 30,
+      "height": 81.14,
+      "hold": 0.04,
+      "horde": 1,
+      "speed": 780.0
+    },
+    {
+      "distance": 774.04,
+      "flight": 1.033,
+      "fps": 30,
+      "height": 173.08,
+      "hold": 0.5,
+      "horde": 1,
+      "speed": 780.0
+    },
+    {
+      "distance": 486.71,
+      "flight": 0.64,
+      "fps": 30,
+      "height": 81.14,
+      "hold": 0.04,
+      "horde": 5,
+      "speed": 780.0
+    },
+    {
+      "distance": 774.04,
+      "flight": 1.033,
+      "fps": 30,
+      "height": 173.08,
+      "hold": 0.5,
+      "horde": 5,
+      "speed": 780.0
+    },
+    {
+      "distance": 486.71,
+      "flight": 0.64,
+      "fps": 30,
+      "height": 81.14,
+      "hold": 0.04,
+      "horde": 20,
+      "speed": 780.0
+    },
+    {
+      "distance": 774.1,
+      "flight": 1.033,
+      "fps": 30,
+      "height": 173.08,
+      "hold": 0.5,
+      "horde": 20,
+      "speed": 780.0
+    },
+    {
+      "distance": 195.46,
+      "flight": 0.64,
+      "fps": 60,
+      "height": 81.14,
+      "hold": 0.04,
+      "horde": 1,
+      "speed": 305.0
+    },
+    {
+      "distance": 310.76,
+      "flight": 1.017,
+      "fps": 60,
+      "height": 173.08,
+      "hold": 0.5,
+      "horde": 1,
+      "speed": 305.0
+    },
+    {
+      "distance": 195.46,
+      "flight": 0.64,
+      "fps": 60,
+      "height": 81.14,
+      "hold": 0.04,
+      "horde": 5,
+      "speed": 305.0
+    },
+    {
+      "distance": 310.76,
+      "flight": 1.017,
+      "fps": 60,
+      "height": 173.08,
+      "hold": 0.5,
+      "horde": 5,
+      "speed": 305.0
+    },
+    {
+      "distance": 197.84,
+      "flight": 0.64,
+      "fps": 60,
+      "height": 81.14,
+      "hold": 0.04,
+      "horde": 20,
+      "speed": 305.0
+    },
+    {
+      "distance": 316.82,
+      "flight": 1.017,
+      "fps": 60,
+      "height": 173.08,
+      "hold": 0.5,
+      "horde": 20,
+      "speed": 305.0
+    },
+    {
+      "distance": 320.43,
+      "flight": 0.64,
+      "fps": 60,
+      "height": 81.14,
+      "hold": 0.04,
+      "horde": 1,
+      "speed": 500.0
+    },
+    {
+      "distance": 509.44,
+      "flight": 1.017,
+      "fps": 60,
+      "height": 173.08,
+      "hold": 0.5,
+      "horde": 1,
+      "speed": 500.0
+    },
+    {
+      "distance": 320.43,
+      "flight": 0.64,
+      "fps": 60,
+      "height": 81.14,
+      "hold": 0.04,
+      "horde": 5,
+      "speed": 500.0
+    },
+    {
+      "distance": 509.44,
+      "flight": 1.017,
+      "fps": 60,
+      "height": 173.08,
+      "hold": 0.5,
+      "horde": 5,
+      "speed": 500.0
+    },
+    {
+      "distance": 322.81,
+      "flight": 0.64,
+      "fps": 60,
+      "height": 81.14,
+      "hold": 0.04,
+      "horde": 20,
+      "speed": 500.0
+    },
+    {
+      "distance": 515.5,
+      "flight": 1.017,
+      "fps": 60,
+      "height": 173.08,
+      "hold": 0.5,
+      "horde": 20,
+      "speed": 500.0
+    },
+    {
+      "distance": 487.01,
+      "flight": 0.64,
+      "fps": 60,
+      "height": 81.14,
+      "hold": 0.04,
+      "horde": 1,
+      "speed": 780.0
+    },
+    {
+      "distance": 762.53,
+      "flight": 1.017,
+      "fps": 60,
+      "height": 173.08,
+      "hold": 0.5,
+      "horde": 1,
+      "speed": 780.0
+    },
+    {
+      "distance": 487.01,
+      "flight": 0.64,
+      "fps": 60,
+      "height": 81.14,
+      "hold": 0.04,
+      "horde": 5,
+      "speed": 780.0
+    },
+    {
+      "distance": 762.53,
+      "flight": 1.017,
+      "fps": 60,
+      "height": 173.08,
+      "hold": 0.5,
+      "horde": 5,
+      "speed": 780.0
+    },
+    {
+      "distance": 487.01,
+      "flight": 0.64,
+      "fps": 60,
+      "height": 81.14,
+      "hold": 0.04,
+      "horde": 20,
+      "speed": 780.0
+    },
+    {
+      "distance": 762.55,
+      "flight": 1.017,
+      "fps": 60,
+      "height": 173.08,
+      "hold": 0.5,
+      "horde": 20,
+      "speed": 780.0
+    },
+    {
+      "distance": 192.92,
+      "flight": 0.632,
+      "fps": 120,
+      "height": 81.15,
+      "hold": 0.04,
+      "horde": 1,
+      "speed": 305.0
+    },
+    {
+      "distance": 310.76,
+      "flight": 1.017,
+      "fps": 120,
+      "height": 173.08,
+      "hold": 0.5,
+      "horde": 1,
+      "speed": 305.0
+    },
+    {
+      "distance": 192.92,
+      "flight": 0.632,
+      "fps": 120,
+      "height": 81.15,
+      "hold": 0.04,
+      "horde": 5,
+      "speed": 305.0
+    },
+    {
+      "distance": 310.76,
+      "flight": 1.017,
+      "fps": 120,
+      "height": 173.08,
+      "hold": 0.5,
+      "horde": 5,
+      "speed": 305.0
+    },
+    {
+      "distance": 195.26,
+      "flight": 0.632,
+      "fps": 120,
+      "height": 81.15,
+      "hold": 0.04,
+      "horde": 20,
+      "speed": 305.0
+    },
+    {
+      "distance": 316.87,
+      "flight": 1.017,
+      "fps": 120,
+      "height": 173.08,
+      "hold": 0.5,
+      "horde": 20,
+      "speed": 305.0
+    },
+    {
+      "distance": 316.26,
+      "flight": 0.632,
+      "fps": 120,
+      "height": 81.15,
+      "hold": 0.04,
+      "horde": 1,
+      "speed": 500.0
+    },
+    {
+      "distance": 509.45,
+      "flight": 1.017,
+      "fps": 120,
+      "height": 173.08,
+      "hold": 0.5,
+      "horde": 1,
+      "speed": 500.0
+    },
+    {
+      "distance": 316.26,
+      "flight": 0.632,
+      "fps": 120,
+      "height": 81.15,
+      "hold": 0.04,
+      "horde": 5,
+      "speed": 500.0
+    },
+    {
+      "distance": 509.45,
+      "flight": 1.017,
+      "fps": 120,
+      "height": 173.08,
+      "hold": 0.5,
+      "horde": 5,
+      "speed": 500.0
+    },
+    {
+      "distance": 318.61,
+      "flight": 0.632,
+      "fps": 120,
+      "height": 81.15,
+      "hold": 0.04,
+      "horde": 20,
+      "speed": 500.0
+    },
+    {
+      "distance": 515.56,
+      "flight": 1.017,
+      "fps": 120,
+      "height": 173.08,
+      "hold": 0.5,
+      "horde": 20,
+      "speed": 500.0
+    },
+    {
+      "distance": 480.98,
+      "flight": 0.632,
+      "fps": 120,
+      "height": 81.15,
+      "hold": 0.04,
+      "horde": 1,
+      "speed": 780.0
+    },
+    {
+      "distance": 762.78,
+      "flight": 1.017,
+      "fps": 120,
+      "height": 173.08,
+      "hold": 0.5,
+      "horde": 1,
+      "speed": 780.0
+    },
+    {
+      "distance": 480.98,
+      "flight": 0.632,
+      "fps": 120,
+      "height": 81.15,
+      "hold": 0.04,
+      "horde": 5,
+      "speed": 780.0
+    },
+    {
+      "distance": 762.78,
+      "flight": 1.017,
+      "fps": 120,
+      "height": 173.08,
+      "hold": 0.5,
+      "horde": 5,
+      "speed": 780.0
+    },
+    {
+      "distance": 480.98,
+      "flight": 0.632,
+      "fps": 120,
+      "height": 81.15,
+      "hold": 0.04,
+      "horde": 20,
+      "speed": 780.0
+    },
+    {
+      "distance": 762.79,
+      "flight": 1.017,
+      "fps": 120,
+      "height": 173.08,
+      "hold": 0.5,
+      "horde": 20,
+      "speed": 780.0
+    }
+  ],
+  "modes": [
+    0,
+    2,
+    3,
+    4,
+    6,
+    1,
+    5
+  ],
+  "platforms": 223
+}

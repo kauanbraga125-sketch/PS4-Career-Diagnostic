@@ -1,0 +1,16 @@
+{
+  "source": "imagegen original asset generated for approved gameplay reference",
+  "version": "0.8.3",
+  "file": "gameplay-ground-v83.png",
+  "image_size": [
+    2172,
+    724
+  ],
+  "region": [
+    0,
+    94,
+    2172,
+    552
+  ],
+  "usage": "Side view ground strip; AtlasTexture trims generated margins in the engine. Original PNG bytes unchanged. Walk surface aligned to HordeRun.FLOOR."
+}
