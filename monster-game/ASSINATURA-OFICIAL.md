@@ -72,3 +72,12 @@ A assinatura é a **mesma chave**, não uma chave nova a cada build. Alterne som
 números `version/name` e `version/code`, atualize as notas da release e execute o
 workflow de novo. O usuário poderá instalar o APK novo por cima do oficial anterior
 sem perder o progresso, desde que a assinatura e o pacote continuem idênticos.
+
+## Como confirmar que a próxima atualização preservará o progresso
+
+Em cada lançamento, valide no APK exportado: (1) o mesmo identificador de pacote,
+(2) a mesma impressão digital SHA-256 do certificado de assinatura (use
+`apksigner verify --print-certs --verbose APK.apk`), e (3) um `version/code`
+maior do que o APK instalado. A assinatura é reutilizada pelos Secrets do GitHub
+somente enquanto a chave original permanecer cadastrada. Guarde também uma cópia
+offline segura do keystore; os Secrets não permitem baixar a chave de volta.
