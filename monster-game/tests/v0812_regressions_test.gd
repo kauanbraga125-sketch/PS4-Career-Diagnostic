@@ -63,6 +63,10 @@ func run_checks() -> void:
 	camera.advance(1.0 / 60.0)
 	expect(camera.member_by_id(first_id).is_empty(), "Camera removes only fully hidden character")
 
+	var large := isolated(96)
+	large.view_left = 100.0
+	expect(large.slot_x(95) + 43.0 >= large.view_left, "Large horde formation stays on screen at rest")
+
 	var regroup := isolated(4)
 	var original: float = float(regroup.members[0].x)
 	regroup.members[0].x = original + 90.0
