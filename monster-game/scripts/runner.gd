@@ -226,6 +226,7 @@ func add_entity(kind: String, x: float, y: float = FLOOR, variant: int = 0, widt
 	if MonsterCatalog.VEHICLES.has(kind):
 		var spec = MonsterCatalog.VEHICLES[kind]
 		entity.merge(HordeBalance.vehicle_geometry(spec, maxf(305, speed)), true)
+		# All vehicles use only their original artwork and their fixed catalog requirement.
 		entity.required_count = int(spec.need);entity.reinforced = false
 		var passenger_count = 0
 		if variant == -89: entity.rushing = true;entity.variant = 0
@@ -507,19 +508,29 @@ func update_enemies(dt: float) -> void :
 		if e.kind == "helicopter" and not e.warned and e.x > ANCHOR and e.x - ANCHOR < (speed - e.vx) * 2.7 + 180:
 			e.warned = true;events.append({"type": "air_warning", "x": e.x, "y": e.y - 125})
 		if e.kind == "soldier" and e.x > ANCHOR + 180 and e.x < maxf(planning_right + 500, speed * 5.5):
-			if not e.has("shot_height"): e.shot_height = [38.0, 134.0, 66.0, 150.0][posmod(shot_serial + int(e.id), 4)]
-			var bullet_speed = clampf(speed * 0.95, 330, 650)
-			var flight = maxf(0.22, (float(e.x) - 56 - ANCHOR) / (speed + bullet_speed))
-			var bullet_vy = clampf((64.0 - float(e.shot_height)) / flight, -150, 130)
+			if not e.has("shot_mode"):
+				e.shot_mode = ["low", "high", "tracking"][posmod(shot_serial + int(e.id), 3)]
+			var bullet_speed: float = clampf(speed * 0.95, 330.0, 650.0)
+			var flight: float = maxf(0.22, (float(e.x) - 56.0 - ANCHOR) / (speed + bullet_speed))
+			# Low shots reach the feet (jump); high shots pass above running
+			# characters (stay down); tracking shots steer briefly, then commit.
+			var target_y: float = ground_y(ANCHOR) - (20.0 if e.shot_mode == "low" else 154.0)
+			if e.shot_mode == "tracking":
+				var lead: int = leader_index()
+				target_y = float(members[lead].y) - 50.0 if lead >= 0 else ground_y(ANCHOR) - 60.0
+			var bullet_vy: float = clampf((target_y - (float(e.y) - 64.0)) / flight, -260.0, 260.0)
 			e.aim_dy = bullet_vy * 120.0 / (speed + bullet_speed)
 			e.timer -= dt
 			if e.timer <= 0:
 				e.timer = float(p.bullet_period);e.flash = 0.16;shots += 1
-				pending.append({"x": e.x - 56, "y": e.y - 64, "vy": bullet_vy, "speed": bullet_speed})
-				shot_serial += 1;e.erase("shot_height")
+				pending.append({"x": e.x - 56, "y": e.y - 64, "vy": bullet_vy, "speed": bullet_speed, "mode": e.shot_mode})
+				shot_serial += 1;e.erase("shot_mode")
 				events.append({"type": "shot", "x": e.x - 56, "y": e.y - 64})
 	for bullet in pending:
-		var entity = add_entity("bullet", bullet.x, bullet.y, 0, 18);entity.vy = bullet.vy;entity.vx = -float(bullet.speed)
+		var entity = add_entity("bullet", bullet.x, bullet.y, 0, 18)
+		entity.vy = bullet.vy;entity.vx = -float(bullet.speed)
+		entity.shot_mode = str(bullet.mode)
+		entity.homing_left = 0.45 if bullet.mode == "tracking" else 0.0
 		invalidate_coins()
 
 func advance(dt: float, jump_held: bool = false) -> void :
@@ -580,8 +591,16 @@ func advance(dt: float, jump_held: bool = false) -> void :
 					if not m.falling: m.glide_left = 0.3
 			perk_kind = -1;events.append({"type": "perk_end"})
 	for entity in entities:
-		if entity.kind == "bullet": entity.previous_x = entity.x;entity.previous_y = entity.y
-		entity.x += ( - speed + float(entity.vx)) * dt
+		if entity.kind == "bullet":
+			entity.previous_x = entity.x;entity.previous_y = entity.y
+			if str(entity.get("shot_mode", "")) == "tracking" and float(entity.get("homing_left", 0.0)) > 0.0 and float(entity.x) > ANCHOR + 125.0:
+				var aim: int = leader_index()
+				if aim >= 0:
+					var remaining: float = maxf(0.18, (float(entity.x) - ANCHOR) / maxf(1.0, speed - float(entity.vx)))
+					var desired_vy: float = clampf((float(members[aim].y) - 52.0 - float(entity.y)) / remaining, -235.0, 235.0)
+					entity.vy = move_toward(float(entity.vy), desired_vy, dt * 470.0)
+				entity.homing_left = maxf(0.0, float(entity.homing_left) - dt)
+		entity.x += (-speed + float(entity.vx)) * dt
 		if entity.kind == "bullet": entity.y += float(entity.vy) * dt
 	update_civilians(dt)
 	update_enemies(dt)
@@ -626,10 +645,17 @@ func advance(dt: float, jump_held: bool = false) -> void :
 		var flying = not m.falling and perk_kind == 3 and perk_left > 0
 		if flying:
 
-			var target_y = floor_y if jump_held else floor_y - 175
-			var target_vy = clampf((target_y - m.y) * 4.0, -220, 260)
-			m.vy = move_toward(m.vy, target_vy, dt * 1250);m.y += m.vy * dt
-			m.y = clampf(m.y, floor_y - 210, floor_y)
+			# Roof detection must change the target, not teleport the flyer. The
+			# absolute flight envelope uses the ground, while safe descending can
+			# land on an existing roof.
+			var flight_ground: float = ground_y(float(m.x))
+			var target_y: float = floor_y if jump_held else minf(flight_ground, floor_y) - 175.0
+			var target_vy: float = clampf((target_y - float(m.y)) * 4.0, -220.0, 260.0)
+			m.vy = move_toward(float(m.vy), target_vy, dt * 1250.0)
+			m.y += float(m.vy) * dt
+			m.y = clampf(float(m.y), flight_ground - 235.0, flight_ground + 2.0)
+			if jump_held and floor_here and previous_y <= floor_y + 2.0 and float(m.y) >= floor_y and float(m.vy) >= 0.0:
+				m.y = floor_y;m.vy = 0.0
 			if m.y == floor_y and previous_y < floor_y - 2:
 				m.reform_hold_until = elapsed + HordeTuning.LANDING_RECOVERY_SECONDS
 				m.land_left = 0.2;events.append({"type": "land", "x": m.x, "y": floor_y, "leader": i == 0})
@@ -768,8 +794,8 @@ func update_tunnels() -> void :
 func spawn_civilians(x: float, count: int, group_id: int) -> void :
 	if souls >= early_soul_limit(): return
 	if generation_started: x = maxf(x, spawn_left() - world_px + 60)
-	count = clampi(count, 1, 3)
-	if count == 3 and world_px + x - last_three_world < 1800: count = 2
+	count = clampi(count, 1, 6)
+	if count >= 3 and world_px + x - last_three_world < 1800: count = 2
 
 	var clear = false
 	for attempt in range(24):
@@ -783,7 +809,7 @@ func spawn_civilians(x: float, count: int, group_id: int) -> void :
 	for i in range(count):
 		var at = x + i * 92
 		var e = add_entity("civilian", at, ground_y(at), posmod(group_id + i, 3));e.group = group_id;added += 1
-	if added == 3: last_three_world = world_px + x
+	if added >= 3: last_three_world = world_px + x
 
 func member_by_id(id: int) -> Dictionary:
 	for m in members:
@@ -840,7 +866,14 @@ func complete_capture(entity: Dictionary) -> void :
 		var count = int(group_captures.get(entity.group, 0)) + 1;group_captures[entity.group] = count
 		if count == 3: groups += 1
 	var kind = recruit_kind()
-	add_member(kind, false, Vector2(slot_x(members.size()), ground_y(slot_x(members.size())) - 24) if entity.rescued else Vector2(entity.x, entity.y))
+	# The capture VFX stays on the civilian; the new member joins the formation
+	# immediately, with no hovering or 0.35-second spawn bounce.
+	var join_x := slot_x(members.size())
+	var join_floor := member_floor({"x": join_x, "y": -100000.0})
+	add_member(kind, false, Vector2(join_x, float(join_floor.y)))
+	if not members.is_empty():
+		members[-1].arrival = 0.0
+		members[-1].reform_hold_until = elapsed
 	events.append({"type": "soul", "kind": kind, "x": entity.x, "y": entity.y - 58, "soldier": entity.kind in ["soldier", "police"]})
 
 func update_vehicle(entity: Dictionary, dt: float) -> void :
@@ -974,7 +1007,7 @@ func early_soul_limit() -> int:
 	# Budget encounters before they become visible; earned souls are never removed.
 	if not developer_kind.is_empty(): return 999999
 	var stage = tunnel_number()
-	return [16, 25, 39, 49, 57, 65][stage] if stage <= 5 else 65 + (stage - 5) * 12
+	return [18, 29, 43, 57, 67, 76][stage] if stage <= 5 else 76 + (stage - 5) * 12
 
 func remaining_soul_slots() -> int:
 	var pending = 0
@@ -1034,12 +1067,8 @@ func tutorial_hints() -> bool:
 	return tutorial_enabled and developer_kind.is_empty() and entered_tunnels == 0
 
 func configure_vehicle(entity: Dictionary) -> void:
-	if entity.taken or entity.rushing or entity.kind == "moto": return
-	var spec: Dictionary = MonsterCatalog.VEHICLES[entity.kind]
-	var count = active_count()
-	if count < int(spec.need) or not HordeBalance.vehicle_jumpable(spec, maxf(305, speed), int(levels.get("jump", 0))): return
-	var chance = lerpf(0.25, 0.36, clampf(pressure, 0, 1))
-	if not developer_kind.is_empty(): chance = 1.0 if developer_kind == "vehicles" and developer_iteration % 3 == 0 else 0.0
-	if course_rng.randf() >= chance: return
-	entity.reinforced = true
-	entity.required_count = maxi(int(spec.need) + 2, ceili(count * course_rng.randf_range(1.12, 1.28)))
+	# Reinforced/blindado vehicles are disabled until their own distinct sprite
+	# exists. Never silently raise the car/tank requirement.
+	if entity.taken or not MonsterCatalog.VEHICLES.has(entity.kind): return
+	entity.reinforced = false
+	entity.required_count = int(MonsterCatalog.VEHICLES[entity.kind].need)

@@ -168,6 +168,14 @@ func paint(canvas: Node2D, run: HordeRun, time: float) -> void :
 				if x > left + 15 and x < right - 15:
 					canvas.draw_circle(Vector2(x, 300), 80, Color(1, 0.58, 0.22, 0.025 + 0.015 * sin(time * 9 + i)))
 					canvas.draw_circle(Vector2(x + sin(time * 2 + i) * 13, 280 + fposmod(time * 26 + i * 40, 80)), 2, Color(1, 0.76, 0.38, 0.35))
+			# Existing tunnel texture plus dynamic lanterns: no new assets.
+			for i in range(5):
+				var lantern_x: float = fposmod(i * 382 - run.world_px * 0.82, 1910) - 85
+				if lantern_x <= left + 40 or lantern_x >= right - 40: continue
+				var glow_y: float = 195.0
+				canvas.draw_line(Vector2(lantern_x, 50), Vector2(lantern_x, glow_y), Color("605171"), 3, true)
+				canvas.draw_circle(Vector2(lantern_x, glow_y), 12, Color("ffb45e"))
+				canvas.draw_circle(Vector2(lantern_x, glow_y), 39, Color(1.0, 0.61, 0.24, 0.09 + 0.025 * sin(time * 5.0 + i)))
 		if exit < view_right: paint_outside(canvas, run, time, int(t.to), maxf(view_left, exit), view_right)
 
 func paint_front(canvas: Node2D, run: HordeRun) -> void :

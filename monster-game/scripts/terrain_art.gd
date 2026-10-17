@@ -28,7 +28,7 @@ static func collapse(g, e: Dictionary) -> void:
 	var pieces = ceili(float(e.width) / 108.0)
 	var unit = float(e.width) / pieces
 	for i in range(pieces):
-		var y = float(e.y) + (330 * age * age if opened else (sin(g.runner.elapsed * 47 + i) * 1.5 if e.get("armed", false) else 0.0))
+		var y = float(e.y) + (330 * age * age if opened else (sin(g.runner.elapsed * 65 + i * 1.7) * 4.0 if e.get("armed", false) else 0.0))
 		var angle = sin(float(e.id) + i) * age * 0.55 if opened else 0.0
 		g.paint_target.draw_set_transform(Vector2(float(e.x) + unit * (i + 0.5), y), angle)
 		g.paint_target.draw_texture_rect_region(g.art.terrain_parts, Rect2(-unit * 0.5, -1, unit + 0.6, 72), source, Color(1, 1, 1, clampf((1.0 - age) / 0.4, 0, 1) if opened else 1.0))

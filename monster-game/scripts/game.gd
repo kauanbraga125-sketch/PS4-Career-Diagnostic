@@ -39,6 +39,7 @@ var jump_touches: Dictionary = {}
 var toast = ""
 var toast_left = 0.0
 var shake = 0.0
+var quake_left = 0.0
 var flash = 0.0
 var end_delay = -1.0
 var last_save = 0.0
@@ -141,6 +142,9 @@ func _process(dt: float) -> void :
 	if screen == "market": market_canvas.queue_redraw()
 	toast_left = maxf(0, toast_left - dt)
 	shake = maxf(0, shake - dt * 20)
+	if screen == "run" and quake_left > 0.0:
+		quake_left = maxf(0.0, quake_left - dt)
+		shake = maxf(shake, 2.8)
 	flash = maxf(0, flash - dt * 1.7)
 	coin_pulse = maxf(0, coin_pulse - dt * 4)
 	position = layout_origin + (Vector2(sin(ui_time * 83), cos(ui_time * 71)) * shake * 0.45 if screen == "run" else Vector2.ZERO)
@@ -295,9 +299,12 @@ func consume_run_events() -> void :
 				if runner.tutorial_hints(): show_toast("REAGRUPE A HORDA! MAIS RECRUTAS À FRENTE", 2.2)
 			"collapse_warning":
 				sound.play("metal_push", -14)
-				shake = maxf(shake, 2.7)
+				quake_left = maxf(quake_left, HordeTuning.COLLAPSE_WARNING_SECONDS)
+				shake = maxf(shake, 2.8)
+				effects.dust(point + Vector2(0, 18), 8, 0.55)
 			"collapse":
 				sound.play("glass_break", -12);effects.dust(point, 20, 1.5)
+				quake_left = 0.0
 				shake = maxf(shake, 4.0)
 			"finish": finish_run()
 
@@ -732,10 +739,13 @@ func draw_run() -> void :
 					if e.speech_left > 0: draw_speech(e, e.y - 128)
 					if e.x > HordeRun.ANCHOR + 230:
 						if runner.tutorial_hints() and e.timer < 0.65 and e.speech_left <= 0: text("TIRO!", Vector2(e.x, e.y - 130), 15, CORAL, true, true, 2)
-						if e.timer < 0.65: paint_target.draw_line(muzzle, muzzle + Vector2(-120, float(e.get("aim_dy", 0))), Color(1, 0.4, 0.26, 0.18), 2, true)
+						if e.timer < 0.65:
+						var beam_color := Color("cb94fa") if str(e.get("shot_mode", "")) == "tracking" else (Color("7cddf4") if str(e.get("shot_mode", "")) == "high" else Color("ffaf62"))
+						paint_target.draw_line(muzzle, muzzle + Vector2(-120, float(e.get("aim_dy", 0))), Color(beam_color.r, beam_color.g, beam_color.b, 0.47), 3, true)
 			"bullet":
-				paint_target.draw_line(Vector2(e.x + 31, e.y), Vector2(e.x, e.y), Color(1, 0.62, 0.22, 0.45), 4, true)
-				paint_target.draw_circle(Vector2(e.x, e.y), 4, GOLD)
+				var projectile_color := Color("cb94fa") if str(e.get("shot_mode", "")) == "tracking" else (Color("7cddf4") if str(e.get("shot_mode", "")) == "high" else GOLD)
+				paint_target.draw_line(Vector2(e.x + 31, e.y), Vector2(e.x, e.y), Color(projectile_color.r, projectile_color.g, projectile_color.b, 0.55), 4, true)
+				paint_target.draw_circle(Vector2(e.x, e.y), 4, projectile_color)
 			"helicopter":
 				scenery.helicopter(paint_target, Vector2(e.x, e.y), 185, ui_time, sin(ui_time * 2) * 0.06)
 				if runner.tutorial_hints(): text("PULE!" if e.y > HordeRun.FLOOR - 180 else "POR BAIXO", Vector2(e.x, e.y - 125), 16, CORAL, true, true, 2)
@@ -1147,7 +1157,7 @@ func draw_vehicle(entity: Dictionary) -> void :
 	var effort = 0
 	for value in entity.contacts.values(): effort += int(value)
 	if entity.rushing and not runner.tutorial_hints(): return
-	var label = "PULE!" if entity.rushing else ((str(effort) + " / " + str(need)) if count > 0 else ("BLINDADO: " if entity.get("reinforced", false) else "VIRAR: ") + str(need))
+	var label = "PULE!" if entity.rushing else ((str(effort) + " / " + str(need)) if count > 0 else "VIRAR: " + str(need))
 	panel(Rect2(entity.x - 70, entity.y - height - (133 if entity.kind == "moto" else 51), 140, 37), Color(0.13, 0.08, 0.19, 0.96), color, 12, 2, false)
 	text(label, Vector2(entity.x, entity.y - height - (107 if entity.kind == "moto" else 25)), 19, color, true, true, 1)
 	if count > 0: progress_bar(Rect2(entity.x - 63, entity.y - height - 10, 126, 6), float(effort) / float(need), color)

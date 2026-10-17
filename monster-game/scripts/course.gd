@@ -296,7 +296,11 @@ static func build(run, absolute: float, index: int) -> float:
 			if part.kind in ["gap", "collapse"]: e.long_jump = float(part.width) / speed > 0.6;e.double_jump = false;run.last_gap_world = part.x
 		finish = plan.end
 	elif pattern in ["civilian", "rest"]:
-		if pattern == "civilian": run.spawn_civilians(at - run.world_px, 1 if run.course_rng.randf() < 0.55 else run.course_rng.randi_range(2, 3), index + 400000)
+		if pattern == "civilian":
+			var civilian_count: int = 1 if run.course_rng.randf() < 0.55 else run.course_rng.randi_range(2, 3)
+			if run.active_count() >= 24 and run.course_rng.randf() < 0.26:
+				civilian_count = run.course_rng.randi_range(4, 5 if run.active_count() < 36 else 6)
+			run.spawn_civilians(at - run.world_px, civilian_count, index + 400000)
 		else:
 			run.fund_coins(finish + speed * 0.65, speed)
 			create_formation(run, at, speed, index)
