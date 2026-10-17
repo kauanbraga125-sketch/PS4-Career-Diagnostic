@@ -4,3 +4,13 @@ bin/
 *.elf
 *.oelf
 .DS_Store
+
+# Never commit Android signing credentials or restored keystores.
+*.jks
+*.keystore
+*.p12
+*.pfx
+*.pem
+*.base64
+*.b64
+*.env
