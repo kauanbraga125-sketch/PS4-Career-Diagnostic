@@ -1,0 +1,229 @@
+{
+  "character": "Civil nerd de casaco azul",
+  "frame_size_px": [
+    640,
+    640
+  ],
+  "origin_px": [
+    320,
+    560
+  ],
+  "ground_y_px": 560,
+  "facing": "right",
+  "unique_frames": 66,
+  "sequence": [
+    "parado_nervoso",
+    "susto_inicio_fuga",
+    "transicao_susto_corrida",
+    "corrida",
+    "transicao_corrida_captura",
+    "captura"
+  ],
+  "animations": {
+    "parado_nervoso": {
+      "frame_count": 12,
+      "durations_ms": [
+        680,
+        260,
+        80,
+        120,
+        120,
+        140,
+        140,
+        180,
+        380,
+        160,
+        240,
+        700
+      ],
+      "loop": true,
+      "frames": [
+        "frames/parado_nervoso_01.png",
+        "frames/parado_nervoso_02.png",
+        "frames/parado_nervoso_03.png",
+        "frames/parado_nervoso_04.png",
+        "frames/parado_nervoso_05.png",
+        "frames/parado_nervoso_06.png",
+        "frames/parado_nervoso_07.png",
+        "frames/parado_nervoso_08.png",
+        "frames/parado_nervoso_09.png",
+        "frames/parado_nervoso_10.png",
+        "frames/parado_nervoso_11.png",
+        "frames/parado_nervoso_12.png"
+      ],
+      "sheet": "civil-azul-v089-parado_nervoso.png",
+      "columns": 4,
+      "rows": 3
+    },
+    "susto_inicio_fuga": {
+      "frame_count": 12,
+      "durations_ms": [
+        120,
+        120,
+        100,
+        80,
+        80,
+        160,
+        80,
+        80,
+        60,
+        60,
+        60,
+        80
+      ],
+      "loop": false,
+      "frames": [
+        "frames/susto_inicio_fuga_01.png",
+        "frames/susto_inicio_fuga_02.png",
+        "frames/susto_inicio_fuga_03.png",
+        "frames/susto_inicio_fuga_04.png",
+        "frames/susto_inicio_fuga_05.png",
+        "frames/susto_inicio_fuga_06.png",
+        "frames/susto_inicio_fuga_07.png",
+        "frames/susto_inicio_fuga_08.png",
+        "frames/susto_inicio_fuga_09.png",
+        "frames/susto_inicio_fuga_10.png",
+        "frames/susto_inicio_fuga_11.png",
+        "frames/susto_inicio_fuga_12.png"
+      ],
+      "sheet": "civil-azul-v089-susto_inicio_fuga.png",
+      "columns": 4,
+      "rows": 3
+    },
+    "corrida": {
+      "frame_count": 24,
+      "durations_ms": [
+        40,
+        40,
+        40,
+        40,
+        40,
+        40,
+        40,
+        40,
+        40,
+        40,
+        40,
+        40,
+        40,
+        40,
+        40,
+        40,
+        40,
+        40,
+        40,
+        40,
+        40,
+        40,
+        40,
+        40
+      ],
+      "loop": true,
+      "frames": [
+        "frames/corrida_01.png",
+        "frames/corrida_02.png",
+        "frames/corrida_03.png",
+        "frames/corrida_04.png",
+        "frames/corrida_05.png",
+        "frames/corrida_06.png",
+        "frames/corrida_07.png",
+        "frames/corrida_08.png",
+        "frames/corrida_09.png",
+        "frames/corrida_10.png",
+        "frames/corrida_11.png",
+        "frames/corrida_12.png",
+        "frames/corrida_13.png",
+        "frames/corrida_14.png",
+        "frames/corrida_15.png",
+        "frames/corrida_16.png",
+        "frames/corrida_17.png",
+        "frames/corrida_18.png",
+        "frames/corrida_19.png",
+        "frames/corrida_20.png",
+        "frames/corrida_21.png",
+        "frames/corrida_22.png",
+        "frames/corrida_23.png",
+        "frames/corrida_24.png"
+      ],
+      "sheet": "civil-azul-v089-corrida.png",
+      "columns": 6,
+      "rows": 4
+    },
+    "captura": {
+      "frame_count": 12,
+      "durations_ms": [
+        80,
+        80,
+        100,
+        80,
+        100,
+        140,
+        100,
+        100,
+        100,
+        100,
+        120,
+        600
+      ],
+      "loop": false,
+      "frames": [
+        "frames/captura_01.png",
+        "frames/captura_02.png",
+        "frames/captura_03.png",
+        "frames/captura_04.png",
+        "frames/captura_05.png",
+        "frames/captura_06.png",
+        "frames/captura_07.png",
+        "frames/captura_08.png",
+        "frames/captura_09.png",
+        "frames/captura_10.png",
+        "frames/captura_11.png",
+        "frames/captura_12.png"
+      ],
+      "sheet": "civil-azul-v089-captura.png",
+      "columns": 4,
+      "rows": 3
+    },
+    "transicao_susto_corrida": {
+      "frame_count": 3,
+      "durations_ms": [
+        40,
+        40,
+        40
+      ],
+      "loop": false,
+      "frames": [
+        "frames/transicao_susto_corrida_01.png",
+        "frames/transicao_susto_corrida_02.png",
+        "frames/transicao_susto_corrida_03.png"
+      ],
+      "sheet": "civil-azul-v089-transicao_susto_corrida.png",
+      "columns": 3,
+      "rows": 1
+    },
+    "transicao_corrida_captura": {
+      "frame_count": 3,
+      "durations_ms": [
+        40,
+        40,
+        40
+      ],
+      "loop": false,
+      "frames": [
+        "frames/transicao_corrida_captura_01.png",
+        "frames/transicao_corrida_captura_02.png",
+        "frames/transicao_corrida_captura_03.png"
+      ],
+      "sheet": "civil-azul-v089-transicao_corrida_captura.png",
+      "columns": 3,
+      "rows": 1
+    }
+  },
+  "notes": [
+    "Manter a mesma escala e origem em todos os estados.",
+    "As poses, a inclinação e as expressões variam de propósito.",
+    "A transição de captura parte do quadro 1 da corrida, como na prévia.",
+    "A captura é uma sequência única; o reinício da prévia não faz parte da animação.",
+    "Os quadros incluem as posições finais; não recortar automaticamente por transparência."
+  ]
+}

@@ -1,0 +1,167 @@
+name: Noite da Horda Android — lançamento oficial
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: noite-da-horda-release
+  cancel-in-progress: false
+
+jobs:
+  android-release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Checkout selected branch
+        uses: actions/checkout@v4
+
+      - name: Verify official branch and release source
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = "refs/heads/main" || { echo 'Official releases must run from main'; exit 1; }
+          test -s monster-game/NOTAS-v0.8.13-correcoes.md
+          grep -q 'package/unique_name="com.kauan.noitedahorda"' monster-game/export_presets.cfg
+          grep -Eq '^version/code=[0-9]+$' monster-game/export_presets.cfg
+          grep -Eq '^version/name="[0-9]+\.[0-9]+\.[0-9]+"$' monster-game/export_presets.cfg
+          test -s monster-game/tests/vehicle_survivors_test.gd
+          test -s monster-game/assets/art/creatures.png
+          test -s monster-game/assets/art/terrain-v089.png
+          echo 'v0.8.13 source markers verified'
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Android SDK and dependencies
+        uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools'
+          log-accepted-android-sdk-licenses: 'false'
+
+      - name: Android build tools and headless rendering support
+        run: |
+          sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq xvfb libgl1-mesa-dri
+
+      - name: Cache Godot 4.5.1 and Android templates
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.local/bin/godot
+            ~/.local/share/godot/export_templates/4.5.1.stable
+          key: horda-godot-4.5.1-android-v2
+
+      - name: Install official Godot 4.5.1
+        run: |
+          set -euo pipefail
+          mkdir -p "$HOME/.local/bin" "$HOME/.local/share/godot/export_templates/4.5.1.stable"
+          if [ ! -x "$HOME/.local/bin/godot" ]; then
+            curl -fL --retry 3 -o /tmp/godot.zip 'https://github.com/godotengine/godot-builds/releases/download/4.5.1-stable/Godot_v4.5.1-stable_linux.x86_64.zip'
+            mkdir -p /tmp/godot-editor
+            unzip -q /tmp/godot.zip -d /tmp/godot-editor
+            cp /tmp/godot-editor/Godot_v4.5.1-stable_linux.x86_64 "$HOME/.local/bin/godot"
+            chmod +x "$HOME/.local/bin/godot"
+          fi
+          if [ ! -s "$HOME/.local/share/godot/export_templates/4.5.1.stable/android_debug.apk" ]; then
+            curl -fL --retry 3 -o /tmp/templates.tpz 'https://github.com/godotengine/godot-builds/releases/download/4.5.1-stable/Godot_v4.5.1-stable_export_templates.tpz'
+            unzip -j -q /tmp/templates.tpz templates/android_debug.apk templates/android_release.apk templates/version.txt -d "$HOME/.local/share/godot/export_templates/4.5.1.stable"
+          fi
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Import project and inspect parser diagnostics
+        run: |
+          set -euo pipefail
+          mkdir -p monster-game/build
+          touch monster-game/build/.gdignore
+          timeout 180 godot --headless --path monster-game --editor --import 2>&1 | tee monster-game/build/import.log
+          if grep -E 'SCRIPT ERROR|Parse Error|ERROR: Failed to load' monster-game/build/import.log; then exit 1; fi
+
+      - name: Run focused v0.8.13 gameplay regression checks
+        run: |
+          set -euo pipefail
+          timeout 120 godot --headless --path monster-game --script res://tests/ci_smoke.gd 2>&1 | tee monster-game/build/test.log
+          grep -q 'HORDE_CI_SMOKE_OK' monster-game/build/test.log
+          if grep -E 'SCRIPT ERROR|HORDE_CI_SMOKE_FAIL|HORDE_VEHICLE_SURVIVORS_FAIL|HORDE_0813_FAIL' monster-game/build/test.log; then exit 1; fi
+
+
+      - name: Configure permanent signing credentials
+        env:
+          SIGNING_KEYSTORE_B64: ${{ secrets.HORDA_SIGNING_KEYSTORE_B64 }}
+          SIGNING_ALIAS: ${{ secrets.HORDA_SIGNING_ALIAS }}
+          SIGNING_PASSWORD: ${{ secrets.HORDA_SIGNING_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [[ -z "$SIGNING_KEYSTORE_B64" || -z "$SIGNING_ALIAS" || -z "$SIGNING_PASSWORD" ]]; then
+            echo "::error::Missing signing secrets. Add HORDA_SIGNING_KEYSTORE_B64, HORDA_SIGNING_ALIAS and HORDA_SIGNING_PASSWORD in Settings > Secrets and variables > Actions before publishing."
+            exit 1
+          fi
+          umask 077
+          KEYSTORE_PATH="$RUNNER_TEMP/horda-release.jks"
+          printf '%s' "$SIGNING_KEYSTORE_B64" | base64 --decode > "$KEYSTORE_PATH"
+          test -s "$KEYSTORE_PATH"
+          keytool -list -keystore "$KEYSTORE_PATH" -storepass "$SIGNING_PASSWORD" -alias "$SIGNING_ALIAS" >/dev/null
+          python3 monster-game/tools/configure_export.py
+          echo "GODOT_ANDROID_KEYSTORE_RELEASE_PATH=$KEYSTORE_PATH" >> "$GITHUB_ENV"
+
+      - name: Export permanently signed APK and verify identity
+        env:
+          GODOT_ANDROID_KEYSTORE_RELEASE_USER: ${{ secrets.HORDA_SIGNING_ALIAS }}
+          GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD: ${{ secrets.HORDA_SIGNING_PASSWORD }}
+        run: |
+          set -euo pipefail
+          VERSION=$(sed -n 's/^version\/name="\([^"]*\)"/\1/p' monster-game/export_presets.cfg)
+          VERSION_CODE=$(sed -n 's/^version\/code=\([0-9]*\)/\1/p' monster-game/export_presets.cfg)
+          test -n "$VERSION" && test -n "$VERSION_CODE"
+          APK="monster-game/build/NoiteDaHorda-v${VERSION}.apk"
+          godot --headless --path monster-game --export-release Android "build/NoiteDaHorda-v${VERSION}.apk" 2>&1 | tee monster-game/build/release-export.log
+          test -s "$APK"
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$APK" > monster-game/build/signing-info.txt
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" > monster-game/build/apk-info.txt
+          grep -q "package: name='com.kauan.noitedahorda'" monster-game/build/apk-info.txt
+          grep -q "versionCode='${VERSION_CODE}'" monster-game/build/apk-info.txt
+          sha256sum "$APK" > monster-game/build/SHA256SUMS.txt
+          echo "RELEASE_VERSION=$VERSION" >> "$GITHUB_ENV"
+          echo "RELEASE_APK=$APK" >> "$GITHUB_ENV"
+          echo "Official APK signed and validated: $VERSION"
+
+      - name: Upload verified APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: NoiteDaHorda-v${{ env.RELEASE_VERSION }}-oficial
+          path: ${{ env.RELEASE_APK }}
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Publish GitHub Release and version tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TAG="v${RELEASE_VERSION}"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "::error::Release $TAG already exists. Increase version/name and version/code before publishing another update."
+            exit 1
+          fi
+          gh release create "$TAG" "$RELEASE_APK" "monster-game/build/SHA256SUMS.txt" \
+            --target "$GITHUB_SHA" \
+            --title "Noite da Horda $TAG" \
+            --notes-file "monster-game/NOTAS-v0.8.13-correcoes.md" \
+            --latest
+
+      - name: Upload diagnostic logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: NoiteDaHorda-release-build-logs
+          path: monster-game/build/*.log
+          if-no-files-found: ignore

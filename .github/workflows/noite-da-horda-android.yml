@@ -1,114 +1,142 @@
-name: Noite da Horda Android
+name: Noite da Horda Android — teste v0.8.13
 
 on:
-  push:
-    branches: [main, game/monster-rush-android, game/horda-zumbi-v0.7]
-    paths: ['monster-game/**', '.github/workflows/noite-da-horda-android.yml']
   workflow_dispatch:
+  push:
+    branches: [build/noite-da-horda-v0813]
+    paths: ['monster-game/**']
 
 permissions:
   contents: read
-  actions: read
 
 concurrency:
-  group: noite-da-horda-${{ github.ref }}-${{ github.sha }}
+  group: noite-da-horda-v0813
   cancel-in-progress: false
 
 jobs:
-  android:
+  build-android-test:
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 45
     defaults:
       run:
         shell: bash
+
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v5
+      - name: Checkout selected branch
+        uses: actions/checkout@v4
+
+      - name: Require full corrected 0.8.13 source tree
+        run: |
+          set -euo pipefail
+          test -s monster-game/NOTAS-v0.8.13-correcoes.md || { echo 'FULL_SOURCE_MISSING: first upload v0.8.13 project sources to this branch, not v0.7.'; exit 1; }
+          grep -q 'version/name="0.8.13"' monster-game/export_presets.cfg
+          test -s monster-game/tests/vehicle_survivors_test.gd
+          test -s monster-game/assets/art/creatures.png
+          test -s monster-game/assets/art/terrain-v089.png
+          echo 'v0.8.13 source markers verified'
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
-      - uses: android-actions/setup-android@v3
+
+      - name: Android SDK and dependencies
+        uses: android-actions/setup-android@v3
         with:
           packages: 'platform-tools'
           log-accepted-android-sdk-licenses: 'false'
-      - name: Android packages and software display
+
+      - name: Android build tools and headless rendering support
         run: |
           sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
           sudo apt-get update -qq
-          sudo apt-get install -y -qq xvfb libgl1-mesa-dri ffmpeg
-      - name: Cache pinned Godot and Android templates
+          sudo apt-get install -y -qq xvfb libgl1-mesa-dri
+
+      - name: Cache Godot 4.5.1 and Android templates
         uses: actions/cache@v4
         with:
           path: |
             ~/.local/bin/godot
             ~/.local/share/godot/export_templates/4.5.1.stable
-          key: porto-godot-4.5.1-android-v1
-      - name: Official Godot 4.5.1 distribution
+          key: horda-godot-4.5.1-android-v2
+
+      - name: Install official Godot 4.5.1
         run: |
+          set -euo pipefail
           mkdir -p "$HOME/.local/bin" "$HOME/.local/share/godot/export_templates/4.5.1.stable"
-          if [ ! -f "$HOME/.local/bin/godot" ]; then
-            curl -fL --retry 3 -o /tmp/godot.zip https://github.com/godotengine/godot-builds/releases/download/4.5.1-stable/Godot_v4.5.1-stable_linux.x86_64.zip
+          if [ ! -x "$HOME/.local/bin/godot" ]; then
+            curl -fL --retry 3 -o /tmp/godot.zip 'https://github.com/godotengine/godot-builds/releases/download/4.5.1-stable/Godot_v4.5.1-stable_linux.x86_64.zip'
+            mkdir -p /tmp/godot-editor
             unzip -q /tmp/godot.zip -d /tmp/godot-editor
             cp /tmp/godot-editor/Godot_v4.5.1-stable_linux.x86_64 "$HOME/.local/bin/godot"
             chmod +x "$HOME/.local/bin/godot"
           fi
-          if [ ! -f "$HOME/.local/share/godot/export_templates/4.5.1.stable/android_debug.apk" ]; then
-            curl -fL --retry 3 -o /tmp/templates.tpz https://github.com/godotengine/godot-builds/releases/download/4.5.1-stable/Godot_v4.5.1-stable_export_templates.tpz
+          if [ ! -s "$HOME/.local/share/godot/export_templates/4.5.1.stable/android_debug.apk" ]; then
+            curl -fL --retry 3 -o /tmp/templates.tpz 'https://github.com/godotengine/godot-builds/releases/download/4.5.1-stable/Godot_v4.5.1-stable_export_templates.tpz'
             unzip -j -q /tmp/templates.tpz templates/android_debug.apk templates/android_release.apk templates/version.txt -d "$HOME/.local/share/godot/export_templates/4.5.1.stable"
           fi
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-      - name: Import and test playable game
+
+      - name: Import project and inspect parser diagnostics
         run: |
+          set -euo pipefail
           mkdir -p monster-game/build
           touch monster-game/build/.gdignore
-          godot --headless --path monster-game --editor --import 2>&1 | tee monster-game/build/import.log
-          timeout 90 godot --headless --path monster-game -- --self-test 2>&1 | tee monster-game/build/test.log
-          grep -q HORDE_TEST_OK monster-game/build/test.log
-          if grep -E 'SCRIPT ERROR|HORDE_TEST_FAIL' monster-game/build/test.log; then exit 1; fi
-      - name: Render actual game screenshots
-        env:
-          HORDE_CAPTURE_PATH: ${{ github.workspace }}/monster-game/build/NoiteDaHorda-menu.png
-          LIBGL_ALWAYS_SOFTWARE: '1'
+          timeout 180 godot --headless --path monster-game --editor --import 2>&1 | tee monster-game/build/import.log
+          if grep -E 'SCRIPT ERROR|Parse Error|ERROR: Failed to load' monster-game/build/import.log; then exit 1; fi
+
+      - name: Run focused v0.8.13 gameplay regression checks
         run: |
-          timeout 120 xvfb-run -a godot --path monster-game --rendering-method gl_compatibility --audio-driver Dummy -- --capture 2>&1 | tee monster-game/build/preview.log
-          for screen in menu shop monsters worlds run pause capture-zombie capture-skeleton capture-masked capture-fly vehicle-count passengers perk tunnel-entry tunnel tunnel-exit city industrial airport gameover ritual credits; do test -s "monster-game/build/NoiteDaHorda-$screen.png"; done
-          if grep -E 'SCRIPT ERROR' monster-game/build/preview.log; then exit 1; fi
-      - name: Cache game signing key
-        uses: actions/cache@v4
-        with:
-          path: ~/.android/horde-debug.keystore
-          key: noite-da-horda-debug-key-v1
-      - name: Configure signed Android export
+          set -euo pipefail
+          timeout 120 godot --headless --path monster-game --script res://tests/ci_smoke.gd 2>&1 | tee monster-game/build/test.log
+          grep -q 'HORDE_CI_SMOKE_OK' monster-game/build/test.log
+          if grep -E 'SCRIPT ERROR|HORDE_CI_SMOKE_FAIL|HORDE_VEHICLE_SURVIVORS_FAIL|HORDE_0813_FAIL' monster-game/build/test.log; then exit 1; fi
+
+      - name: Prepare separate testing app and development signature
         run: |
+          set -euo pipefail
           mkdir -p "$HOME/.android"
-          if [ ! -f "$HOME/.android/horde-debug.keystore" ]; then
-            keytool -genkeypair -keystore "$HOME/.android/horde-debug.keystore" -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname 'CN=Noite da Horda Development,O=Kauan,C=BR'
+          if [ ! -f "$HOME/.android/horda-0813-testing.keystore" ]; then
+            keytool -genkeypair -keystore "$HOME/.android/horda-0813-testing.keystore" -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 3650 -dname 'CN=Noite da Horda Testing,O=Kauan,C=BR'
           fi
           python3 monster-game/tools/configure_export.py
-          echo "GODOT_ANDROID_KEYSTORE_DEBUG_PATH=$HOME/.android/horde-debug.keystore" >> "$GITHUB_ENV"
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('monster-game/export_presets.cfg')
+          s=p.read_text()
+          assert 'package/unique_name="com.kauan.noitedahorda"' in s
+          s=s.replace('package/unique_name="com.kauan.noitedahorda"', 'package/unique_name="com.kauan.noitedahorda.teste0813"')
+          s=s.replace('package/name="Noite da Horda"', 'package/name="Noite da Horda Teste 0813"')
+          p.write_text(s)
+          PY
+          echo "GODOT_ANDROID_KEYSTORE_DEBUG_PATH=$HOME/.android/horda-0813-testing.keystore" >> "$GITHUB_ENV"
           echo "GODOT_ANDROID_KEYSTORE_DEBUG_USER=androiddebugkey" >> "$GITHUB_ENV"
           echo "GODOT_ANDROID_KEYSTORE_DEBUG_PASSWORD=android" >> "$GITHUB_ENV"
-      - name: Export APK and verify signature
+
+      - name: Export APK and validate package
         run: |
-          godot --headless --path monster-game --export-debug Android build/NoiteDaHorda-v0.7.0.apk 2>&1 | tee monster-game/build/export.log
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose monster-game/build/NoiteDaHorda-v0.7.0.apk
-          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging monster-game/build/NoiteDaHorda-v0.7.0.apk > monster-game/build/apk-info.txt
-          sha256sum monster-game/build/NoiteDaHorda-v0.7.0.apk > monster-game/build/SHA256SUMS.txt
-      - uses: actions/upload-artifact@v4
+          set -euo pipefail
+          godot --headless --path monster-game --export-debug Android build/NoiteDaHorda-v0.8.13-teste.apk 2>&1 | tee monster-game/build/export.log
+          test -s monster-game/build/NoiteDaHorda-v0.8.13-teste.apk
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose monster-game/build/NoiteDaHorda-v0.8.13-teste.apk
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging monster-game/build/NoiteDaHorda-v0.8.13-teste.apk > monster-game/build/apk-info.txt
+          grep -q "package: name='com.kauan.noitedahorda.teste0813'" monster-game/build/apk-info.txt
+          sha256sum monster-game/build/NoiteDaHorda-v0.8.13-teste.apk > monster-game/build/SHA256SUMS.txt
+          echo 'Android v0.8.13 testing APK generated and verified'
+
+      - name: Upload APK for testing
+        uses: actions/upload-artifact@v4
         with:
-          name: NoiteDaHorda-Android-v0.7.0
-          path: |
-            monster-game/build/*.apk
-            monster-game/build/*.mp4
-            monster-game/build/*.png
-            monster-game/build/*.txt
-            monster-game/README.md
+          name: NoiteDaHorda-v0.8.13-teste
+          path: monster-game/build/NoiteDaHorda-v0.8.13-teste.apk
           if-no-files-found: error
           retention-days: 30
-      - uses: actions/upload-artifact@v4
+
+      - name: Upload logs for debugging
         if: always()
+        uses: actions/upload-artifact@v4
         with:
-          name: NoiteDaHorda-build-logs
-          path: |
-            monster-game/build/*.log
-            monster-game/build/*.png
+          name: NoiteDaHorda-v0.8.13-build-logs
+          path: monster-game/build/*.log
+          if-no-files-found: ignore

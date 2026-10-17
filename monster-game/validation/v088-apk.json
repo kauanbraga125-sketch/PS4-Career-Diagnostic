@@ -1,0 +1,37 @@
+{
+  "apk": "../deliverables/NoiteDaHorda-v0.8.8-desafios.apk",
+  "size": 152163656,
+  "updated_resources": 58,
+  "preserved_resources": 430,
+  "previousVersionCode": 25,
+  "previousVersionName": "0.8.7",
+  "package": "com.kauan.noitedahorda.local",
+  "versionName": "0.8.8",
+  "versionCode": 26,
+  "sha256": "0cb46040f1bd11fb5648a36b519d5a4baa290de93ca883cddc72471938dcc40d",
+  "preserved_asset_native_entries": 479,
+  "art_audio_entries_unchanged": 422,
+  "native_libraries_unchanged": [
+    "lib/arm64-v8a/libc++_shared.so",
+    "lib/arm64-v8a/libgodot_android.so",
+    "lib/armeabi-v7a/libc++_shared.so",
+    "lib/armeabi-v7a/libgodot_android.so"
+  ],
+  "compiled_resource_matches": 58,
+  "changed_resource_paths": [
+    "assets/scripts/balance.gdc",
+    "assets/scripts/bonus_director.gdc",
+    "assets/scripts/catalog.gdc",
+    "assets/scripts/course.gdc",
+    "assets/scripts/director.gdc",
+    "assets/scripts/game.gdc",
+    "assets/scripts/gameplay_ui.gdc",
+    "assets/scripts/runner.gdc",
+    "assets/scripts/sequence_validator.gdc",
+    "assets/scripts/terrain.gdc",
+    "assets/scripts/tuning.gdc",
+    "assets/.godot/uid_cache.bin",
+    "assets/project.binary"
+  ],
+  "signer_sha256": "912238813308c130cc399d618ba05e2022e11a32b1b70d50b5b6238346903e7a"
+}

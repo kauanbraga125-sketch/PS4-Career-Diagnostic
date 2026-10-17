@@ -1,4 +1,31 @@
-# Arte e áudio — alpha 0.5
+# Arte e áudio
+
+## Mercado 0.8.2
+
+`market-art-v82.png`: atlas RGBA criado com o gerador integrado a partir do
+mercado aprovado, com letreiro MERCADO, tênis, ímã, poção e igreja. Arquivo
+original com alfa real preservado sem edição de pixels. Regiões e proveniência
+em `market-art-v82-source.json`; recortes AtlasTexture no motor. Retratos do
+zumbi e molduras existentes foram reutilizados. A interface escreve os textos,
+preços e níveis e mantém as compras e animações independentes.
+
+## Menu 0.8.1
+
+`assets/art/menu-background-v81.png`: cenário original criado com a geração de
+imagens integrada a partir da nova referência aprovada. PNG opaco preservado
+sem edição de pixels; enquadramento proporcional em tempo de execução, sem
+esticar a lua. Metadados em `menu-background-v81-source.json`. Lanternas têm
+brilho animado nativo. Logo, painéis, ícones, personagens, ritual e textos
+continuam recursos separados. Os atlas e o shader de animação do zumbi 0.8.0
+foram preservados.
+
+## Menu 0.7.9
+
+`assets/art/zombie-menu-v79.png`: atlas RGBA de 4096 × 3072 pixels, 48 quadros completos aprovados pelo usuário. Arte gerada com imagegen e referências do próprio jogo. A preparação por `tools/normalize_menu_sprites.cjs` remove oscilações de escala, mantém o apoio dos pés e ajusta separadamente pele, cabelo, camisa e bermuda à paleta do primeiro quadro. Nenhum membro é separado ou articulado no novo personagem do menu. Metadados, referência da paleta e ajustes por quadro estão em `zombie-menu-v79.json`.
+
+Os novos painéis, placa do título e acabamentos são desenhados pelo próprio Godot. O baú, os monstros, o caldeirão e as almas reutilizam os recursos existentes. A corrida e os estados de jogo usam os quadros completos recuperados da versão 0.7.8, com metadados `zombie-fluid-v73.json` e `zombie-run-drawn-v78.json`.
+
+## Histórico da arte anterior
 
 Arte bitmap criada para o projeto com o gerador de imagens integrado (modo built-in imagegen). Fontes e pixels preservados nos arquivos; recortes são regiões de AtlasTexture em tempo de execução.
 
@@ -125,3 +152,29 @@ O sussurro existente do Mascarado e os créditos das amostras anteriores foram p
 ## Atualização 0.7
 
 Artes originais feitas com a ferramenta integrada image_gen: assets/art/passengers-v7.png (12 poses) e assets/art/soul-jar-frame-v7.png (vidro vazio). O motor compõe o líquido em assets/art/soul-jar-states-v7.png (61 níveis). Os menus mantêm controles e textos independentes. Prompts em assets/art/prompts-v7.json. Os 60 sons fornecidos por Kauan, hashes e tratamento estão em assets/audio/v7/manifest.json; sete ambiências provisórias aguardam identificação.
+
+## Menu 0.8.0
+
+`menu-logo-v80.png`, `menu-panel-v80.png`, `menu-play-v80.png` e `menu-missions-v80.png` são peças independentes geradas pela ferramenta integrada de imagem a partir da referência de menu aprovada pelo usuário: logo de madeira NOITE DA HORDA, moldura de pedra violeta com cantos dourados, botão dourado vazio e pergaminho com selo de missão. O motor escreve os rótulos dos botões e os contadores; a tela completa não é uma imagem estática.
+
+`menu-zombie-source.png` preserva a arte aprovada do personagem; os renderizadores em `tools/menu_face_renderer.cjs` e `tools/bake_menu_animation.cjs` produzem a base e os atlas faciais da prévia revisada. As poses, a paleta e as proporções foram mantidas. O runtime faz a respiração e o movimento contínuo do corpo por shader. `menu-zombie-animation.json` registra os 1.920 instantes do ciclo e os 607 recortes únicos.
+
+## Correção de articulação 0.7.1
+
+`assets/art/rig-zombie-v71.png` foi editado pela ferramenta de geração de imagens integrada a partir de `rig-zombie.png`, preservando a aparência do personagem. Só as regiões dos membros e da mão são usadas; cabeça, camisa, short e pés continuam vindo da arte original. O arquivo mantém transparência real. O prompt completo está em `assets/art/rig-zombie-v71-source.json`; as regiões alpha medidas estão em `assets/art/zombie-rig-v71.json`.
+
+## Gameplay 0.8.3
+
+- `assets/art/gameplay-ground-v83.png`: textura original gerada com ImageGen para o chão de pedra das referências aprovadas de gameplay. PNG original sem edição de pixels. O recorte AtlasTexture, a repetição e o alinhamento à superfície física são feitos no motor; proveniência e região em `gameplay-ground-v83-source.json`.
+- O HUD e a pausa reutilizam as fontes, molduras, almas, retratos e artes existentes. Bandeira, pausa, confirmação e navegação usam desenho vetorial nativo; o ícone de Frenesi reutiliza a animação de corrida do zumbi.
+
+
+## Versão 0.8.4
+Nenhuma imagem ou folha de sprites nova. As três telas reutilizam os painéis, personagens e animações aprovados. As plataformas usam recortes do chão v0.8.3; moedas e veículos mantêm suas artes e recebem apenas geometria de programação.
+
+
+## Atualização 0.8.9
+
+- `assets/art/civil-azul-v089/`: seis folhas alinhadas e 66 quadros fornecidos pelo usuário em `Civil_Casaco_Azul_Pacote_Integracao(1).zip`. Pixels dos PNGs aprovados preservados; orientação, origem e tempos seguem o prompt do pacote. Referências, prévias e quadros individuais não são incluídos no APK.
+- `assets/art/terrain-v089.png`: folha original gerada pela ferramenta integrada imagegen para pedra intacta, rachaduras, desmoronamento, margens de buracos e pontas de elevações, no estilo do chão v0.8.3. Recortes e animação são feitos pelo motor.
+- `assets/audio/power-warning-v089.ogg`: sinal original sintetizado com senoides, ataque curto e decaimento, para os três segundos finais dos poderes.

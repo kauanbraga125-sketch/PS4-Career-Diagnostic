@@ -1,0 +1,33 @@
+{
+  "version": "0.7.8",
+  "source_reference": "zombie-run-whole-v75.png",
+  "method": "built-in image_gen; complete drawings guided by a 16-phase pose diagram; local foot correction in third row",
+  "drawn_prompt": "Create a finished transparent 16-frame game sprite sheet by REDRAWING the exact consecutive body poses of Image 1 in the highly polished zombie art style and CHARACTER IDENTITY of Image 2. IMAGE 1 IS THE MANDATORY POSE MAP: every cell 1 through16 must match that corresponding cell's thigh, knee, shin, ankle, foot, upper-arm, elbow and hand positions. Image2 is ONLY the face/hair/clothing/painting reference; do NOT copy the poses or limb positions from Image2. Preserve ALL the very different passing, folded-knee, toe-off and extended poses in Image1. The lifted knee clearly moves forward, the heel folds BACK, the ankle stays attached and the toes remain naturally oriented. Draw complete rounded organic limbs over the guide, no straight robot segments or visible joints. Match the green zombie boy with voluminous dark-purple messy hair, expressive orange eyes, mischievous grin, torn purple shirt, brown shorts, barefoot green feet. Consistent fixed 3/4 side view facing RIGHT throughout. Same identity, head size and proportions throughout; smooth gradual changes between neighboring drawings, natural tiny head/body bob and hair follow-through. Near arm/leg lighter green; far arm/leg darker, clearly distinguishable on crossings. Every frame is a COMPLETE independent drawing, clean anatomy, no warping/stretching an existing pose, no limbs cut out and pasted. EXACT 4x4 evenly spaced grid of sixteen characters in reading order, one whole body per cell, square transparent 2048x2048 canvas, generous gutters, identical visual scale, feet baseline consistent. No frame numbers, no lines, no guides, no gray background, no text, no shadows, no ground, no body parts outside their cells. Most important: faithfully follow all sixteen individual POSES from Image1 while drawing the same detailed character from Image2. Include the clearly HIGH FORWARD KNEES in cells5,6,13,14, the PASSING FEET in cells3,4,11,12 and the ALTERNATE LEG CONTACT in cells1 and9. Only output the finished artwork sheet, actual transparency.",
+  "foot_correction_prompt": "Precise local correction to Image1, an existing 4x4 transparent sprite sheet. Preserve the entire sheet's composition, ALL faces, hair, torsos, arms, clothes, proportions, colors and the 16 exact poses. Preserve rows1,2,4 unchanged. ONLY repair the small folded/recovering feet and ankle connections in the THIRD ROW (cells9,10,11,12). Images2 and3 show the offending third row and a closeup. The folded foot currently looks like a flat paddle pasted across or merged with the shin, with unclear heel, ankle and toes. Redraw ONLY those folded feet as natural rounded green bare cartoon feet, visibly joined to their OWN lower leg through a clear slim ankle, a small rounded heel and short distinct toes. Orient each foot naturally with its lower leg and knee; no flipped sole, no right-angle kink, no broad horizontal green bar, no limb merging, no extra toes/feet. When legs overlap, show a clean contour/occlusion separating the darker rear leg from the lighter foreground leg. Keep the foot near its existing position and keep the exact leg/knee pose and timing, only correct this local foot anatomy. Exactly two legs and two feet in every cell. Do NOT change other anatomy, identity, artwork style, facial expression, row order, spacing, scale or poses. No text, no guides, no floor, no shadows. Maintain the original true transparent background. Output the entire corrected sheet.",
+  "runtime": "Approved whole bodies retained; eyes and mouth applied as aligned feathered facial details. Uniform scale, subtle whole-body tilt and aerial lift; no limb deformation.",
+  "corrected_poses": [
+    1,
+    2,
+    3,
+    4,
+    9,
+    10,
+    11,
+    12
+  ],
+  "pose_guide": "tools/run-pose-guide-v78.png",
+  "artwork_sha256": {
+    "zombie-run-drawn-v78.png": "de954e30f1adb9c49cb8b42f6871096e70275eae8edec475446e48a176e7ad75",
+    "zombie-run-footfix-v78.png": "78dc196d213cd9cadf0c1d61c548c8745904f606ad821f3b6d3a038ab3cc1cf5",
+    "zombie-run-expressions-v78.png": "6af98daafe752cf78467fcf2f450513dcecde9a4413afb8155a357ddc24ae722",
+    "zombie-run-mouth-v78.png": "21675d5aa9f69a04a5547de789a4b5d10612efa5cb66e963568eb6cf2fcbbe04"
+  },
+  "expression_prompt": "Eye-only variants: gradual blinks in rows 1 and 3; brief sideways glances in rows 2 and 4.",
+  "mouth_prompt": "Facial-only mouth opening in glance poses, preserving the gait.",
+  "cadence": {
+    "normal_speed_px_s": 350,
+    "cycle_seconds": 0.8,
+    "poses_per_cycle": 16,
+    "visual_poses_per_second": 20
+  }
+}

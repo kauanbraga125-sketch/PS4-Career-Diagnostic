@@ -1,0 +1,14 @@
+{
+  "tool": "built-in image_gen",
+  "mode": "edit",
+  "input": "rig-zombie.png",
+  "output": "rig-zombie-v71.png",
+  "consumed_parts": [
+    "upper arm",
+    "forearm",
+    "hand",
+    "thigh",
+    "shin"
+  ],
+  "prompt": "Use case: precise-object-edit. Asset type: transparent cutout character rig sprite sheet for an existing 2D cartoon game. Edit target: the supplied 3-by-3 zombie body-parts sheet. Preserve the identity, painterly cartoon rendering, green skin palette, purple shirt, brown shorts, lighting and dark outlines. Keep EXACTLY the existing nine-part arrangement, isolated parts and transparent gutters. Change ONLY four pieces: upper arm in top-right cell, forearm in middle-left cell, thigh in middle-right cell, and shin in bottom-left cell. These are reusable animation pieces, NOT severed limbs: replace every exposed circular cut surface, cream/yellow joint ring, hollow socket and bone end in those four pieces with continuous green skin and smoothly rounded overlapping ends. Make the elbow/knee ends ordinary fleshy skin that can overlap into the next piece without visible circles. On the thigh ONLY, remove the brown shorts material entirely and replace it with matching green thigh skin; the complete shorts are provided by the existing torso/pelvis piece. Keep the purple sleeve on the upper arm. Keep the four parts straight and vertical, upper attachment at top and lower attachment at bottom, following their existing silhouettes and lengths. Retain mottled green skin details, small subdued patches, normal shading. Unchanged pieces: same head, torso including complete shorts, hand, foot and purple accessory. No additional parts, no assembled character, no text, no labels, no grid lines, no shadows outside silhouettes. Background must be genuinely transparent alpha."
+}

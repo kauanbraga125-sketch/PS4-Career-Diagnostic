@@ -1,34 +1,47 @@
+; Engine configuration file.
+; It's best edited using the editor UI and not directly,
+; since the parameters that go here are not all obvious.
+;
+; Format:
+;   [section] ; section goes between []
+;   param=value ; assign values to parameters
+
 config_version=5
 
 [application]
+
 config/name="Noite da Horda"
-config/version="0.7.0"
+config/version="0.8.13"
 run/main_scene="res://main.tscn"
 config/features=PackedStringArray("4.5", "GL Compatibility")
 config/icon="res://assets/icon-monsters-v51.png"
 
+[debug]
+
+gdscript/warnings/inference_on_variant=0
+
 [display]
+
 window/size/viewport_width=1280
 window/size/viewport_height=720
 window/size/window_width_override=1280
 window/size/window_height_override=720
 window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
-window/handheld/orientation=0
+
+[editor_overrides]
+
+text_editor/behavior/indent/type=0
+text_editor/behavior/indent/size=4
+
+[input_devices]
+
+pointing/emulate_mouse_from_touch=false
 
 [rendering]
+
+textures/canvas_textures/default_texture_filter=2
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
 textures/vram_compression/import_etc2_astc=true
-textures/canvas_textures/default_texture_filter=2
-environment/defaults/default_clear_color=Color(0.07,0.035,0.13,1)
-
-[physics]
-common/physics_ticks_per_second=60
-
-[input_devices]
-pointing/emulate_touch_from_mouse=false
-pointing/emulate_mouse_from_touch=false
-
-[debug]
-gdscript/warnings/inference_on_variant=0
+environment/defaults/default_clear_color=Color(0.07, 0.035, 0.13, 1)

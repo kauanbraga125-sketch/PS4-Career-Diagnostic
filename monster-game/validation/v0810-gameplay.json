@@ -1,0 +1,60 @@
+{
+  "failures": [],
+  "reports": [
+    {
+      "case": "release response",
+      "front_height": 141.697854167417,
+      "late_height": 122.338416667417
+    },
+    {
+      "case": "armored vehicles",
+      "draws": 70,
+      "insufficient": 23
+    },
+    {
+      "case": "planner",
+      "kind": "traffic_sequence",
+      "valid": 8,
+      "variants": 8
+    },
+    {
+      "case": "planner",
+      "kind": "convoy",
+      "valid": 8,
+      "variants": 8
+    },
+    {
+      "case": "planner",
+      "kind": "collapse_chain",
+      "valid": 8,
+      "variants": 8
+    },
+    {
+      "case": "planner",
+      "kind": "combined",
+      "valid": 8,
+      "variants": 8
+    },
+    {
+      "case": "same narrow islands",
+      "first_survives": true,
+      "horde_end": 1,
+      "horde_start": 1,
+      "losses": 0
+    },
+    {
+      "case": "same narrow islands",
+      "first_survives": true,
+      "horde_end": 9,
+      "horde_start": 36,
+      "losses": 27
+    },
+    {
+      "case": "same narrow islands",
+      "first_survives": true,
+      "horde_end": 9,
+      "horde_start": 88,
+      "losses": 79
+    }
+  ]
+}

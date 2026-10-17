@@ -1,0 +1,13 @@
+{
+  "version": "0.8.9",
+  "versionCode": 27,
+  "package": "com.kauan.noitedahorda.local",
+  "sha256": "9b887f02bce94d44a8fe0018b1357ec8e5d14ce4b8490e1de99795da666781b6",
+  "size_bytes": 160239913,
+  "same_signing_certificate": true,
+  "native_libraries_unchanged": 4,
+  "compiled_scripts_verified": 65,
+  "existing_art_resources_byte_exact": 83,
+  "apk_integrity": "passed",
+  "android_device_tested": false
+}

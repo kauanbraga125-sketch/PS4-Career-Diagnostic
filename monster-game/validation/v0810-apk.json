@@ -1,0 +1,16 @@
+{
+  "version": "0.8.10",
+  "versionCode": 28,
+  "package": "com.kauan.noitedahorda.local",
+  "sha256": "70ff7f4531784ce787b4039a3f48ac110dc5bd131c473426add9c778d3256222",
+  "size_bytes": 160248261,
+  "same_signing_certificate": true,
+  "signing_certificate_sha256": "912238813308c130cc399d618ba05e2022e11a32b1b70d50b5b6238346903e7a",
+  "native_libraries_unchanged": 4,
+  "native_library_packaging": "compressed, unchanged from previous APK",
+  "compiled_scripts_verified": 32,
+  "previous_assets_byte_exact": 448,
+  "apk_integrity": "passed",
+  "compiled_pack_smoke": "passed",
+  "android_device_tested": false
+}

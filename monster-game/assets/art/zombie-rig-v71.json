@@ -1,0 +1,60 @@
+{
+  "file": "rig-zombie-v71.png",
+  "parts": [
+    [
+      40,
+      40,
+      394,
+      383
+    ],
+    [
+      506,
+      119,
+      282,
+      292
+    ],
+    [
+      977,
+      112,
+      141,
+      298
+    ],
+    [
+      170,
+      499,
+      120,
+      283
+    ],
+    [
+      554,
+      531,
+      197,
+      249
+    ],
+    [
+      966,
+      488,
+      165,
+      299
+    ],
+    [
+      152,
+      857,
+      136,
+      313
+    ],
+    [
+      504,
+      928,
+      276,
+      213
+    ],
+    [
+      936,
+      926,
+      255,
+      260
+    ]
+  ],
+  "provenance": "Image generation edit of rig-zombie.png; only limb and hand regions are consumed by the new skeleton. Original head, shirt, pelvis, feet and identity retained from original atlas."
+}
