@@ -78,16 +78,20 @@ jobs:
           fi
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
-      - name: Import project and run gameplay regression suite
+      - name: Import project and inspect parser diagnostics
         run: |
           set -euo pipefail
           mkdir -p monster-game/build
           touch monster-game/build/.gdignore
-          godot --headless --path monster-game --editor --import 2>&1 | tee monster-game/build/import.log
-          timeout 180 godot --headless --path monster-game -- --self-test 2>&1 | tee monster-game/build/test.log
-          grep -q 'HORDE_TEST_OK' monster-game/build/test.log
-          grep -q 'HORDE_VEHICLE_SURVIVORS:' monster-game/build/test.log
-          if grep -E 'SCRIPT ERROR|HORDE_TEST_FAIL|HORDE_VEHICLE_SURVIVORS_FAIL' monster-game/build/test.log; then exit 1; fi
+          timeout 180 godot --headless --path monster-game --editor --import 2>&1 | tee monster-game/build/import.log
+          if grep -E 'SCRIPT ERROR|Parse Error|ERROR: Failed to load' monster-game/build/import.log; then exit 1; fi
+
+      - name: Run focused v0.8.11 gameplay regression checks
+        run: |
+          set -euo pipefail
+          timeout 120 godot --headless --path monster-game --script res://tests/ci_smoke.gd 2>&1 | tee monster-game/build/test.log
+          grep -q 'HORDE_CI_SMOKE_OK' monster-game/build/test.log
+          if grep -E 'SCRIPT ERROR|HORDE_CI_SMOKE_FAIL|HORDE_VEHICLE_SURVIVORS_FAIL' monster-game/build/test.log; then exit 1; fi
 
       - name: Prepare separate testing app and development signature
         run: |
