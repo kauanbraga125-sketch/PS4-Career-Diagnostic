@@ -782,6 +782,10 @@ func update_tunnels() -> void :
 	if not developer_kind.is_empty(): return
 	ensure_tunnels(world_px + 45000)
 	for t in tunnels:
+		# Create tunnel rewards while still off screen, never popping them in view.
+		if not bool(t.get("rewards_spawned", false)) and world_px >= float(t.entry) - 1800.0:
+			t.rewards_spawned = true
+			spawn_tunnel_rewards(t)
 		if not t.entered and world_px >= float(t.entry):
 			t.entered = true;entered_tunnels = int(t.number)
 			events.append({"type": "tunnel_enter", "number": entered_tunnels})
@@ -790,6 +794,33 @@ func update_tunnels() -> void :
 			save_generation_trace()
 			events.append({"type": "tunnel_exit", "number": completed_tunnels, "area": area()})
 			break
+
+func spawn_tunnel_rewards(t: Dictionary) -> void:
+	if not developer_kind.is_empty(): return
+	var length: float = float(t.length)
+	var start: float = ANCHOR + float(t.entry) - world_px
+	var floor_y: float = ground_y(start + 320.0)
+	# These coins deliberately break up empty safe tunnels. All graphics are
+	# existing coins and no collisions are generated in their path.
+	for lane in range(3):
+		var x_base: float = start + length * (0.18 + float(lane) * 0.24)
+		for i in range(4):
+			var cx: float = x_base + float(i) * 52.0
+			add_entity("coin", cx, floor_y - 60.0 - (15.0 if i in [1, 2] else 0.0))
+	# Replenish larger hordes with proportionate, but capped, civilian groups.
+	var recruits: int = mini(6, 2 + int(active_count() / 12))
+	var allowed: int = mini(recruits, remaining_soul_slots())
+	var group: int = 3000000 + int(t.number) * 100
+	var civil_x: float = start + length * 0.43
+	for i in range(allowed):
+		var at: float = civil_x + float(i) * 80.0
+		var person: Dictionary = add_entity("civilian", at, ground_y(at), reward_rng.randi_range(0, 2))
+		person.group = group
+	# Rare ordinary car if the horde can actually turn it; no fake armored
+	# variant, and no car in a tiny player's first tunnel.
+	if active_count() >= 8 and remaining_soul_slots() >= 2 and reward_rng.randf() < 0.20:
+		var car_x: float = start + length * 0.77
+		add_entity("car", car_x, ground_y(car_x))
 
 func spawn_civilians(x: float, count: int, group_id: int) -> void :
 	if souls >= early_soul_limit(): return

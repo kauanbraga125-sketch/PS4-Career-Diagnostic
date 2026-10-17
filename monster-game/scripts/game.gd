@@ -40,6 +40,7 @@ var toast = ""
 var toast_left = 0.0
 var shake = 0.0
 var quake_left = 0.0
+var backup_preview: Dictionary = {}
 var flash = 0.0
 var end_delay = -1.0
 var last_save = 0.0
@@ -397,6 +398,38 @@ func perform_action(action: String) -> void :
 	if action == "lab_stage":
 		var values = [0, 3, 6, 8, 12];lab_stage = values[(values.find(lab_stage) + 1) % values.size()];return
 	if action == "developer": change_screen("developer");return
+	if action == "backup_open":
+		backup_preview.clear()
+		change_screen("backup")
+		return
+	if action == "backup_export":
+		save_game()
+		DisplayServer.clipboard_set(JSON.stringify({"signature": "HORDA-BACKUP-1", "data": data}))
+		show_toast("BACKUP COPIADO! Guarde o texto em uma nota.", 3.0)
+		return
+	if action == "backup_import":
+		var package: Variant = JSON.parse_string(DisplayServer.clipboard_get())
+		if package is Dictionary and str(package.get("signature", "")) == "HORDA-BACKUP-1" and package.get("data", null) is Dictionary:
+			var candidate: Dictionary = package.data
+			if int(candidate.get("version", -1)) in [1, 2, 3, 4, 5, 6] and candidate.has("wallet") and candidate.has("levels") and candidate.has("runs") and candidate.has("owned"):
+				backup_preview = candidate
+				show_toast("BACKUP LIDO. CONFIRME PARA RESTAURAR.", 2.5)
+				return
+		backup_preview.clear()
+		show_toast("BACKUP INVÁLIDO. COPIE O TEXTO COMPLETO.", 2.5)
+		return
+	if action == "backup_cancel":
+		backup_preview.clear()
+		return
+	if action == "backup_confirm":
+		if backup_preview.is_empty(): return
+		data = validate_save(backup_preview)
+		backup_preview.clear()
+		sound.set_mix(data.audio_levels)
+		sound.set_enabled(bool(data.audio))
+		save_game()
+		show_toast("PROGRESSO RESTAURADO!", 2.5)
+		return
 	if action == "back" and screen == "developer":
 		leave_lab();change_screen("settings");return
 	if lab_active and action == "retry": start_lab(lab_kind);return
@@ -437,7 +470,7 @@ func perform_action(action: String) -> void :
 		"home":
 			if screen in ["run", "pause"] and not runner.dead: runner.finish();consume_run_events();end_delay = -1
 			change_screen("home")
-		"back": change_screen(settings_from if screen == "settings" else (credits_from if screen == "credits" else (previous_page if screen == "market" else "home")))
+		"back": change_screen("settings" if screen == "backup" else (settings_from if screen == "settings" else (credits_from if screen == "credits" else (previous_page if screen == "market" else "home"))))
 		"pause": if screen == "run": change_screen("pause")
 		"resume": if screen == "pause": change_screen("run")
 		"audio":
@@ -622,6 +655,7 @@ func _draw() -> void :
 		"market": market.paint(self)
 		"collection": draw_collection()
 		"settings": draw_settings()
+		"backup": draw_backup()
 		"developer": draw_developer()
 		"sprite_lab": draw_sprite_lab()
 		"shop": draw_shop()
@@ -1444,6 +1478,7 @@ func update_slider(point: Vector2) -> void :
 func draw_settings() -> void :
 	home_menu.label(self, "CONFIGURAÇÕES", Vector2(69, 109), 45, GOLD, false, -1, true, 5)
 	home_menu.gear(self, Vector2(1162, 87), 30, ui_time * 0.4)
+	if settings_from != "pause": button(Rect2(842, 93, 250, 48), "BACKUP DO PROGRESSO", "backup_open", Color("426e72"), -2, 17)
 	var channels = ["music", "effects", "voices"]
 	var titles = ["MÚSICA", "EFEITOS", "VOZES"]
 	for i in range(3):
@@ -1461,6 +1496,20 @@ func draw_settings() -> void :
 	button(Rect2(69, 642, 245, 57), "VOLTAR", "back", Color("513c67"), -2, 23)
 	button(Rect2(340, 642, 500, 57), "DESENVOLVEDOR TESTE", "developer", Color("4c786a"), -2, 23)
 	if not data.audio: button(Rect2(878, 642, 258, 57), "ATIVAR SOM", "audio", Color("4c786a"), -2, 23)
+
+func draw_backup() -> void:
+	text("SALVAR E RECUPERAR PROGRESSO", Vector2(65, 115), 39, GOLD, true, false, 4)
+	panel(Rect2(68, 166, 1142, 402), Color("2c203a"), Color("826b87"), 24, 3)
+	wrapped("COPIAR BACKUP: copie seu progresso e cole em uma nota, mensagem ou arquivo. Depois, instale o novo APK, copie o texto de volta e toque em LER BACKUP.", Vector2(101, 218), 1060, 23, CREAM, 3)
+	wrapped("IMPORTANTE: a versão antiga deve continuar instalada até o backup ser copiado. A reinstalação pode apagar os dados internos do Android.", Vector2(101, 320), 1060, 21, CORAL, 3)
+	if backup_preview.is_empty():
+		text("Nenhum backup aguardando confirmação.", Vector2(103, 489), 19, MINT)
+	else:
+		text("RESTAURAR: %d moedas / %d corridas / recorde %d" % [int(backup_preview.get("wallet", 0)), int(backup_preview.get("runs", 0)), int(backup_preview.get("best", 0))], Vector2(103, 465), 23, MINT)
+		button(Rect2(743, 483, 420, 61), "CONFIRMAR RESTAURAÇÃO", "backup_confirm", Color("527967"), -2, 19)
+	button(Rect2(68, 607, 320, 66), "COPIAR BACKUP", "backup_export", Color("427a72"), -2, 21)
+	button(Rect2(412, 607, 450, 66), "LER BACKUP COPIADO", "backup_import", Color("735a92"), -2, 21)
+	button(Rect2(883, 607, 324, 66), "VOLTAR", "back", Color("513c67"), -2, 21)
 
 func draw_collection() -> void :
 	views.collection(self)
