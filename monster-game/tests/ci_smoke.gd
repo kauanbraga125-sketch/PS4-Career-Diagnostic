@@ -1,6 +1,6 @@
 extends SceneTree
 
-# Focused, independently terminating CI smoke suite for the corrected 0.8.12 source.
+# Focused, independently terminating CI smoke suite for the corrected 0.8.13 source.
 # The older full self_test.gd remains available for migration; it assumes the
 # original, unscaled motorcycle width and crashes when no contact is recorded.
 var failures: Array[String] = []
@@ -28,9 +28,15 @@ func _run_ci() -> void:
 	checks += latest.checks
 	failures.append_array(latest.failures)
 
+	var v813: Node = load("res://tests/v0813_regressions_test.gd").new()
+	root.add_child(v813)
+	v813.run_checks()
+	checks += v813.checks
+	failures.append_array(v813.failures)
+
 	# A real unmodified HordeRun must start, advance, and respond to a jump.
 	var run := HordeRun.new()
-	run.start(MonsterCatalog.defaults().levels, 812)
+	run.start(MonsterCatalog.defaults().levels, 813)
 	run.entities.clear()
 	run.events.clear()
 	run.next_segment = 99999

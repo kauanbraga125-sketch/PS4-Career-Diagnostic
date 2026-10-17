@@ -282,6 +282,8 @@ func reform_x(m: Dictionary, target: float, dt: float) -> float:
 	var candidate := move_toward(float(m.x), target, dt * HordeTuning.REFORM_WALK_SPEED)
 	for e in entities:
 		if e.taken or not MonsterCatalog.VEHICLES.has(e.kind): continue
+		# Most vehicles are nowhere near this member's tiny per-frame motion.
+		if absf(float(e.x) - float(m.x)) > float(e.width) * 0.5 + 90.0: continue
 		var roof := float(e.y) - float(e.roof)
 		if float(m.y) <= roof + 14: continue
 		var edge := float(e.x) - float(e.width) * 0.5 - 21.0
@@ -290,6 +292,7 @@ func reform_x(m: Dictionary, target: float, dt: float) -> float:
 			if candidate < float(m.x) and float(m.x) >= end: candidate = maxf(candidate, end)
 			elif candidate > float(m.x) and float(m.x) <= edge: candidate = minf(candidate, edge)
 	for gap in physics_gaps:
+		if float(m.x) < float(gap.x) - 12.0 or float(m.x) > float(gap.x) + float(gap.width) + 12.0: continue
 		if gap.kind not in ["gap", "collapse"]: continue
 		if gap.kind == "collapse" and not gap.get("collapsed", false): continue
 		if float(m.y) < ground_y(float(m.x)) - 12: continue

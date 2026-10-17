@@ -17,9 +17,14 @@ var view_left = 0.0
 var view_right = 1280.0
 var view_top = 0.0
 var view_bottom = 720.0
+var tunnel_sign_style: StyleBoxFlat = StyleBoxFlat.new()
 
 func _init(source: HordeArt, rig: HordeActor) -> void :
 	art = source;actor = rig
+	tunnel_sign_style.bg_color = Color("2a2037")
+	tunnel_sign_style.border_color = Color("c9a35c")
+	tunnel_sign_style.set_border_width_all(3)
+	tunnel_sign_style.set_corner_radius_all(11)
 	reset()
 
 func reset() -> void :
@@ -189,8 +194,7 @@ func paint_front(canvas: Node2D, run: HordeRun) -> void :
 
 			sprite(canvas, texture, Vector2(boundary - 30, HordeRun.FLOOR - height * 0.5), height)
 			if side == 0:
-				var box = StyleBoxFlat.new();box.bg_color = Color("2a2037");box.border_color = Color("c9a35c")
-				box.set_border_width_all(3);box.set_corner_radius_all(11)
+				var box = tunnel_sign_style
 				var point = Vector2(boundary - 40, HordeRun.FLOOR - 345)
 				canvas.draw_style_box(box, Rect2(point - Vector2(65, 35), Vector2(130, 70)))
 				canvas.draw_string(art.title_font, point + Vector2(-45, -8), "TÚNEL", HORIZONTAL_ALIGNMENT_LEFT, -1, 19, Color("ffe7ba"))
