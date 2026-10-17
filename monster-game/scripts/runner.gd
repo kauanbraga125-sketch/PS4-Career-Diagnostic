@@ -163,7 +163,7 @@ func start(upgrades: Dictionary, seed_value: int = 0, skin: int = 0, areas: Arra
 func slot_x(index: int) -> float:
 	var columns = 10 if members.size() > 24 else 8
 	var spacing = 26.0 if columns == 10 else 35.0
-	var desired := ANCHOR - float(index % columns) * spacing - float(int(index / columns)) * (17.0 if columns == 10 else 15.0)
+	var desired: float = ANCHOR - float(index % columns) * spacing - float(int(index / columns)) * (17.0 if columns == 10 else 15.0)
 	# Even at 96 runners, the formation itself must not push survivors fully
 	# outside the camera. Genuine stragglers can still be lost by camera culling.
 	return maxf(view_left - 35.0, desired)
