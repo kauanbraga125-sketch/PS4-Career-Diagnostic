@@ -774,8 +774,8 @@ func draw_run() -> void :
 					if e.x > HordeRun.ANCHOR + 230:
 						if runner.tutorial_hints() and e.timer < 0.65 and e.speech_left <= 0: text("TIRO!", Vector2(e.x, e.y - 130), 15, CORAL, true, true, 2)
 						if e.timer < 0.65:
-						var beam_color := Color("cb94fa") if str(e.get("shot_mode", "")) == "tracking" else (Color("7cddf4") if str(e.get("shot_mode", "")) == "high" else Color("ffaf62"))
-						paint_target.draw_line(muzzle, muzzle + Vector2(-120, float(e.get("aim_dy", 0))), Color(beam_color.r, beam_color.g, beam_color.b, 0.47), 3, true)
+							var beam_color := Color("cb94fa") if str(e.get("shot_mode", "")) == "tracking" else (Color("7cddf4") if str(e.get("shot_mode", "")) == "high" else Color("ffaf62"))
+							paint_target.draw_line(muzzle, muzzle + Vector2(-120, float(e.get("aim_dy", 0))), Color(beam_color.r, beam_color.g, beam_color.b, 0.47), 3, true)
 			"bullet":
 				var projectile_color := Color("cb94fa") if str(e.get("shot_mode", "")) == "tracking" else (Color("7cddf4") if str(e.get("shot_mode", "")) == "high" else GOLD)
 				paint_target.draw_line(Vector2(e.x + 31, e.y), Vector2(e.x, e.y), Color(projectile_color.r, projectile_color.g, projectile_color.b, 0.55), 4, true)
