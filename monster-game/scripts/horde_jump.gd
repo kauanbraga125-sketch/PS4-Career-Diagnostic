@@ -24,6 +24,7 @@ static func available(run, first_touchdown: bool = false) -> int:
 static func launch(run, m: Dictionary, wave: int) -> void:
 	m.wave_id = wave;m.air_time = 0.0;m.last_jump_at = run.elapsed
 	HordeBalance.launch(m, int(run.levels.get("jump", 0)))
+	m.jump_gravity_scale = 1.06 if run.perk_kind == 2 and run.perk_left > 0 else 1.0
 	m.air_jumps += 1;m.coyote = 0.0;m.jump_at = -1.0
 	m.jump_delay = -1.0 if m.jump_queue.is_empty() else maxf(0, float(m.jump_queue[0].due) - run.elapsed)
 

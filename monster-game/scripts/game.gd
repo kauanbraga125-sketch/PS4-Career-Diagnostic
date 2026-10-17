@@ -293,8 +293,12 @@ func consume_run_events() -> void :
 				show_toast(MonsterCatalog.AREAS[int(e.area)].name.to_upper(), 2.0)
 			"recovery":
 				if runner.tutorial_hints(): show_toast("REAGRUPE A HORDA! MAIS RECRUTAS À FRENTE", 2.2)
-			"collapse_warning": sound.play("metal_push", -14)
-			"collapse": sound.play("glass_break", -12);effects.dust(point, 20, 1.5)
+			"collapse_warning":
+				sound.play("metal_push", -14)
+				shake = maxf(shake, 2.7)
+			"collapse":
+				sound.play("glass_break", -12);effects.dust(point, 20, 1.5)
+				shake = maxf(shake, 4.0)
 			"finish": finish_run()
 
 func finish_run() -> void :
@@ -1311,6 +1315,7 @@ func configure_layout() -> void :
 	scenery.view_right = (1280 + layout_origin.x - world_canvas.position.x) / camera_zoom
 	scenery.view_top = ( - layout_origin.y - world_canvas.position.y) / camera_zoom
 	scenery.view_bottom = (720 + layout_origin.y - world_canvas.position.y) / camera_zoom
+	runner.view_left = scenery.view_left
 	runner.view_right = scenery.view_right
 	runner.planning_right = maxf(scenery.view_right, HordeRun.ANCHOR + (1280 + layout_origin.x - CAMERA_ANCHOR.x) / CAMERA_MIN_ZOOM)
 

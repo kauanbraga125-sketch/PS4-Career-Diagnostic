@@ -2,8 +2,8 @@ class_name HordeDirector
 extends RefCounted
 
 static func stage_speed(stage: int) -> float:
-	# Increase the existing tunnel increments by 10%, keeping the initial speed.
-	return 305 + 1.10 * (mini(stage, 5) * 11 + clampi(stage - 5, 0, 5) * 17 + 235 * (1.0 - exp(-maxi(0, stage - 10) / 14.0)))
+	# Increase the *existing increment* by 20% without boosting starting speed.
+	return 305 + 1.32 * (mini(stage, 5) * 11 + clampi(stage - 5, 0, 5) * 17 + 235 * (1.0 - exp(-maxi(0, stage - 10) / 14.0)))
 
 static func profile(_world_px: float, count: int, pressure: float, recovery: float, stage: int = 0) -> Dictionary:
 	var progress = clampf(float(stage) / 14.0, 0, 1)

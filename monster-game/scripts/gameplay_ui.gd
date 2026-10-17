@@ -82,7 +82,11 @@ func hud(g) -> void:
 		g.home_menu.slab(g, effect, Color("33203f"), Color("a582bd"), 12, 3)
 		g.scenery.sprite(g, g.art.power(g.runner.perk_kind, g.ui_time), effect.position + Vector2(35, 41), 51)
 		g.home_menu.label(g, "SUPER FLY" if g.runner.perk_kind == 3 else "MASCARADO", effect.position + Vector2(71, 29), 20, g.MINT, false, effect.size.x - 84)
-		g.home_menu.label(g, "ESCUDO " + str(g.runner.shields) if g.runner.shields > 0 else "PODER ATIVO", effect.position + Vector2(72, 53), 17, g.CREAM, false, effect.size.x - 84)
+		var power_note = "ESCUDO " + str(g.runner.shields) if g.runner.shields > 0 else "PODER ATIVO"
+		if g.runner.perk_kind == 2:
+			# Effective flipping power, without changing the living horde count.
+			power_note = "FORÇA %d  (%d × %d)" % [g.runner.active_count() * g.runner.member_force(), g.runner.active_count(), g.runner.member_force()]
+		g.home_menu.label(g, power_note, effect.position + Vector2(72, 53), 17, g.CREAM, false, effect.size.x - 84)
 
 	elif g.runner.boost_left > 0:
 		g.home_menu.slab(g, effect, Color("483142"), Color("d2a35c"), 12, 3)

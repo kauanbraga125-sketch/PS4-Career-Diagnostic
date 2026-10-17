@@ -46,6 +46,8 @@ static func integrate(member: Dictionary, dt: float, held: bool) -> void:
 				step = minf(step, float(member.release_left))
 			step = minf(step, -float(member.vy) / gravity)
 		if step < 0.000001: step = minf(remaining, 0.000001)
+		# Masked form is heavier in the air; ordinary jumps are unchanged.
+		gravity *= float(member.get("jump_gravity_scale", 1.0))
 		member.y += float(member.vy) * step + 0.5 * gravity * step * step
 		member.vy += gravity * step
 		member.air_time += step
@@ -73,9 +75,22 @@ static func jump_profile(hold: float = MAX_HOLD, dt: float = 1.0 / 120, level: i
 	return profile_cache[key]
 
 static func vehicle_geometry(spec: Dictionary, _speed: float = 305.0) -> Dictionary:
-	# A common art scale preserves the car/truck/airplane hierarchy at every speed.
-	return {"width": float(spec.width) * VEHICLE_SCALE, "height": float(spec.height) * VEHICLE_SCALE,
-		"collision": float(spec.collision) * VEHICLE_SCALE, "roof": float(spec.get("roof", spec.collision)) * VEHICLE_SCALE, "scale": VEHICLE_SCALE}
+	# Keep the physical roof horizontal even when vehicle art is tilted.
+	# Align the truck support better with its visible roof, and keep the
+	# airplane roof low enough for a normal jump to reach.
+	var key := str(spec.get("name", ""))
+	var roof := float(spec.get("roof", spec.collision))
+	var height_scale := 1.0
+	if key == "CAMINHÃO":
+		roof = 198.0
+		height_scale = 0.96
+	elif key == "AVIÃO":
+		roof = 211.0
+		height_scale = 0.92
+	return {"width": float(spec.width) * VEHICLE_SCALE,
+		"height": float(spec.height) * VEHICLE_SCALE * height_scale,
+		"collision": float(spec.collision) * VEHICLE_SCALE,
+		"roof": roof * VEHICLE_SCALE, "scale": VEHICLE_SCALE}
 
 static func vehicle_jumpable(spec: Dictionary, speed: float, level: int = 0) -> bool:
 	var geometry = vehicle_geometry(spec)
@@ -83,14 +98,16 @@ static func vehicle_jumpable(spec: Dictionary, speed: float, level: int = 0) -> 
 	return float(jump_profile(MAX_HOLD, 1.0 / 120, level).height) > float(geometry.roof) + 12 and speed >= 280
 
 static func passenger_rect(spec: Dictionary, index: int) -> Rect2:
-	var size = Vector2(spec.width, spec.height) * VEHICLE_SCALE
+	var height_scale := 0.96 if str(spec.get("name", "")) == "CAMINHÃO" else (0.92 if str(spec.get("name", "")) == "AVIÃO" else 1.0)
+	var size = Vector2(float(spec.width) * VEHICLE_SCALE, float(spec.height) * VEHICLE_SCALE * height_scale)
 	var centre = Vector2(spec.windows[index]) * size
 	return Rect2(centre - Vector2(spec.window_size) * size * 0.5, Vector2(spec.window_size) * size)
 
 static func surface(e: Dictionary, dx: float = 0.0) -> Rect2:
 	if e.kind == "helicopter": return Rect2(float(e.x) + dx - 113, float(e.y) - 64, 227, 111)
 	if not MonsterCatalog.VEHICLES.has(e.kind): return Rect2()
-	var inset = 0.16 if e.kind == "plane" else (0.035 if e.kind == "bus" else 0.08)
+	# Plane roof support must extend to the rear, not end before the tail.
+	var inset = 0.035 if e.kind in ["plane", "truck", "bus"] else 0.08
 	var height = float(e.get("roof", e.collision))
 	return Rect2(float(e.x) + dx - float(e.width) * (0.5 - inset), float(e.y) - height, float(e.width) * (1.0 - 2.0 * inset), height)
 
