@@ -28,7 +28,8 @@ jobs:
           test "$GITHUB_REF" = "refs/heads/main" || { echo 'Official releases must run from main'; exit 1; }
           test -s monster-game/NOTAS-v0.8.13-correcoes.md
           grep -q 'package/unique_name="com.kauan.noitedahorda"' monster-game/export_presets.cfg
-          grep -Eq '^version/code=[0-9]+
+          grep -Eq '^version/code=[0-9]+$' monster-game/export_presets.cfg
+          grep -Eq '^version/name="[0-9]+\.[0-9]+\.[0-9]+"$' monster-game/export_presets.cfg
           test -s monster-game/tests/vehicle_survivors_test.gd
           test -s monster-game/assets/art/creatures.png
           test -s monster-game/assets/art/terrain-v089.png
