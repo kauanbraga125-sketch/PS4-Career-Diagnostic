@@ -105,8 +105,8 @@ jobs:
           from pathlib import Path
           p=Path('monster-game/export_presets.cfg')
           s=p.read_text()
-          assert 'package/unique_name="com.kauan.noitedahorda.local"' in s
-          s=s.replace('package/unique_name="com.kauan.noitedahorda.local"', 'package/unique_name="com.kauan.noitedahorda.teste0813"')
+          assert 'package/unique_name="com.kauan.noitedahorda"' in s
+          s=s.replace('package/unique_name="com.kauan.noitedahorda"', 'package/unique_name="com.kauan.noitedahorda.teste0813"')
           s=s.replace('package/name="Noite da Horda"', 'package/name="Noite da Horda Teste 0813"')
           p.write_text(s)
           PY
